@@ -126,7 +126,7 @@ present.
       use template <- cli.template("component-entry.mjs", InternalError)
       let entry =
         template
-        |> string.replace("{component_name}", component)
+        |> string.replace("{component_name}", importable_name(component))
         |> string.replace("{app_name}", project_name)
         |> string.replace("{module_path}", module_path)
 
@@ -371,6 +371,75 @@ fn is_compatible_app_type(t: Type) -> Bool {
       module: "lustre",
       parameters: [flags, ..],
     ) -> is_nil_type(flags) || is_type_variable(flags)
+    _ -> False
+  }
+}
+
+/// Turns a Gleam identifier into a name that can be imported in an mjs module
+/// from Gleam's generated code.
+///
+fn importable_name(identifier: String) -> String {
+  case is_reserved_keyword(identifier) {
+    True -> identifier <> "$"
+    False -> identifier
+  }
+}
+
+fn is_reserved_keyword(name: String) -> Bool {
+  // This list is taken directly from Gleam's compiler: there's some identifiers
+  // that are not technically keywords (like `then`) but Gleam will still append
+  // a "$" to those.
+  case name {
+    "await"
+    | "arguments"
+    | "break"
+    | "case"
+    | "catch"
+    | "class"
+    | "const"
+    | "continue"
+    | "deoh dear"
+    | "default"
+    | "delete"
+    | "do"
+    | "else"
+    | "enum"
+    | "export"
+    | "extends"
+    | "eval"
+    | "false"
+    | "finally"
+    | "for"
+    | "function"
+    | "if"
+    | "implements"
+    | "import"
+    | "in"
+    | "instanceof"
+    | "interface"
+    | "let"
+    | "new"
+    | "null"
+    | "package"
+    | "private"
+    | "protected"
+    | "public"
+    | "return"
+    | "static"
+    | "super"
+    | "switch"
+    | "this"
+    | "throw"
+    | "true"
+    | "try"
+    | "typeof"
+    | "var"
+    | "void"
+    | "while"
+    | "with"
+    | "yield"
+    | "undefined"
+    | "then" -> True
     _ -> False
   }
 }
