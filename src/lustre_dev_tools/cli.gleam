@@ -15,9 +15,8 @@ pub opaque type Env {
 }
 
 type SpinnerStatus {
-  Waiting
   Running(spinner: Spinner, message: String)
-  Paused(spinner: Spinner)
+  Paused
 }
 
 ///
@@ -31,13 +30,19 @@ pub type Cli(state, a, e) {
 ///
 ///
 pub fn run(step: Cli(state, a, e), with state: state) -> Result(a, e) {
-  let env = Env(spinner: Waiting)
+  let env = Env(spinner: Paused)
   let #(env, _, result) = step.run(env, state)
 
   case env.spinner {
-    Waiting -> Nil
     Running(spinner, _) -> spinner.stop(spinner)
-    Paused(spinner) -> spinner.stop(spinner)
+    Paused -> Nil
+  }
+
+  case result, env.spinner {
+    // In case the spinner was still running when we got an error we print
+    // the message where the spinner got stuck.
+    Error(_), Running(_, message) -> io.println("❌ " <> ansi.red(message))
+    Error(_), _ | Ok(_), _ -> Nil
   }
 
   result
@@ -51,27 +56,6 @@ pub fn return(value: a) -> Cli(state, a, e) {
   use env, state <- Cli
 
   #(env, state, Ok(value))
-}
-
-///
-///
-pub fn throw(error: e, message: String) -> Cli(state, a, e) {
-  use env, state <- Cli
-
-  case env.spinner {
-    Waiting -> #(env, state, Error(error))
-    Running(spinner, _) -> {
-      spinner.stop(spinner)
-      io.println("❌ " <> ansi.red(message))
-
-      #(Env(Paused(spinner)), state, Error(error))
-    }
-    Paused(spinner) -> {
-      io.println("❌ " <> ansi.red(message))
-
-      #(Env(Paused(spinner)), state, Error(error))
-    }
-  }
 }
 
 pub fn from_result(result: Result(a, e)) -> Cli(state, a, e) {
@@ -95,12 +79,8 @@ pub fn do(
     Ok(value) -> next(value).run(env, state)
     Error(error) -> {
       case env.spinner {
-        Waiting -> Nil
-        Paused(_) -> Nil
-        Running(spinner, message) -> {
-          spinner.stop(spinner)
-          io.println("❌ " <> ansi.red(message))
-        }
+        Running(spinner, _message) -> spinner.stop(spinner)
+        Paused -> Nil
       }
 
       #(env, state, Error(error))
@@ -128,7 +108,7 @@ pub fn map_error(
 }
 
 ///
-/// 
+///
 pub fn do_result(
   result: Result(a, e),
   then next: fn(a) -> Cli(state, b, e),
@@ -154,12 +134,8 @@ pub fn try(
     Ok(value) -> next(value).run(env, state)
     Error(error) -> {
       case env.spinner {
-        Waiting -> Nil
-        Paused(_) -> Nil
-        Running(spinner, message) -> {
-          spinner.stop(spinner)
-          io.println("❌ " <> ansi.red(message))
-        }
+        Running(spinner, _message) -> spinner.stop(spinner)
+        Paused -> Nil
       }
 
       #(env, state, Error(recover(error)))
@@ -178,20 +154,15 @@ pub fn log(
   use env, state <- Cli
   let env =
     Env(spinner: case env.spinner {
-      Waiting ->
+      Paused ->
         Running(
           spinner.new(message)
-            |> spinner.with_frames(spinner.snake_frames)
-            |> spinner.start,
+          |> spinner.with_frames(spinner.snake_frames)
+          |> spinner.start,
           message,
         )
 
       Running(spinner, _) -> {
-        spinner.set_text(spinner, message)
-        Running(spinner, message)
-      }
-
-      Paused(spinner) -> {
         spinner.set_text(spinner, message)
         Running(spinner, message)
       }
@@ -207,11 +178,10 @@ pub fn success(
   use env, state <- Cli
   let env =
     Env(spinner: case env.spinner {
-      Waiting -> Waiting
-      Paused(spinner) -> Paused(spinner)
+      Paused -> Paused
       Running(spinner, _) -> {
         spinner.stop(spinner)
-        Paused(spinner)
+        Paused
       }
     })
 
