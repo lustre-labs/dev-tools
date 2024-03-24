@@ -91,7 +91,7 @@ pub fn serve(host: String, port: String, spa: Bool) -> Cli(any, Nil, Error) {
     False -> flags
   }
 
-  use <- cli.success("Starting dev server at " <> host <> ":" <> port <> "...")
+  use <- cli.success("Started dev server at " <> host <> ":" <> port <> "...")
   use _ <- cli.try(
     cli.exec(run: "./build/.lustre/bin/esbuild", in: root, with: options),
     fn(pair) { BundleError(pair.1) },
@@ -215,7 +215,7 @@ There was a network error!",
 
     // TODO: this could give a better error for some common reason like Enoent.
     SimplifileError(reason, path) -> io.println("
-I ran into the following error at path `" <> path <> "`:" <> string.inspect(
+I ran into the following error at path `" <> path <> "`: " <> string.inspect(
         reason,
       ) <> ".")
 
