@@ -9,7 +9,7 @@ links = [
   { title = "Sponsor", href = "https://github.com/sponsors/hayleigh-dot-dev" },
 ]
 
-internal_modules = ["lusre_dev_tools", "lusre_dev_tools/*"]
+internal_modules = ["lustre_dev_tools", "lustre_dev_tools/*"]
 
 [dependencies]
 gleam_stdlib = "~> 0.34 or ~> 1.0"
