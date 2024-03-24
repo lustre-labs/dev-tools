@@ -157,8 +157,8 @@ pub fn log(
       Paused ->
         Running(
           spinner.new(message)
-          |> spinner.with_frames(spinner.snake_frames)
-          |> spinner.start,
+            |> spinner.with_frames(spinner.snake_frames)
+            |> spinner.start,
           message,
         )
 

@@ -71,7 +71,13 @@ exec(Command, Args, Cwd) ->
       _ -> {spawn_executable, os:find_executable(Command_)}
     end,
 
-    Port = open_port(Name, [exit_status, binary, hide, stream, eof,
+    Port = open_port(Name, [
+        exit_status,
+        binary,
+        hide,
+        stream,
+        eof,
+        stderr_to_stdout, % We need this to hide the process' stdout
         {args, Args_},
         {cd, Cwd_}
     ]),
