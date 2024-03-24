@@ -8,6 +8,14 @@ import lustre_dev_tools/cli/start
 
 // MAIN ------------------------------------------------------------------------
 
+/// The `main` function is used as the entry point for Lustre's dev tools. You
+/// shouldn't run this function in your code, but instead use `Gleam run` to run
+/// this module from the command line. To see what the dev tools can do, run:
+///
+/// ```
+/// gleam run -m lustre/dev -- --help
+/// ```
+///
 pub fn main() {
   let args = argv.load().arguments
 
