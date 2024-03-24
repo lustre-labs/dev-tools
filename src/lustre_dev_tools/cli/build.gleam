@@ -16,6 +16,14 @@ import lustre_dev_tools/cli.{type Cli}
 import lustre_dev_tools/tailwind
 import simplifile
 
+// DESCRIPTION -----------------------------------------------------------------
+
+pub const description: String = "
+Commands to build different kinds of Lustre application. These commands go beyond
+just running `gleam build` and handle features like bundling, minification, and
+integration with other build tools.
+  "
+
 // COMMANDS --------------------------------------------------------------------
 
 pub fn app() -> Command(Nil) {
@@ -83,7 +91,8 @@ JavaScript module for you to host or distribute.
   |> glint.description(description)
   |> glint.unnamed_args(glint.EqArgs(0))
   |> glint.flag("minify", {
-    let description = "Minify the output"
+    let description =
+      "Minify the output, renaming variables and removing whitespace."
     let default = False
 
     flag.bool()
@@ -98,6 +107,10 @@ pub fn component() -> Command(Nil) {
 Build a Lustre component as a portable Web Component. The generated JavaScript
 module can be included in any Web page and used without Gleam or Lustre being
 present.
+
+For a module to be built as a component, it must expose a `name` constant that
+will be the name of the component's HTML tag, and contain a public function that
+returns a suitable Lustre `App`.
   "
 
   glint.command(fn(input) {
@@ -165,7 +178,8 @@ present.
   |> glint.named_args(["module_path"])
   |> glint.unnamed_args(glint.EqArgs(0))
   |> glint.flag("minify", {
-    let description = "Minify the output"
+    let description =
+      "Minify the output, renaming variables and removing whitespace."
     let default = False
 
     flag.bool()

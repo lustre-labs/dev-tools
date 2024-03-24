@@ -18,13 +18,21 @@ import simplifile
 pub fn run() -> Command(Nil) {
   let description =
     "
+Start a development server for your Lustre project. This command will compile your
+application and serve it on a local server. If your application's `main` function
+returns a compatible `App`, this will generate the necessary code to start it.
+Otherwise, your `main` function will be used as the entry point.
+
+This development server does *not* currently watch your files for changes.
+Watchexec is a popular tool you can use to restart the server when files change.
     "
 
   glint.command(fn(input) {
     let CommandInput(flags: flags, ..) = input
     let assert Ok(host) = flag.get_string(flags, "host")
     let assert Ok(port) = flag.get_string(flags, "port")
-    let assert Ok(use_lustre_ui) = flag.get_bool(flags, "use-lustre-ui")
+    let assert Ok(use_example_styles) =
+      flag.get_bool(flags, "use-example-styles")
     let assert Ok(spa) = flag.get_bool(flags, "spa")
     let custom_html = flag.get_string(flags, "html")
 
@@ -62,7 +70,7 @@ pub fn run() -> Command(Nil) {
           ))
           |> cli.from_result
 
-        Error(_) if use_lustre_ui -> {
+        Error(_) if use_example_styles -> {
           let name = "index-with-lustre-ui.html"
           use template <- cli.template(name, InternalError)
           let html = string.replace(template, "{app_name}", interface.name)
@@ -107,7 +115,8 @@ pub fn run() -> Command(Nil) {
   |> glint.description(description)
   |> glint.unnamed_args(glint.EqArgs(0))
   |> glint.flag("host", {
-    let description = ""
+    let description =
+      "Specify which IP addresses the server should listen on. Set this to `0.0.0.0` to listen on all addresses, including LAN and public addresses."
     let default = "localhost"
 
     flag.string()
@@ -115,15 +124,17 @@ pub fn run() -> Command(Nil) {
     |> flag.description(description)
   })
   |> glint.flag("port", {
-    let description = ""
+    let description =
+      "Specify server port. If the port is taken the dev server will not start."
     let default = "1234"
 
     flag.string()
     |> flag.default(default)
     |> flag.description(description)
   })
-  |> glint.flag("use-lustre-ui", {
-    let description = "Inject lustre/ui's stylesheet. Ignored if --html is set."
+  |> glint.flag("use-example-styles", {
+    let description =
+      "Inject the lustre/ui stylesheet. This is primarily intended to be used when running any of Lustre's examples and is ignored if the `--html` flag is set."
     let default = False
 
     flag.bool()
@@ -132,7 +143,7 @@ pub fn run() -> Command(Nil) {
   })
   |> glint.flag("spa", {
     let description =
-      "Serve your app on any route. Useful for apps that do client-side routing."
+      "Serve your app on any path, useful for single-page applications. Without this enabled, the dev server will 404 on any path other than `/`."
     let default = False
 
     flag.bool()
@@ -141,10 +152,7 @@ pub fn run() -> Command(Nil) {
   })
   |> glint.flag("html", {
     let description =
-      "Supply a custom HTML file to use as the entry point.
-To inject the Lustre bundle, make sure it includes the following empty script: 
-<script type=\"application/lustre\"></script>
- "
+      "Supply a custom HTML file to use as the entry point. To inject the Lustre bundle, make sure it includes the following empty script: <script type=\"application/lustre\"></script>"
       |> string.trim_right
 
     flag.string()
