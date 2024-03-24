@@ -32,9 +32,7 @@
 <div align="center">
   <sub>Built with ❤︎ by
   <a href="https://twitter.com/hayleighdotdev">Hayleigh Thompson</a> and
-  <a href="https://github.com/lustre-labs/dev-tools/graphs/contributors">
-    contributors
-  </a>
+  <a href="https://twitter.com/giacomo_cava">Giacomo Cavalieri</a>
 </div>
 
 ---
