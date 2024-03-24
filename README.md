@@ -69,43 +69,52 @@ Lustre's dev tools are published on [Hex](https://hex.pm/packages/lustre_dev_too
 You can add them to your Gleam projects from the command line:
 
 ```sh
-$ gleam add lustre_dev_tools --dev
+gleam add lustre_dev_tools --dev
 ```
 
 > **Note**: make sure you remember the `--dev` flag! This ensures the dev tools
 > are never included in production builds.
 
+To run any of the commands provided by the dev tools, you should run the
+`lustre/dev` module using Gleam's `run` command:
+
+```sh
+gleam run -m lustre/dev build app
+```
+
 ## Commands
 
-- `lustre add` - Commands for adding external binaries to your project. These are
-  run and managed by Lustre, and while not typically intended to be run manually,
+- `lustre/dev add` - Commands for adding external binaries to your project. These
+  are run and managed by Lustre, and while not typically intended to be run manually,
   they can be found inside `build/.lustre/bin`.
 
-  - `lustre add esbuild` - Download a platform-appropriate version of the esbuild
-    binary. Lustre uses this to bundle applications and act as a development server,
-    and will automatically download the binary if either the `build` or `start`
-    commands are run.
+  - `lustre/dev add esbuild` - Download a platform-appropriate version of the
+    esbuild binary. Lustre uses this to bundle applications and act as a development
+    server, and will automatically download the binary if either the `build` or
+    `start` commands are run.
 
-  - `lustre add tailwind` - Download a platform-appropriate version of the Tailwind
-    binary. Lustre will automatically use this to compile your styles if it detects
-    a `tailwind.config.js` in your project but will not download it automatically.
+  - `lustre/dev add tailwind` - Download a platform-appropriate version of the
+    Tailwind binary. Lustre will automatically use this to compile your styles if
+    it detects a `tailwind.config.js` in your project but will not download it
+    automatically.
 
-- `lustre build` - Commands to build different kinds of Lustre application. These
-  commands go beyond just running `gleam build` and handle features like bundling,
-  minification, and integration with other build tools.
+- `lustre/dev build` - Commands to build different kinds of Lustre application.
+  These commands go beyond just running `gleam build` and handle features like
+  bundling, minification, and integration with other build tools.
 
-  - `lustre build app` - Build and bundle an entire Lustre application. The
+  - `lustre/dev build app` - Build and bundle an entire Lustre application. The
     generated JavaScript module calls your app's `main` function on page load and
     can be included in any Web page without Gleam or Lustre being present.
 
-  - `lustre build component` - Build a Lustre component as a portable Web Component.
-    The generated JavaScript module can be included in any Web page and used without
-    Gleam or Lustre being present.
+  - `lustre/dev build component` - Build a Lustre component as a portable Web
+    Component. The generated JavaScript module can be included in any Web page
+    and used without Gleam or Lustre being present.
 
-- `lustre start` - Start a development server for your Lustre project. This command
-  will compile your application and serve it on a local server. If your application's
-  `main` function returns a compatible `App`, this will generate the necessary code
-  to start it. Otherwise, your `main` function will be used as the entry point.
+- `lustre/dev start` - Start a development server for your Lustre project. This
+  command will compile your application and serve it on a local server. If your
+  application's `main` function returns a compatible `App`, this will generate
+  the necessary code to start it. Otherwise, your `main` function will be used
+  as the entry point.
 
 ## Support
 
