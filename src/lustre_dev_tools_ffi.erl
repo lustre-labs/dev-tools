@@ -23,8 +23,8 @@ get_cpu() ->
             list_to_binary(Arch);
         {win32, _} ->
             case erlang:system_info(wordsize) of
-                4 -> {ok, <<"ia32">>};
-                8 -> {ok, <<"x64">>}
+                4 -> <<"ia32">>;
+                8 -> <<"x64">>
             end
     end.
 
@@ -51,7 +51,7 @@ get_tailwind(Url) ->
 unzip_esbuild(Zip) ->
     Result =
         erl_tar:extract({binary, Zip}, [
-            memory, compressed, {files, ["package/bin/esbuild"]}
+            memory, compressed, {files, ["package/bin/esbuild", "package/esbuild.exe"]}
         ]),
 
     case Result of
