@@ -49,9 +49,15 @@ get_tailwind(Url) ->
     end.
 
 unzip_esbuild(Zip) ->
+    Filepath =
+        case os:type() of 
+            {win32, _} -> "package/esbuild.exe";
+            _ -> "package/bin/esbuild"
+        end,
+
     Result =
         erl_tar:extract({binary, Zip}, [
-            memory, compressed, {files, ["package/bin/esbuild", "package/esbuild.exe"]}
+            memory, compressed, {files, [Filepath]}
         ]),
 
     case Result of
