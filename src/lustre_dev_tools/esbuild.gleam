@@ -91,9 +91,7 @@ pub fn serve(host: String, port: String, spa: Bool) -> Cli(any, Nil, Error) {
     False -> flags
   }
 
-  use <- cli.success(
-    "Started dev server at http://" <> host <> ":" <> port <> "",
-  )
+  use <- cli.success("Started dev server at http://" <> host <> ":" <> port)
   use _ <- cli.try(
     cli.exec(run: "./build/.lustre/bin/esbuild", in: root, with: options),
     fn(pair) { BundleError(pair.1) },
