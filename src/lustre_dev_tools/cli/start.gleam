@@ -33,7 +33,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
     let assert Ok(port) = flag.get_string(flags, "port")
     let assert Ok(use_example_styles) =
       flag.get_bool(flags, "use-example-styles")
-    let assert Ok(no_spa) = flag.get_bool(flags, "--no-spa")
+    let assert Ok(no_spa) = flag.get_bool(flags, "no-spa")
     let custom_html = flag.get_string(flags, "html")
 
     let script = {
