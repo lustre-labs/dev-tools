@@ -33,7 +33,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
     let assert Ok(port) = flag.get_string(flags, "port")
     let assert Ok(use_example_styles) =
       flag.get_bool(flags, "use-example-styles")
-    let assert Ok(spa) = flag.get_bool(flags, "spa")
+    let assert Ok(no_spa) = flag.get_bool(flags, "--no-spa")
     let custom_html = flag.get_string(flags, "html")
 
     let script = {
@@ -100,7 +100,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
       )
 
       use _ <- cli.do(
-        esbuild.serve(host, port, spa)
+        esbuild.serve(host, port, !no_spa)
         |> cli.map_error(BundleError),
       )
 
@@ -141,9 +141,9 @@ Watchexec is a popular tool you can use to restart the server when files change.
     |> flag.default(default)
     |> flag.description(description)
   })
-  |> glint.flag("spa", {
+  |> glint.flag("no-spa", {
     let description =
-      "Serve your app on any path, useful for single-page applications. Without this enabled, the dev server will 404 on any path other than `/`."
+      "The dev server serves your app on every route to make developing a SPA easier. The --no-spa flag tells the dev server to 404 on any path other than `/`."
     let default = False
 
     flag.bool()
