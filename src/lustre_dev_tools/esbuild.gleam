@@ -1,6 +1,7 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import filepath
+import gleam/bool
 import gleam/dynamic.{type Dynamic}
 import gleam/io
 import gleam/list
@@ -46,6 +47,7 @@ pub fn bundle(
   input_file: String,
   output_file: String,
   minify: Bool,
+  debug: Bool,
 ) -> Cli(any, Nil, Error) {
   use _ <- cli.do(download(get_os(), get_cpu()))
   use _ <- cli.try(project.build(), fn(_) { BuildError })
@@ -58,6 +60,7 @@ pub fn bundle(
     "--bundle",
     "--external:node:*",
     "--format=esm",
+    "--define:DEBUG=" <> string.lowercase(bool.to_string(debug)),
     "--outfile=" <> output_file,
   ]
   let options = case minify {

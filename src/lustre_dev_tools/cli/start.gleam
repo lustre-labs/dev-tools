@@ -35,6 +35,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
       flag.get_bool(flags, "use-example-styles")
     let assert Ok(no_spa) = flag.get_bool(flags, "no-spa")
     let custom_html = flag.get_string(flags, "html")
+    let assert Ok(debug) = flag.get_bool(flags, "debug")
 
     let script = {
       use <- cli.log("Building your project")
@@ -95,6 +96,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
           filepath.join(tempdir, "entry.mjs"),
           filepath.join(tempdir, "index.mjs"),
           False,
+          debug,
         )
         |> cli.map_error(BundleError),
       )
@@ -156,6 +158,16 @@ Watchexec is a popular tool you can use to restart the server when files change.
       |> string.trim_right
 
     flag.string()
+    |> flag.description(description)
+  })
+  |> glint.flag("debug", {
+    let description =
+      "The dev server will include debug and performance intstrumentation in the project while being served."
+      |> string.trim_right
+    let default = False
+
+    flag.bool()
+    |> flag.default(default)
     |> flag.description(description)
   })
 }

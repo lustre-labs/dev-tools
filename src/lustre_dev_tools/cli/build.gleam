@@ -40,6 +40,7 @@ JavaScript module for you to host or distribute.
   glint.command(fn(input) {
     let CommandInput(flags: flags, ..) = input
     let assert Ok(minify) = flag.get_bool(flags, "minify")
+    let assert Ok(debug) = flag.get_bool(flags, "debug")
 
     let script = {
       use <- cli.log("Building your project")
@@ -71,7 +72,7 @@ JavaScript module for you to host or distribute.
 
       let assert Ok(_) = simplifile.write(entryfile, entry)
 
-      use _ <- cli.do(bundle(entry, tempdir, outfile, minify))
+      use _ <- cli.do(bundle(entry, tempdir, outfile, minify, debug))
       use entry <- cli.template("entry.css", InternalError)
       let outfile =
         filepath.strip_extension(outfile)
@@ -99,6 +100,15 @@ JavaScript module for you to host or distribute.
     |> flag.default(default)
     |> flag.description(description)
   })
+  |> glint.flag("debug", {
+    let description =
+      "Include debug and performance instrumentation in the build output."
+    let default = False
+
+    flag.bool()
+    |> flag.default(default)
+    |> flag.description(description)
+  })
 }
 
 pub fn component() -> Command(Nil) {
@@ -117,6 +127,7 @@ returns a suitable Lustre `App`.
     let CommandInput(flags: flags, named_args: args, ..) = input
     let assert Ok(module_path) = dict.get(args, "module_path")
     let assert Ok(minify) = flag.get_bool(flags, "minify")
+    let assert Ok(debug) = flag.get_bool(flags, "debug")
 
     let script = {
       use <- cli.log("Building your project")
@@ -155,7 +166,7 @@ returns a suitable Lustre `App`.
         |> result.map(filepath.join(outdir, _))
 
       let assert Ok(_) = simplifile.write(entryfile, entry)
-      use _ <- cli.do(bundle(entry, tempdir, outfile, minify))
+      use _ <- cli.do(bundle(entry, tempdir, outfile, minify, debug))
 
       // Tailwind bundling
       use entry <- cli.template("entry.css", InternalError)
@@ -180,6 +191,15 @@ returns a suitable Lustre `App`.
   |> glint.flag("minify", {
     let description =
       "Minify the output, renaming variables and removing whitespace."
+    let default = False
+
+    flag.bool()
+    |> flag.default(default)
+    |> flag.description(description)
+  })
+  |> glint.flag("debug", {
+    let description =
+      "Include debug and performance instrumentation in the build output."
     let default = False
 
     flag.bool()
@@ -308,11 +328,12 @@ fn bundle(
   tempdir: String,
   outfile: String,
   minify: Bool,
+  debug: Bool,
 ) -> Cli(any, Nil, Error) {
   let entryfile = filepath.join(tempdir, "entry.mjs")
   let assert Ok(_) = simplifile.write(entryfile, entry)
   use _ <- cli.do(
-    esbuild.bundle(entryfile, outfile, minify)
+    esbuild.bundle(entryfile, outfile, minify, debug)
     |> cli.map_error(BundleError),
   )
 
