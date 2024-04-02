@@ -34,7 +34,7 @@ pub fn main() {
     at: ["build"],
     do: glint.command(fn(_) { Nil })
       |> glint.unnamed_args(glint.EqArgs(0))
-      |> glint.description(add.description),
+      |> glint.description(build.description),
   )
   |> glint.add(at: ["build", "app"], do: build.app())
   |> glint.add(at: ["build", "component"], do: build.component())
