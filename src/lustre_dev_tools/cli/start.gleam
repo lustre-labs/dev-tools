@@ -167,8 +167,8 @@ type Error {
   BundleError(esbuild.Error)
   CouldntOpenCustomHtml(error: simplifile.FileError, path: String)
   MainMissing(module: String)
-  MainIncorrectType(module: String, got: Type)
-  MainBadAppType(module: String, got: Type)
+  MainTakesAnArgument(module: String, got: Type)
+  MainBadAppType(module: String, flags: Type, model: Type, msg: Type)
   ModuleMissing(module: String)
   InternalError(message: String)
 }
@@ -185,23 +185,24 @@ I couldn't open the custom HTML file at `" <> path <> "`.")
     MainMissing(module) -> io.println("
 Module `" <> module <> "` doesn't have a public `main` function I can preview.")
 
-    MainIncorrectType(module, type_) -> io.println("
+    MainTakesAnArgument(module, type_) -> io.println("
 I cannot preview the `main` function exposed by module `" <> module <> "`.
 To start a preview server I need it to take no arguments and return a Lustre
 `App`.
 The one I found has type `" <> project.type_to_string(type_) <> "`.")
 
     // TODO: maybe this could have useful links to `App`/flags...
-    MainBadAppType(module, type_) -> io.println("
+    MainBadAppType(module, flags, model, msg) -> io.println("
 I cannot preview the `main` function exposed by module `" <> module <> "`.
-To start a preview server I need it to return a Lustre `App` that doesn't need
-any flags.
-The one I found has type `" <> project.type_to_string(type_) <> "`.
+To start a preview server I need it to return a Lustre `App` with `Nil` flags.
+The one I found has flags of type `" <> project.type_to_string(flags) <> "`.
 
 Its return type should look something like this:
 
   import lustre.{type App}
-  pub fn main() -> App(flags, model, msg) {
+  pub fn main() -> App(Nil, " <> project.type_to_string(model) <> ", " <> project.type_to_string(
+        msg,
+      ) <> ") {
     todo as \"your Lustre application to preview\"
   }")
 
@@ -226,17 +227,17 @@ fn check_is_lustre_app(
   |> result.then(fn(main) {
     case main.parameters, main.return {
       [_, ..], _ ->
-        Error(MainIncorrectType(module_path, Fn(main.parameters, main.return)))
+        Error(MainTakesAnArgument(module_path, Fn(main.parameters, main.return)))
 
       [], Named(
         name: "App",
         package: "lustre",
         module: "lustre",
-        parameters: [flags, ..],
+        parameters: [flags, model, msg],
       ) ->
         case is_compatible_flags_type(flags) {
           True -> Ok(True)
-          False -> Error(MainBadAppType(module_path, main.return))
+          False -> Error(MainBadAppType(module_path, flags, model, msg))
         }
 
       [], _ -> Ok(False)
