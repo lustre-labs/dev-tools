@@ -340,7 +340,7 @@ fn bundle_tailwind(
   let entryfile = filepath.join(tempdir, "entry.css")
   let assert Ok(_) = simplifile.write(entryfile, entry)
 
-  let flags = ["--watch", "--input=" <> entryfile, "--output=" <> outfile]
+  let flags = ["--input=" <> entryfile, "--output=" <> outfile]
   let options = case minify {
     True -> ["--minify", ..flags]
     False -> flags
