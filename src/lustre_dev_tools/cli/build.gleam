@@ -463,5 +463,5 @@ fn is_reserved_keyword(name: String) -> Bool {
 @external(erlang, "lustre_dev_tools_ffi", "get_os")
 fn get_os() -> String
 
-@external(erlang, "cli_ffi", "get_cpu")
+@external(erlang, "lustre_dev_tools_ffi", "get_cpu")
 fn get_cpu() -> String
