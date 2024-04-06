@@ -38,7 +38,7 @@ pub type Function {
 /// Compile the current project running the `gleam build` command.
 ///
 pub fn build() -> Result(Nil, String) {
-  cli.exec(run: "gleam", in: ".", with: ["build", "--target=js"])
+  cli.exec(run: "gleam", in: ".", with: ["build", "--target", "javascript"])
   |> result.map_error(pair.second)
   |> result.replace(Nil)
 }
