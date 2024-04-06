@@ -1,5 +1,5 @@
 name = "lustre_dev_tools"
-version = "1.1.2"
+version = "1.1.3"
 target = "erlang"
 
 description = "Lustre's official CLI and development tooling."
