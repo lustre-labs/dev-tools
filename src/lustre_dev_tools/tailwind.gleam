@@ -8,6 +8,10 @@ import gleam/result
 import gleam/set
 import gleam/string
 import lustre_dev_tools/project
+import lustre_dev_tools/error.{
+  type Error, CannotSetPermissions, CannotWriteFile, InternalError, NetworkError,
+  UnknownPlatform,
+}
 import lustre_dev_tools/cli.{type Cli}
 import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
 
@@ -39,7 +43,7 @@ fn download(os: String, cpu: String, version: String) -> Cli(any, Nil, Error) {
       use bin <- cli.try(get_tailwind(url), NetworkError)
 
       use _ <- cli.try(write_tailwind(bin, outdir, outfile), fn(reason) {
-        CannotWriteTailwind(reason, outfile)
+        CannotWriteFile(reason, outfile)
       })
       use _ <- cli.try(set_filepermissions(outfile), fn(reason) {
         CannotSetPermissions(reason, outfile)
@@ -65,7 +69,7 @@ fn write_tailwind_config() -> Cli(any, Nil, Error) {
   use config <- cli.template("tailwind.config.js", InternalError)
   use _ <- cli.try(
     simplifile.write(to: config_outfile, contents: config),
-    CannotWriteConfig(_, config_outfile),
+    CannotWriteFile(_, config_outfile),
   )
   use <- cli.success("Written `" <> config_outfile <> "`")
 
@@ -98,7 +102,7 @@ fn get_download_url(os, cpu, version) {
     "darwin", "arm64" | "darwin", "aarch64" -> Ok("macos-arm64")
     "darwin", "x64" | "darwin", "x86_64" -> Ok("macos-x64")
 
-    _, _ -> Error(UnknownPlatform(os, cpu))
+    _, _ -> Error(UnknownPlatform("tailwind", os, cpu))
   }
 
   result.map(path, string.append(base, _))
@@ -119,58 +123,6 @@ fn set_filepermissions(file) {
     )
 
   simplifile.set_permissions(file, permissions)
-}
-
-// ERROR HANDLING --------------------------------------------------------------
-
-pub type Error {
-  NetworkError(Dynamic)
-  CannotWriteTailwind(reason: simplifile.FileError, path: String)
-  CannotSetPermissions(reason: simplifile.FileError, path: String)
-  CannotWriteConfig(reason: simplifile.FileError, path: String)
-  UnknownPlatform(os: String, cpu: String)
-  BundleError(reason: String)
-  InternalError(message: String)
-}
-
-pub fn explain(error: Error) -> Nil {
-  case error {
-    // TODO: Is there a better way to deal with this dynamic error?
-    NetworkError(_dynamic) ->
-      io.println(
-        "
-There was a network error!",
-      )
-
-    UnknownPlatform(os, cpu) -> io.println("
-I couldn't figure out the correct Tailwind version for your
-os (" <> os <> ") and cpu (" <> cpu <> ").")
-
-    CannotSetPermissions(reason, _) -> io.println("
-I ran into an error (" <> string.inspect(reason) <> ") when trying
-to set permissions for the Tailwind executable.
-")
-
-    CannotWriteConfig(reason, _) -> io.println("
-I ran into an error (" <> string.inspect(reason) <> ") when trying
-to write the `tailwind.config.js` file to the project's root.
-")
-
-    CannotWriteTailwind(reason, path) -> io.println("
-I ran into an error (" <> string.inspect(reason) <> ") when trying
-to write the Tailwind binary to
-  `" <> path <> "`.
-")
-
-    BundleError(reason) -> io.println("
-I ran into an error while trying to create a bundle with Tailwind:
-" <> reason)
-
-    InternalError(message) -> io.println("
-I ran into an error I wasn't expecting. Please open an issue on GitHub at
-https://github.com/lustre-labs/cli with the following message:
-" <> message)
-  }
 }
 
 // EXTERNALS -------------------------------------------------------------------

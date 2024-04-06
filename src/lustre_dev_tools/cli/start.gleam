@@ -2,12 +2,15 @@
 
 import filepath
 import gleam/dict
-import gleam/io
 import gleam/package_interface.{type Type, Fn, Named, Variable}
 import gleam/result
 import gleam/string
 import glint.{type Command, CommandInput}
 import glint/flag
+import lustre_dev_tools/error.{
+  type Error, InternalError, MainBadAppType, MainMissing, MainTakesAnArgument,
+  ModuleMissing, SimplifileError,
+}
 import lustre_dev_tools/cli
 import lustre_dev_tools/esbuild
 import lustre_dev_tools/project.{type Module}
@@ -38,7 +41,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
 
     let script = {
       use <- cli.log("Building your project")
-      use interface <- cli.try(project.interface(), fn(_) { BuildError })
+      use interface <- cli.do(cli.from_result(project.interface()))
       use module <- cli.try(dict.get(interface.modules, interface.name), fn(_) {
         ModuleMissing(interface.name)
       })
@@ -62,7 +65,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
         Ok(custom_html_path) ->
           custom_html_path
           |> simplifile.read
-          |> result.map_error(CouldntOpenCustomHtml(_, custom_html_path))
+          |> result.map_error(SimplifileError(_, custom_html_path))
           |> result.map(string.replace(
             _,
             "<script type=\"application/lustre\">",
@@ -90,26 +93,20 @@ Watchexec is a popular tool you can use to restart the server when files change.
       let assert Ok(_) = simplifile.write(tempdir <> "/entry.mjs", entry)
       let assert Ok(_) = simplifile.write(tempdir <> "/index.html", html)
 
-      use _ <- cli.do(
-        esbuild.bundle(
-          filepath.join(tempdir, "entry.mjs"),
-          filepath.join(tempdir, "index.mjs"),
-          False,
-        )
-        |> cli.map_error(BundleError),
-      )
+      use _ <- cli.do(esbuild.bundle(
+        filepath.join(tempdir, "entry.mjs"),
+        filepath.join(tempdir, "index.mjs"),
+        False,
+      ))
 
-      use _ <- cli.do(
-        esbuild.serve(host, port, !no_spa)
-        |> cli.map_error(BundleError),
-      )
+      use _ <- cli.do(esbuild.serve(host, port, !no_spa))
 
       cli.return(Nil)
     }
 
     case cli.run(script, Nil) {
       Ok(_) -> Nil
-      Error(error) -> explain(error)
+      Error(error) -> error.explain(error)
     }
   })
   |> glint.description(description)
@@ -158,62 +155,6 @@ Watchexec is a popular tool you can use to restart the server when files change.
     flag.string()
     |> flag.description(description)
   })
-}
-
-// ERROR HANDLING --------------------------------------------------------------
-
-type Error {
-  BuildError
-  BundleError(esbuild.Error)
-  CouldntOpenCustomHtml(error: simplifile.FileError, path: String)
-  MainMissing(module: String)
-  MainTakesAnArgument(module: String, got: Type)
-  MainBadAppType(module: String, flags: Type, model: Type, msg: Type)
-  ModuleMissing(module: String)
-  InternalError(message: String)
-}
-
-fn explain(error: Error) -> Nil {
-  case error {
-    BuildError -> project.explain(project.BuildError)
-
-    BundleError(error) -> esbuild.explain(error)
-
-    CouldntOpenCustomHtml(_, path) -> io.println("
-I couldn't open the custom HTML file at `" <> path <> "`.")
-
-    MainMissing(module) -> io.println("
-Module `" <> module <> "` doesn't have a public `main` function I can preview.")
-
-    MainTakesAnArgument(module, type_) -> io.println("
-I cannot preview the `main` function exposed by module `" <> module <> "`.
-To start a preview server I need it to take no arguments and return a Lustre
-`App`.
-The one I found has type `" <> project.type_to_string(type_) <> "`.")
-
-    // TODO: maybe this could have useful links to `App`/flags...
-    MainBadAppType(module, flags, model, msg) -> io.println("
-I cannot preview the `main` function exposed by module `" <> module <> "`.
-To start a preview server I need it to return a Lustre `App` with `Nil` flags.
-The one I found has flags of type `" <> project.type_to_string(flags) <> "`.
-
-Its return type should look something like this:
-
-  import lustre.{type App}
-  pub fn main() -> App(Nil, " <> project.type_to_string(model) <> ", " <> project.type_to_string(
-        msg,
-      ) <> ") {
-    todo as \"your Lustre application to preview\"
-  }")
-
-    ModuleMissing(module) -> io.println("
-I couldn't find a public module called `" <> module <> "` in your project.")
-
-    InternalError(message) -> io.println("
-I ran into an error I wasn't expecting. Please open an issue on GitHub at
-https://github.com/lustre-labs/cli with the following message:
-" <> message)
-  }
 }
 
 // STEPS -----------------------------------------------------------------------

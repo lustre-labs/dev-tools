@@ -12,6 +12,7 @@ import gleam/pair
 import gleam/result
 import gleam/string
 import lustre_dev_tools/cli
+import lustre_dev_tools/error.{type Error, BuildError}
 import simplifile
 import tom.{type Toml}
 
@@ -37,19 +38,19 @@ pub type Function {
 
 /// Compile the current project running the `gleam build` command.
 ///
-pub fn build() -> Result(Nil, String) {
+pub fn build() -> Result(Nil, Error) {
   cli.exec(run: "gleam", in: ".", with: ["build", "--target", "javascript"])
-  |> result.map_error(pair.second)
+  |> result.map_error(fn(err) { BuildError(pair.second(err)) })
   |> result.replace(Nil)
 }
 
-pub fn interface() -> Result(Interface, String) {
+pub fn interface() -> Result(Interface, Error) {
   let dir = filepath.join(root(), "build/.lustre")
   let out = filepath.join(dir, "package-interface.json")
   let args = ["export", "package-interface", "--out", out]
 
   cli.exec(run: "gleam", in: ".", with: args)
-  |> result.map_error(pair.second)
+  |> result.map_error(fn(err) { BuildError(pair.second(err)) })
   |> result.then(fn(_) {
     let assert Ok(json) = simplifile.read(out)
     let assert Ok(interface) = json.decode(json, interface_decoder)
@@ -60,7 +61,7 @@ pub fn interface() -> Result(Interface, String) {
 
 /// Read the project configuration in the `gleam.toml` file.
 ///
-pub fn config() -> Result(Config, String) {
+pub fn config() -> Result(Config, Error) {
   use _ <- result.try(build())
 
   // Since we made sure that the project could compile we're sure that there is
@@ -77,24 +78,6 @@ pub fn config() -> Result(Config, String) {
   let assert Ok(version) = tom.get_string(toml, ["version"])
 
   Ok(Config(name: name, version: version, toml: toml))
-}
-
-// ERROR HANDLING --------------------------------------------------------------
-
-///
-///
-pub type Error {
-  BuildError
-}
-
-pub fn explain(error: Error) -> Nil {
-  case error {
-    BuildError ->
-      "
-It looks like your project has some compilation errors that need to be addressed
-before I can do anything."
-      |> io.println
-  }
 }
 
 // UTILS -----------------------------------------------------------------------

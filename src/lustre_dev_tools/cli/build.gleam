@@ -3,13 +3,16 @@
 import filepath
 import gleam/bool
 import gleam/dict
-import gleam/io
 import gleam/list
 import gleam/package_interface.{type Type, Named, Variable}
 import gleam/result
 import gleam/string
 import glint.{type Command, CommandInput}
 import glint/flag
+import lustre_dev_tools/error.{
+  type Error, BuildError, BundleError, ComponentMissing, InternalError,
+  MainMissing, ModuleMissing, NameIncorrectType, NameMissing,
+}
 import lustre_dev_tools/esbuild
 import lustre_dev_tools/project.{type Module}
 import lustre_dev_tools/cli.{type Cli}
@@ -77,15 +80,14 @@ JavaScript module for you to host or distribute.
         filepath.strip_extension(outfile)
         |> string.append(".css")
 
-      let bundle = bundle_tailwind(entry, tempdir, outfile, minify)
-      use _ <- cli.do(cli.map_error(bundle, TailwindBundleError))
+      use _ <- cli.do(bundle_tailwind(entry, tempdir, outfile, minify))
 
       cli.return(Nil)
     }
 
     case cli.run(script, Nil) {
       Ok(_) -> Nil
-      Error(error) -> explain(error)
+      Error(error) -> error.explain(error)
     }
   })
   |> glint.description(description)
@@ -163,15 +165,14 @@ returns a suitable Lustre `App`.
         filepath.strip_extension(outfile)
         |> string.append(".css")
 
-      let bundle = bundle_tailwind(entry, tempdir, outfile, minify)
-      use _ <- cli.do(cli.map_error(bundle, TailwindBundleError))
+      use _ <- cli.do(bundle_tailwind(entry, tempdir, outfile, minify))
 
       cli.return(Nil)
     }
 
     case cli.run(script, Nil) {
       Ok(_) -> Nil
-      Error(error) -> explain(error)
+      Error(error) -> error.explain(error)
     }
   })
   |> glint.description(description)
@@ -188,80 +189,15 @@ returns a suitable Lustre `App`.
   })
 }
 
-// ERROR HANDLING --------------------------------------------------------------
-
-type Error {
-  BuildError
-  BundleError(esbuild.Error)
-  TailwindBundleError(tailwind.Error)
-  ComponentMissing(module: String)
-  MainMissing(module: String)
-  ModuleMissing(module: String)
-  NameIncorrectType(module: String, got: Type)
-  NameMissing(module: String)
-  InternalError(message: String)
-}
-
-fn explain(error: Error) -> Nil {
-  case error {
-    BuildError -> project.explain(project.BuildError)
-
-    BundleError(error) -> esbuild.explain(error)
-
-    TailwindBundleError(error) -> tailwind.explain(error)
-
-    ComponentMissing(module) -> io.println("
-Module `" <> module <> "` doesn't have any public function I can use to bundle
-a component.
-
-To bundle a component your module should have a public function that returns a
-Lustre `App`:
-
-  import lustre.{type App}
-  pub fn my_component() -> App(flags, model, msg) {
-    todo as \"your Lustre component to bundle\"
-  }
-")
-
-    MainMissing(module) -> io.println("
-Module `" <> module <> "` doesn't have a public `main` function I can use as
-the bundle entry point.")
-
-    ModuleMissing(module) -> io.println("
-I couldn't find a public module called `" <> module <> "` in your project.")
-
-    NameIncorrectType(module, type_) -> io.println("
-I can't use the `name` constant exposed by module `" <> module <> "`
-to give a name to the component I'm bundling.
-I was expecting `name` to be a `String`,
-but it has type `" <> project.type_to_string(type_) <> "`.")
-
-    NameMissing(module) -> io.println("
-Module `" <> module <> "` doesn't have a public `name` constant.
-That is required so that I can give a proper name to the component I'm bundling.
-
-Try adding a `name` constant to your module like this:
-
-  const name: String = \"component-name\"")
-
-    InternalError(message) -> io.println("
-I ran into an error I wasn't expecting. Please open an issue on GitHub at
-https://github.com/lustre-labs/cli with the following message:
-" <> message)
-  }
-}
-
 // STEPS -----------------------------------------------------------------------
 
 fn get_project_name() -> Result(String, Error) {
   project.config()
-  |> result.replace_error(BuildError)
   |> result.map(fn(confg) { confg.name })
 }
 
 fn get_module_interface(module_path: String) -> Result(Module, Error) {
   project.interface()
-  |> result.replace_error(BuildError)
   |> result.then(fn(interface) {
     dict.get(interface.modules, module_path)
     |> result.replace_error(ModuleMissing(module_path))
@@ -311,10 +247,7 @@ fn bundle(
 ) -> Cli(any, Nil, Error) {
   let entryfile = filepath.join(tempdir, "entry.mjs")
   let assert Ok(_) = simplifile.write(entryfile, entry)
-  use _ <- cli.do(
-    esbuild.bundle(entryfile, outfile, minify)
-    |> cli.map_error(BundleError),
-  )
+  use _ <- cli.do(esbuild.bundle(entryfile, outfile, minify))
 
   cli.return(Nil)
 }
@@ -324,7 +257,7 @@ fn bundle_tailwind(
   tempdir: String,
   outfile: String,
   minify: Bool,
-) -> Cli(any, Nil, tailwind.Error) {
+) -> Cli(any, Nil, Error) {
   // We first check if there's a `tailwind.config.js` at the project's root.
   // If not present we do nothing; otherwise we go on with bundling.
   let root = project.root()
@@ -347,7 +280,7 @@ fn bundle_tailwind(
   }
   use _ <- cli.try(
     cli.exec("./build/.lustre/bin/tailwind", in: root, with: options),
-    fn(pair) { tailwind.BundleError(pair.1) },
+    fn(pair) { BundleError(pair.1) },
   )
   use <- cli.success("Bundle produced at `" <> outfile <> "`")
 

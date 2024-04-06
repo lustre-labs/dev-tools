@@ -5,6 +5,7 @@ import gleam/erlang
 import gleam/result
 import gleam/io
 import gleam/string
+import lustre_dev_tools/error.{type Error}
 import simplifile
 import spinner.{type Spinner}
 
@@ -29,7 +30,7 @@ pub type Cli(state, a, e) {
 
 ///
 ///
-pub fn run(step: Cli(state, a, e), with state: state) -> Result(a, e) {
+pub fn run(step: Cli(state, a, Error), with state: state) -> Result(a, Error) {
   let env = Env(spinner: Paused)
   let #(env, _, result) = step.run(env, state)
 
