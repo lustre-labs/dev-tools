@@ -1,5 +1,6 @@
 -module(lustre_dev_tools_ffi).
 -export([
+    get_cwd/0,
     get_cpu/0,
     get_esbuild/1,
     get_tailwind/1,
@@ -7,6 +8,12 @@
     unzip_esbuild/1,
     exec/3
 ]).
+
+get_cwd() ->
+    case file:get_cwd() of
+        {ok, Cwd} -> {ok, list_to_binary(Cwd)};
+        {error, Reason} -> {error, Reason}
+    end.
 
 get_os() ->
     case os:type() of
@@ -50,7 +57,7 @@ get_tailwind(Url) ->
 
 unzip_esbuild(Zip) ->
     Filepath =
-        case os:type() of 
+        case os:type() of
             {win32, _} -> "package/esbuild.exe";
             _ -> "package/bin/esbuild"
         end,
