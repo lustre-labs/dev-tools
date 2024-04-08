@@ -13,18 +13,23 @@ links = [
 internal_modules = ["lustre_dev_tools", "lustre_dev_tools/*"]
 
 [dependencies]
+argv = "~> 1.0"
+filepath = "~> 1.0"
+filespy = "~> 0.3"
+gleam_community_ansi = "~> 1.4"
+gleam_erlang = "~> 0.25"
+gleam_http = "~> 3.6"
+gleam_json = "~> 1.0"
+gleam_otp = "~> 0.10"
+gleam_package_interface = "~> 1.0"
 gleam_stdlib = "~> 0.34 or ~> 1.0"
 glint = "~> 0.18"
-spinner = "~> 1.1"
-gleam_package_interface = "~> 1.0"
-tom = "~> 0.3"
-gleam_erlang = "~> 0.25"
-gleam_otp = "~> 0.10"
-gleam_community_ansi = "~> 1.4"
-filepath = "~> 1.0"
+glisten = "~> 2.0"
+mist = "~> 1.0"
 simplifile = "~> 1.5"
-gleam_json = "~> 1.0"
-argv = "~> 1.0"
+spinner = "~> 1.1"
+tom = "~> 0.3"
+wisp = "~> 0.14"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"
