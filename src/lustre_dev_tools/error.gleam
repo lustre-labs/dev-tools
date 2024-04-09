@@ -4,17 +4,21 @@ import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/io
 import gleam/list
+import gleam/otp/actor
 import gleam/package_interface.{type Type, Fn, Named, Tuple, Variable}
 import gleam/string
-import simplifile.{type FileError}
+import glisten
+import simplifile
 
 // TYPES -----------------------------------------------------------------------
 
 pub type Error {
   BuildError(reason: String)
   BundleError(reason: String)
-  CannotSetPermissions(reason: FileError, path: String)
-  CannotWriteFile(reason: FileError, path: String)
+  CannotSetPermissions(reason: simplifile.FileError, path: String)
+  CannotStartDevServer(reason: glisten.StartError)
+  CannotStartFileWatcher(reason: actor.StartError)
+  CannotWriteFile(reason: simplifile.FileError, path: String)
   ComponentMissing(module: String)
   InternalError(message: String)
   MainBadAppType(module: String, flags: Type, model: Type, msg: Type)
@@ -24,7 +28,8 @@ pub type Error {
   NameIncorrectType(module: String, got: Type)
   NameMissing(module: String)
   NetworkError(Dynamic)
-  SimplifileError(reason: FileError, path: String)
+  SimplifileError(reason: simplifile.FileError, path: String)
+  TemplateMissing(name: String, reason: simplifile.FileError)
   UnknownPlatform(binary: String, os: String, cpu: String)
   UnzipError(Dynamic)
 }
@@ -36,6 +41,8 @@ pub fn explain(error: Error) -> Nil {
     BuildError(reason) -> build_error(reason)
     BundleError(reason) -> bundle_error(reason)
     CannotSetPermissions(reason, path) -> cannot_set_permissions(reason, path)
+    CannotStartDevServer(reason) -> cannot_start_dev_server(reason)
+    CannotStartFileWatcher(reason) -> cannot_start_file_watcher(reason)
     CannotWriteFile(reason, path) -> cannot_write_file(reason, path)
     ComponentMissing(module) -> component_missing(module)
     InternalError(message) -> internal_error(message)
@@ -48,6 +55,7 @@ pub fn explain(error: Error) -> Nil {
     NameMissing(module) -> name_missing(module)
     NetworkError(error) -> network_error(error)
     SimplifileError(reason, path) -> simplifile_error(reason, path)
+    TemplateMissing(name, reason) -> template_missing(name, reason)
     UnknownPlatform(binary, os, cpu) -> unknown_platform(binary, os, cpu)
     UnzipError(error) -> unzip_error(error)
   }
@@ -84,7 +92,7 @@ you were trying to do when you ran into this issue.
   |> string.replace("{reason}", reason)
 }
 
-fn cannot_set_permissions(reason: FileError, path: String) -> String {
+fn cannot_set_permissions(reason: simplifile.FileError, path: String) -> String {
   let message =
     "
 I ran into an error while trying to set the permissions on the following file:
@@ -105,7 +113,39 @@ you were trying to do when you ran into this issue.
   |> string.replace("{reason}", string.inspect(reason))
 }
 
-fn cannot_write_file(reason: FileError, path: String) -> String {
+fn cannot_start_dev_server(reason: glisten.StartError) -> String {
+  let message =
+    "
+I ran into an error while trying to start the development server. Here's the
+error message I got:
+
+    {reason}
+
+Please open an issue at https://github.com/lustre-labs/dev-tools/issues/new with
+some details about what you were trying to do when you ran into this issue.
+"
+
+  message
+  |> string.replace("{reason}", string.inspect(reason))
+}
+
+fn cannot_start_file_watcher(reason: actor.StartError) -> String {
+  let message =
+    "
+I ran into an error while trying to start the file watcher used for live reloading.
+Here's the error message I got:
+
+    {reason}
+
+Please open an issue at https://github.com/lustre-labs/dev-tools/issues/new with
+some details about what you were trying to do when you ran into this issue.
+"
+
+  message
+  |> string.replace("{reason}", string.inspect(reason))
+}
+
+fn cannot_write_file(reason: simplifile.FileError, path: String) -> String {
   let message =
     "
 I ran into an error while trying to write the following file:
@@ -331,7 +371,7 @@ some details about what you were trying to do when you ran into this issue.
   |> string.replace("{error}", string.inspect(error))
 }
 
-fn simplifile_error(reason: FileError, path: String) -> String {
+fn simplifile_error(reason: simplifile.FileError, path: String) -> String {
   let message =
     "
 I ran into an unexpected filesystem error while trying to do something at the
@@ -350,6 +390,29 @@ you were trying to do when you ran into this issue.
 
   message
   |> string.replace("{path}", path)
+  |> string.replace("{reason}", string.inspect(reason))
+}
+
+fn template_missing(name: String, reason: simplifile.FileError) -> String {
+  let message =
+    "
+I ran into an unexpected error trying to read an internal template file. This
+should never happen! The template file I was looking for is:
+
+    {name}
+
+The error message I got was:
+
+    {reason}
+
+Please open an issue at https://github.com/lustre-labs/dev-tools/issues/new with
+the above information and some details about what you were trying to do when you
+ran into this issue.
+}
+"
+
+  message
+  |> string.replace("{name}", name)
   |> string.replace("{reason}", string.inspect(reason))
 }
 

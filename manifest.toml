@@ -39,6 +39,7 @@ packages = [
 argv = { version = "~> 1.0" }
 filepath = { version = "~> 1.0" }
 filespy = { version = "~> 0.3" }
+fs = { version = "~> 8.6"}
 gleam_community_ansi = { version = "~> 1.4" }
 gleam_erlang = { version = "~> 0.25" }
 gleam_http = { version = "~> 3.6" }
@@ -48,7 +49,7 @@ gleam_package_interface = { version = "~> 1.0" }
 gleam_stdlib = { version = "~> 0.34 or ~> 1.0" }
 gleeunit = { version = "~> 1.0" }
 glint = { version = "~> 0.18" }
-glisten = { version = "~> 2.0"}
+glisten = { version = "~> 2.0" }
 mist = { version = "~> 1.0" }
 simplifile = { version = "~> 1.5" }
 spinner = { version = "~> 1.1" }

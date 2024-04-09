@@ -4,7 +4,6 @@ import filepath
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type DecodeError, type Decoder, type Dynamic, DecodeError}
 import gleam/int
-import gleam/io
 import gleam/json
 import gleam/list
 import gleam/package_interface.{type Type, Fn, Named, Tuple, Variable}
@@ -61,8 +60,11 @@ pub fn interface() -> Result(Interface, Error) {
 
 /// Read the project configuration in the `gleam.toml` file.
 ///
-pub fn config() -> Result(Config, Error) {
-  use _ <- result.try(build())
+pub fn config(prebuild should_build: Bool) -> Result(Config, Error) {
+  use _ <- result.try(case should_build {
+    True -> build()
+    False -> Ok(Nil)
+  })
 
   // Since we made sure that the project could compile we're sure that there is
   // bound to be a `gleam.toml` file somewhere in the current directory (or in

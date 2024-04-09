@@ -30,6 +30,7 @@ simplifile = "~> 1.5"
 spinner = "~> 1.1"
 tom = "~> 0.3"
 wisp = "~> 0.14"
+fs = "~> 8.6"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

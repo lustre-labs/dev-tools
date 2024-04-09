@@ -3,16 +3,15 @@
 import filepath
 import gleam/bool
 import gleam/dynamic.{type Dynamic}
-import gleam/io
 import gleam/result
 import gleam/set
 import gleam/string
-import lustre_dev_tools/project
+import lustre_dev_tools/cli.{type Cli}
 import lustre_dev_tools/error.{
-  type Error, CannotSetPermissions, CannotWriteFile, InternalError, NetworkError,
+  type Error, CannotSetPermissions, CannotWriteFile, NetworkError,
   UnknownPlatform,
 }
-import lustre_dev_tools/cli.{type Cli}
+import lustre_dev_tools/project
 import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
 
 const tailwind_version = "v3.4.1"
@@ -66,7 +65,7 @@ fn write_tailwind_config() -> Cli(any, Nil, Error) {
   // If there already is a configuration file, we make sure not to override it.
   use <- bool.guard(when: config_already_exists, return: cli.return(Nil))
   use <- cli.log("Writing `" <> config_filename <> "`")
-  use config <- cli.template("tailwind.config.js", InternalError)
+  use config <- cli.template("tailwind.config.js")
   use _ <- cli.try(
     simplifile.write(to: config_outfile, contents: config),
     CannotWriteFile(_, config_outfile),

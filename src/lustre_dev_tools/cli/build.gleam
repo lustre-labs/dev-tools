@@ -9,23 +9,22 @@ import gleam/result
 import gleam/string
 import glint.{type Command, CommandInput}
 import glint/flag
+import lustre_dev_tools/cli.{type Cli}
 import lustre_dev_tools/error.{
-  type Error, BuildError, BundleError, ComponentMissing, InternalError,
-  MainMissing, ModuleMissing, NameIncorrectType, NameMissing,
+  type Error, BundleError, ComponentMissing, MainMissing, ModuleMissing,
+  NameIncorrectType, NameMissing,
 }
 import lustre_dev_tools/esbuild
 import lustre_dev_tools/project.{type Module}
-import lustre_dev_tools/cli.{type Cli}
 import lustre_dev_tools/tailwind
 import simplifile
 
 // DESCRIPTION -----------------------------------------------------------------
-
 pub const description: String = "
 Commands to build different kinds of Lustre application. These commands go beyond
 just running `gleam build` and handle features like bundling, minification, and
 integration with other build tools.
-  "
+"
 
 // COMMANDS --------------------------------------------------------------------
 
@@ -38,52 +37,12 @@ page without Gleam or Lustre being present.
 
 This is different from using `gleam build` directly because it produces a single
 JavaScript module for you to host or distribute.
-    "
+"
 
   glint.command(fn(input) {
     let CommandInput(flags: flags, ..) = input
     let assert Ok(minify) = flag.get_bool(flags, "minify")
-
-    let script = {
-      use <- cli.log("Building your project")
-      use project_name <- cli.do_result(get_project_name())
-      use <- cli.success("Project compiled successfully")
-      use <- cli.log("Checking if I can bundle your application")
-      use module <- cli.do_result(get_module_interface(project_name))
-      use _ <- cli.do_result(check_main_function(project_name, module))
-
-      use <- cli.log("Creating the bundle entry file")
-      let root = project.root()
-      let tempdir = filepath.join(root, "build/.lustre")
-      let outdir = filepath.join(root, "priv/static")
-      let _ = simplifile.create_directory_all(tempdir)
-      let _ = simplifile.create_directory_all(outdir)
-      use template <- cli.template("entry-with-main.mjs", InternalError)
-      let entry = string.replace(template, "{app_name}", project_name)
-
-      let entryfile = filepath.join(tempdir, "entry.mjs")
-      let ext = case minify {
-        True -> ".min.mjs"
-        False -> ".mjs"
-      }
-
-      let outfile =
-        project_name
-        |> string.append(ext)
-        |> filepath.join(outdir, _)
-
-      let assert Ok(_) = simplifile.write(entryfile, entry)
-
-      use _ <- cli.do(bundle(entry, tempdir, outfile, minify))
-      use entry <- cli.template("entry.css", InternalError)
-      let outfile =
-        filepath.strip_extension(outfile)
-        |> string.append(".css")
-
-      use _ <- cli.do(bundle_tailwind(entry, tempdir, outfile, minify))
-
-      cli.return(Nil)
-    }
+    let script = do_app(minify, suppress: False, skip_validation: False)
 
     case cli.run(script, Nil) {
       Ok(_) -> Nil
@@ -101,6 +60,64 @@ JavaScript module for you to host or distribute.
     |> flag.default(default)
     |> flag.description(description)
   })
+}
+
+pub fn do_app(
+  minify minify: Bool,
+  suppress silent: Bool,
+  skip_validation unsafe: Bool,
+) -> Cli(any, Nil, Error) {
+  use _ <- cli.do(case silent {
+    True -> cli.mute()
+    False -> cli.return(Nil)
+  })
+
+  use <- cli.log("Building your project")
+  use project_name <- cli.do_result(get_project_name())
+
+  use _ <- cli.do(case unsafe {
+    True -> cli.return(Nil)
+    False -> {
+      use <- cli.success("Project compiled successfully")
+      use <- cli.log("Checking if I can bundle your application")
+      use module <- cli.do_result(get_module_interface(project_name))
+      use _ <- cli.do_result(check_main_function(project_name, module))
+
+      cli.return(Nil)
+    }
+  })
+
+  use <- cli.log("Creating the bundle entry file")
+  let root = project.root()
+  let tempdir = filepath.join(root, "build/.lustre")
+  let outdir = filepath.join(root, "priv/static")
+  let _ = simplifile.create_directory_all(tempdir)
+  let _ = simplifile.create_directory_all(outdir)
+  use template <- cli.template("entry-with-main.mjs")
+  let entry = string.replace(template, "{app_name}", project_name)
+
+  let entryfile = filepath.join(tempdir, "entry.mjs")
+  let ext = case minify {
+    True -> ".min.mjs"
+    False -> ".mjs"
+  }
+
+  let outfile =
+    project_name
+    |> string.append(ext)
+    |> filepath.join(outdir, _)
+
+  let assert Ok(_) = simplifile.write(entryfile, entry)
+
+  use _ <- cli.do(bundle(entry, tempdir, outfile, minify))
+  use entry <- cli.template("entry.css")
+  let outfile =
+    filepath.strip_extension(outfile)
+    |> string.append(".css")
+
+  use _ <- cli.do(bundle_tailwind(entry, tempdir, outfile, minify))
+
+  cli.return(Nil)
 }
 
 pub fn component() -> Command(Nil) {
@@ -138,7 +155,7 @@ returns a suitable Lustre `App`.
       use project_name <- cli.do_result(get_project_name())
 
       // Esbuild bundling
-      use template <- cli.template("component-entry.mjs", InternalError)
+      use template <- cli.template("component-entry.mjs")
       let entry =
         template
         |> string.replace("{component_name}", importable_name(component))
@@ -160,7 +177,7 @@ returns a suitable Lustre `App`.
       use _ <- cli.do(bundle(entry, tempdir, outfile, minify))
 
       // Tailwind bundling
-      use entry <- cli.template("entry.css", InternalError)
+      use entry <- cli.template("entry.css")
       let outfile =
         filepath.strip_extension(outfile)
         |> string.append(".css")
@@ -192,7 +209,7 @@ returns a suitable Lustre `App`.
 // STEPS -----------------------------------------------------------------------
 
 fn get_project_name() -> Result(String, Error) {
-  project.config()
+  project.config(False)
   |> result.map(fn(confg) { confg.name })
 }
 

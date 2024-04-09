@@ -2,15 +2,13 @@
 
 import filepath
 import gleam/dynamic.{type Dynamic}
-import gleam/io
-import gleam/list
 import gleam/result
 import gleam/set
 import gleam/string
 import lustre_dev_tools/cli.{type Cli}
 import lustre_dev_tools/error.{
-  type Error, BuildError, BundleError, NetworkError, SimplifileError,
-  UnknownPlatform, UnzipError,
+  type Error, BundleError, NetworkError, SimplifileError, UnknownPlatform,
+  UnzipError,
 }
 import lustre_dev_tools/project
 import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
