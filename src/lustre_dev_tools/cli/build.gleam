@@ -412,7 +412,7 @@ fn is_reserved_keyword(name: String) -> Bool {
     | "class"
     | "const"
     | "continue"
-    | "deoh dear"
+    | "debugger"
     | "default"
     | "delete"
     | "do"
