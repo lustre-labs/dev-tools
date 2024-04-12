@@ -3,6 +3,7 @@
 import glint.{type Command, CommandInput}
 import glint/flag
 import glint/flag/constraint
+import lustre_dev_tools/error
 import lustre_dev_tools/esbuild
 import lustre_dev_tools/cli
 import lustre_dev_tools/tailwind
@@ -33,7 +34,7 @@ download the binary if either the `build` or `start` commands are run.
 
     case cli.run(script, Nil) {
       Ok(_) -> Nil
-      Error(error) -> esbuild.explain(error)
+      Error(error) -> error.explain(error)
     }
   })
   |> glint.description(description)
@@ -79,7 +80,7 @@ in your project but will not download it automatically.
 
     case cli.run(script, Nil) {
       Ok(_) -> Nil
-      Error(error) -> tailwind.explain(error)
+      Error(error) -> error.explain(error)
     }
   })
   |> glint.description(description)

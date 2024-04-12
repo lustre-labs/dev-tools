@@ -2,12 +2,14 @@
 
 import filepath
 import gleam/dynamic.{type Dynamic}
-import gleam/io
-import gleam/list
 import gleam/result
 import gleam/set
 import gleam/string
 import lustre_dev_tools/cli.{type Cli}
+import lustre_dev_tools/error.{
+  type Error, BundleError, NetworkError, SimplifileError, UnknownPlatform,
+  UnzipError,
+}
 import lustre_dev_tools/project
 import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
 
@@ -48,12 +50,10 @@ pub fn bundle(
   minify: Bool,
 ) -> Cli(any, Nil, Error) {
   use _ <- cli.do(download(get_os(), get_cpu()))
-  use _ <- cli.try(project.build(), fn(_) { BuildError })
+  use _ <- cli.do(cli.from_result(project.build()))
   use <- cli.log("Getting everything ready for tree shaking")
 
   let root = project.root()
-  use _ <- cli.try(configure_node_tree_shaking(root), SimplifileError(_, root))
-
   let flags = [
     "--bundle",
     "--external:node:*",
@@ -140,7 +140,7 @@ fn get_download_url(os, cpu) {
     "openbsd", "x64" -> Ok("openbsd-x64/-/openbsd-x64-0.19.10.tgz")
     "sunos", "x64" -> Ok("sunos-x64/-/sunos-x64-0.19.10.tgz")
 
-    _, _ -> Error(UnknownPlatform(os, cpu))
+    _, _ -> Error(UnknownPlatform("esbuild", os, cpu))
   }
 
   result.map(path, string.append(base, _))
@@ -161,75 +161,6 @@ fn set_filepermissions(file) {
     )
 
   simplifile.set_permissions(file, permissions)
-}
-
-fn configure_node_tree_shaking(root) {
-  // This whole chunk of code is to force tree shaking on dependencies that esbuild
-  // has a habit of including because it thinks their imports might have side
-  // effects.
-  //
-  // This is a really grim hack but it's the only way I've found to get esbuild to
-  // ignore unused deps like `glint` that imports node stuff but aren't used in
-  // app code.
-  let force_tree_shaking = "{ \"sideEffects\": false }"
-  let assert Ok(_) =
-    simplifile.write(
-      filepath.join(root, "build/dev/javascript/package.json"),
-      force_tree_shaking,
-    )
-  let pure_deps = ["lustre", "glint", "simplifile"]
-
-  list.try_each(pure_deps, fn(dep) {
-    root
-    |> filepath.join("build/dev/javascript/" <> dep)
-    |> filepath.join("package.json")
-    |> simplifile.write(force_tree_shaking)
-  })
-}
-
-// ERROR HANDLING --------------------------------------------------------------
-
-pub type Error {
-  BuildError
-  BundleError(message: String)
-  NetworkError(Dynamic)
-  SimplifileError(reason: simplifile.FileError, path: String)
-  UnknownPlatform(os: String, cpu: String)
-  UnzipError(Dynamic)
-}
-
-pub fn explain(error: Error) -> Nil {
-  case error {
-    BuildError -> project.explain(project.BuildError)
-
-    BundleError(message) -> io.println("
-I ran into an error while trying to create a bundle with esbuild:
-" <> message)
-
-    // TODO: Is there a better way to deal with this dynamic error?
-    NetworkError(_dynamic) ->
-      io.println(
-        "
-There was a network error!",
-      )
-
-    // TODO: this could give a better error for some common reason like Enoent.
-    SimplifileError(reason, path) -> io.println("
-I ran into the following error at path `" <> path <> "`: " <> string.inspect(
-        reason,
-      ) <> ".")
-
-    UnknownPlatform(os, cpu) -> io.println("
-I couldn't figure out the correct esbuild version for your
-os (" <> os <> ") and cpu (" <> cpu <> ").")
-
-    // TODO: Is there a better way to deal with this dynamic error?
-    UnzipError(_dynamic) ->
-      io.println(
-        "
-I couldn't unzip the esbuild executable!",
-      )
-  }
 }
 
 // EXTERNALS -------------------------------------------------------------------

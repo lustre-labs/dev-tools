@@ -1,17 +1,18 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import gleam_community/ansi
+import gleam/dynamic.{type Dynamic}
 import gleam/erlang
-import gleam/result
 import gleam/io
-import gleam/string
+import gleam/result
+import lustre_dev_tools/error.{type Error, TemplateMissing}
 import simplifile
 import spinner.{type Spinner}
 
 // TYPES -----------------------------------------------------------------------
 
 pub opaque type Env {
-  Env(spinner: SpinnerStatus)
+  Env(muted: Bool, spinner: SpinnerStatus)
 }
 
 type SpinnerStatus {
@@ -29,8 +30,8 @@ pub type Cli(state, a, e) {
 
 ///
 ///
-pub fn run(step: Cli(state, a, e), with state: state) -> Result(a, e) {
-  let env = Env(spinner: Paused)
+pub fn run(step: Cli(state, a, Error), with state: state) -> Result(a, Error) {
+  let env = Env(muted: False, spinner: Paused)
   let #(env, _, result) = step.run(env, state)
 
   case env.spinner {
@@ -86,6 +87,12 @@ pub fn do(
       #(env, state, Error(error))
     }
   }
+}
+
+pub fn in(value: fn() -> a) -> Cli(state, a, e) {
+  use env, state <- Cli
+
+  #(env, state, Ok(value()))
 }
 
 pub fn map(step: Cli(state, a, e), then next: fn(a) -> b) -> Cli(state, b, e) {
@@ -152,22 +159,28 @@ pub fn log(
   then next: fn() -> Cli(state, a, e),
 ) -> Cli(state, a, e) {
   use env, state <- Cli
-  let env =
-    Env(spinner: case env.spinner {
-      Paused ->
-        Running(
-          spinner.new(message)
-            |> spinner.with_colour(ansi.magenta)
-            |> spinner.with_frames(spinner.snake_frames)
-            |> spinner.start,
-          message,
-        )
+  let env = case env.muted {
+    True -> env
+    False ->
+      Env(
+        ..env,
+        spinner: case env.spinner {
+          Paused ->
+            Running(
+              spinner.new(message)
+                |> spinner.with_colour(ansi.magenta)
+                |> spinner.with_frames(spinner.snake_frames)
+                |> spinner.start,
+              message,
+            )
 
-      Running(spinner, _) -> {
-        spinner.set_text(spinner, message)
-        Running(spinner, message)
-      }
-    })
+          Running(spinner, _) -> {
+            spinner.set_text(spinner, message)
+            Running(spinner, message)
+          }
+        },
+      )
+  }
 
   next().run(env, state)
 }
@@ -178,16 +191,35 @@ pub fn success(
 ) -> Cli(state, a, e) {
   use env, state <- Cli
   let env =
-    Env(spinner: case env.spinner {
-      Paused -> Paused
-      Running(spinner, _) -> {
-        spinner.stop(spinner)
-        Paused
-      }
-    })
+    Env(
+      ..env,
+      spinner: case env.spinner {
+        Paused -> Paused
+        Running(spinner, _) -> {
+          spinner.stop(spinner)
+          Paused
+        }
+      },
+    )
 
-  io.println("✅ " <> ansi.green(message))
+  case env.muted {
+    True -> Nil
+    False -> io.println("✅ " <> ansi.green(message))
+  }
+
   next().run(env, state)
+}
+
+pub fn mute() -> Cli(state, Nil, e) {
+  use env, state <- Cli
+
+  #(Env(..env, muted: True), state, Ok(Nil))
+}
+
+pub fn unmute() -> Cli(state, Nil, e) {
+  use env, state <- Cli
+
+  #(Env(..env, muted: False), state, Ok(Nil))
 }
 
 //
@@ -217,20 +249,18 @@ pub fn exec(
   in in: String,
 ) -> Result(String, #(Int, String))
 
+@external(erlang, "lustre_dev_tools_ffi", "get_cwd")
+pub fn cwd() -> Result(String, Dynamic)
+
 pub fn template(
   name: String,
-  on_error: fn(String) -> e,
-  then next: fn(String) -> Cli(state, a, e),
-) -> Cli(state, a, e) {
+  then next: fn(String) -> Cli(state, a, Error),
+) -> Cli(state, a, Error) {
   use env, state <- Cli
   let assert Ok(priv) = erlang.priv_directory("lustre_dev_tools")
 
   case simplifile.read(priv <> "/" <> name) {
     Ok(template) -> next(template).run(env, state)
-    Error(error) -> #(
-      env,
-      state,
-      Error(on_error(name <> ": " <> string.inspect(error))),
-    )
+    Error(error) -> #(env, state, Error(TemplateMissing(name, error)))
   }
 }
