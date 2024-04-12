@@ -42,7 +42,7 @@ JavaScript module for you to host or distribute.
   glint.command(fn(input) {
     let CommandInput(flags: flags, ..) = input
     let assert Ok(minify) = flag.get_bool(flags, "minify")
-    let script = do_app(minify, suppress: False, skip_validation: False)
+    let script = do_app(minify)
 
     case cli.run(script, Nil) {
       Ok(_) -> Nil
@@ -62,30 +62,14 @@ JavaScript module for you to host or distribute.
   })
 }
 
-pub fn do_app(
-  minify minify: Bool,
-  suppress silent: Bool,
-  skip_validation unsafe: Bool,
-) -> Cli(any, Nil, Error) {
-  use _ <- cli.do(case silent {
-    True -> cli.mute()
-    False -> cli.return(Nil)
-  })
-
+pub fn do_app(minify: Bool) -> Cli(any, Nil, Error) {
   use <- cli.log("Building your project")
   use project_name <- cli.do_result(get_project_name())
 
-  use _ <- cli.do(case unsafe {
-    True -> cli.return(Nil)
-    False -> {
-      use <- cli.success("Project compiled successfully")
-      use <- cli.log("Checking if I can bundle your application")
-      use module <- cli.do_result(get_module_interface(project_name))
-      use _ <- cli.do_result(check_main_function(project_name, module))
-
-      cli.return(Nil)
-    }
-  })
+  use <- cli.success("Project compiled successfully")
+  use <- cli.log("Checking if I can bundle your application")
+  use module <- cli.do_result(get_module_interface(project_name))
+  use _ <- cli.do_result(check_main_function(project_name, module))
 
   use <- cli.log("Creating the bundle entry file")
   let root = project.root()
@@ -330,11 +314,11 @@ fn is_type_variable(t: Type) -> Bool {
 fn is_compatible_app_type(t: Type) -> Bool {
   case t {
     Named(
-      name: "App",
-      package: "lustre",
-      module: "lustre",
-      parameters: [flags, ..],
-    ) -> is_nil_type(flags) || is_type_variable(flags)
+        name: "App",
+        package: "lustre",
+        module: "lustre",
+        parameters: [flags, ..],
+      ) -> is_nil_type(flags) || is_type_variable(flags)
     _ -> False
   }
 }

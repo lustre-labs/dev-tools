@@ -32,7 +32,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
       flag.get_bool(flags, "use-example-styles")
 
     let script = {
-      use _ <- cli.do(build.do_app(False, False, False))
+      use _ <- cli.do(build.do_app(False))
       use _ <- cli.do(prepare_html(use_example_styles))
       use _ <- cli.do(cli.from_result(server.start(port)))
 

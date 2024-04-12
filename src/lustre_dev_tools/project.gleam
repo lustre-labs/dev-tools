@@ -44,6 +44,17 @@ pub fn build() -> Result(Nil, Error) {
 }
 
 pub fn interface() -> Result(Interface, Error) {
+  use Config(name, ..) <- result.try(config(prebuild: True))
+
+  // Gleam currently has a bug with the `export package-interface` command that
+  // means cached modules are not emitted. This is, obviously, a problem if a
+  // you try and export the interface multiple times (which happens regularly
+  // for us).
+  //
+  // We clear build files or *just*
+  let cache = filepath.join(root(), "build/prod/javascript/" <> name)
+  let _ = simplifile.delete(cache)
+
   let dir = filepath.join(root(), "build/.lustre")
   let out = filepath.join(dir, "package-interface.json")
   let args = ["export", "package-interface", "--out", out]
