@@ -75,31 +75,6 @@ pub fn bundle(
   cli.return(Nil)
 }
 
-pub fn serve(host: String, port: String, spa: Bool) -> Cli(any, Nil, Error) {
-  use _ <- cli.do(download(get_os(), get_cpu()))
-  let root = project.root()
-  let flags = [
-    "--serve=" <> host <> ":" <> port,
-    "--servedir=" <> filepath.join(root, "build/.lustre"),
-  ]
-
-  let options = case spa {
-    True -> [
-      "--serve-fallback=" <> filepath.join(root, "build/.lustre/index.html"),
-      ..flags
-    ]
-    False -> flags
-  }
-
-  use <- cli.success("Started dev server at http://" <> host <> ":" <> port)
-  use _ <- cli.try(
-    cli.exec(run: "./build/.lustre/bin/esbuild", in: root, with: options),
-    fn(pair) { BundleError(pair.1) },
-  )
-
-  cli.return(Nil)
-}
-
 // STEPS -----------------------------------------------------------------------
 
 fn check_esbuild_exists(path) {
