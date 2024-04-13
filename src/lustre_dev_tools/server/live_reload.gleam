@@ -20,19 +20,19 @@ import mist
 // TYPES -----------------------------------------------------------------------
 
 type WatcherState =
-  Set(Subject(Reload))
+  Set(Subject(SocketMsg))
 
-pub type Msg {
-  Add(Subject(Reload))
-  Remove(Subject(Reload))
+pub type WatcherMsg {
+  Add(Subject(SocketMsg))
+  Remove(Subject(SocketMsg))
   Broadcast
   Unknown(Dynamic)
 }
 
 type SocketState =
-  #(Subject(Reload), Subject(Msg))
+  #(Subject(SocketMsg), Subject(WatcherMsg))
 
-pub type Reload {
+pub type SocketMsg {
   Reload
 }
 
@@ -92,9 +92,9 @@ pub fn inject(html: String) -> String {
 // WEB SOCKET ------------------------------------------------------------------
 
 fn init_socket(
-  watcher: Subject(Msg),
+  watcher: Subject(WatcherMsg),
   _connection: mist.WebsocketConnection,
-) -> #(SocketState, Option(Selector(Reload))) {
+) -> #(SocketState, Option(Selector(SocketMsg))) {
   let self = process.new_subject()
   let selector =
     process.new_selector()
@@ -109,8 +109,8 @@ fn init_socket(
 fn loop_socket(
   state: SocketState,
   connection: mist.WebsocketConnection,
-  msg: mist.WebsocketMessage(Reload),
-) -> actor.Next(Reload, SocketState) {
+  msg: mist.WebsocketMessage(SocketMsg),
+) -> actor.Next(SocketMsg, SocketState) {
   case msg {
     mist.Text(_) | mist.Binary(_) -> actor.continue(state)
 
@@ -132,12 +132,12 @@ fn close_socket(state: SocketState) -> Nil {
 
 // FILE WATCHER ----------------------------------------------------------------
 
-fn start_watcher(root: String) -> Result(Subject(Msg), Error) {
+fn start_watcher(root: String) -> Result(Subject(WatcherMsg), Error) {
   actor.start_spec(actor.Spec(fn() { init_watcher(root) }, 1000, loop_watcher))
   |> result.map_error(CannotStartFileWatcher)
 }
 
-fn init_watcher(root: String) -> actor.InitResult(WatcherState, Msg) {
+fn init_watcher(root: String) -> actor.InitResult(WatcherState, WatcherMsg) {
   let src = filepath.join(root, "src")
   let id = atom.create_from_string(src)
 
@@ -165,7 +165,10 @@ fn init_watcher(root: String) -> actor.InitResult(WatcherState, Msg) {
   }
 }
 
-fn loop_watcher(msg: Msg, state: WatcherState) -> actor.Next(Msg, WatcherState) {
+fn loop_watcher(
+  msg: WatcherMsg,
+  state: WatcherState,
+) -> actor.Next(WatcherMsg, WatcherState) {
   case msg {
     Add(client) ->
       client
@@ -187,8 +190,11 @@ fn loop_watcher(msg: Msg, state: WatcherState) -> actor.Next(Msg, WatcherState) 
       }
 
       case cli.run(script, Nil) {
-        Ok(_) ->
-          set.fold(state, Nil, fn(_, client) { process.send(client, Reload) })
+        Ok(_) -> {
+          use _, client <- set.fold(state, Nil)
+          process.send(client, Reload)
+        }
+
         Error(_) -> Nil
       }
 
@@ -199,7 +205,7 @@ fn loop_watcher(msg: Msg, state: WatcherState) -> actor.Next(Msg, WatcherState) 
   }
 }
 
-fn change_decoder(dyn: Dynamic) -> Result(Msg, List(DecodeError)) {
+fn change_decoder(dyn: Dynamic) -> Result(WatcherMsg, List(DecodeError)) {
   let events_decoder = dynamic.element(1, dynamic.list(dynamic.dynamic))
   use events <- result.try(dynamic.element(2, events_decoder)(dyn))
 
