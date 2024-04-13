@@ -54,6 +54,12 @@ pub fn interface() -> Result(Interface, Error) {
   // We clear build files or *just*
   let cache = filepath.join(root(), "build/prod/javascript/" <> name)
   let _ = simplifile.delete(cache)
+  let cache = filepath.join(root(), "build/prod/erlang/" <> name)
+  let _ = simplifile.delete(cache)
+  let cache = filepath.join(root(), "build/dev/javascript/" <> name)
+  let _ = simplifile.delete(cache)
+  let cache = filepath.join(root(), "build/dev/erlang/" <> name)
+  let _ = simplifile.delete(cache)
 
   let dir = filepath.join(root(), "build/.lustre")
   let out = filepath.join(dir, "package-interface.json")
