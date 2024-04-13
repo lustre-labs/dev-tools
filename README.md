@@ -66,14 +66,18 @@ package.
 ## Installation
 
 Lustre's dev tools are published on [Hex](https://hex.pm/packages/lustre_dev_tools)!
-You can add them to your Gleam projects from the command line:
+You can add them as a dev dependency to your Gleam projects from the command line:
 
 ```sh
 gleam add lustre_dev_tools --dev
 ```
 
-> **Note**: make sure you remember the `--dev` flag! This ensures the dev tools
-> are never included in production builds.
+The `--dev` flag is important to make sure the dev tools are not included in your
+application's build!
+
+> **Note**: The included development server uses the erlang package [`fs`](https://github.com/5HT/fs)
+> as a file watcher. For Linux uses, you need to have [inotify-tools](https://github.com/inotify-tools/inotify-tools)
+> installed on your system. Both Linux and MacOS users must also have a C compiler.
 
 To run any of the commands provided by the dev tools, you should run the
 `lustre/dev` module using Gleam's `run` command:
@@ -83,6 +87,10 @@ gleam run -m lustre/dev build app
 ```
 
 ## Commands
+
+You can run `gleam run -m lustre/dev -- --help` to see a list of all the available
+commands. Each command also has its own help text that lists the available flags
+and options. Here's a brief overview of the commands provided by Lustre's dev tools:
 
 - `lustre/dev add` - Commands for adding external binaries to your project. These
   are run and managed by Lustre, and while not typically intended to be run manually,

@@ -126,41 +126,17 @@
 ////
 //// The `lustre/dev start` command starts a development server that builds and serves your
 //// project. This lets you focus on development without having to worry about a backend
-//// or additional tooling.
-////
-//// Currently the server does _not_ watch for changes to your Gleam source files. You
-//// must **restart the server** for changes to take effect. There have been discussions
-//// about including a `watch` command in the Gleam compiler that would make this
-//// possible.
+//// or additional tooling. The page will automatically reload when you make changes
+//// to your project.
 ////
 //// Flags:
 ////
 //// - `--port` - The port to serve the project on. Defaults to `1234`.
 ////
-//// - `--host` - The host to serve the project on. Defaults to `0.0.0.0` and is
-////   accessible on localhosts and any other devices on the same network.
-////
-//// - `--html` - Provide a custom HTML file to serve. This is useful if you want to
-////   include your own styles or scripts.
-////
-////   To make sure the Lustre bundle can be loaded, you must include the following
-////   script tag somewhere in your HTML file:
-////
-////   ```html
-////   <script type="application/lustre"></script>
-////   ```
-////
-//// - `--use-example-styles` - Include the stylesheet from
-////   [lustre/ui](https://hexdocs.pm/lustre_ui/). This is mainly used in the example
-////   projects, but you may use this option to quickly experiment with the library
-////   yourself.
-////
-////   If the `--html` flag is provided, this flag will be ignored.
-////
 //// Example:
 ////
 //// ```sh
-//// gleam run -m lustre/dev start --port=8080 --use-example-styles
+//// gleam run -m lustre/dev start --port=8080
 //// ```
 ////
 //// ## Getting help
