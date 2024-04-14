@@ -225,6 +225,12 @@ pub fn get_name() -> Cli(String) {
 
 // FLAGS -----------------------------------------------------------------------
 
+pub fn get_flags() -> Cli(Dict(String, Flag)) {
+  use env <- Cli
+
+  #(env, Ok(env.flags))
+}
+
 pub fn get_int(name: String, fallback: Int, namespace: List(String)) -> Cli(Int) {
   use env <- Cli
   let toml_path = list.concat([["lustre-dev"], namespace, [name]])

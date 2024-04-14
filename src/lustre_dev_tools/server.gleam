@@ -1,37 +1,48 @@
+// IMPORTS ---------------------------------------------------------------------
+
 import filepath
 import gleam/bool
 import gleam/erlang/process
 import gleam/http/request.{type Request, Request}
 import gleam/http/response.{type Response}
+import gleam/option.{type Option}
 import gleam/regex
 import gleam/result
+import gleam/string
 import gleam/string_builder
 import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{type Error, CannotStartDevServer}
 import lustre_dev_tools/project
 import lustre_dev_tools/server/live_reload
+import lustre_dev_tools/server/proxy.{type Proxy}
 import mist
 import simplifile
 import wisp
 
-pub fn start(port: Int) -> Result(Nil, Error) {
+pub fn start(port: Int, proxy: Option(String)) -> Result(Nil, Error) {
   let assert Ok(cwd) = cmd.cwd()
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
 
   use make_socket <- result.try(live_reload.start(root))
   use _ <- result.try(
     fn(req: Request(mist.Connection)) -> Response(mist.ResponseData) {
+      let should_proxy =
+        proxy
+        |> option.map(string.starts_with(req.path, _))
+        |> option.unwrap(False)
+
       case request.path_segments(req) {
         // We're going to inject a script that connects to /lustre-dev-tools over
         // websockets. Whenever we detect a file change we can broadcast a reload
         // message and get the client to hard refresh the page.
         ["lustre-dev-tools"] -> make_socket(req)
         [] ->
-          wisp.mist_handler(handler(_, root), "")(
-            Request(..req, path: "/index.html"),
-          )
+          Request(..req, path: "/index.html")
+          |> wisp.mist_handler(handler(_, root), "")
+
         // For everything else we're just going to serve any static files directly
         // from the project's root.
+        _ if should_proxy -> todo
         _ -> wisp.mist_handler(handler(_, root), "")(req)
       }
     }
@@ -49,6 +60,13 @@ fn handler(req: wisp.Request, root: String) -> wisp.Response {
   use <- wisp.serve_static(req, under: "/", from: root)
 
   handler(Request(..req, path: "/index.html"), root)
+}
+
+fn proxy_handler(
+  req: Request(mist.Connection),
+  proxy: Proxy,
+) -> Response(mist.ResponseData) {
+  todo
 }
 
 fn inject_live_reload(

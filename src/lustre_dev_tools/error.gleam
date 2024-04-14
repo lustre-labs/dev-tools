@@ -20,6 +20,7 @@ pub type Error {
   CannotStartFileWatcher(reason: actor.StartError)
   CannotWriteFile(reason: simplifile.FileError, path: String)
   ComponentMissing(module: String)
+  IncompleteProxy(missing: List(String))
   InternalError(message: String)
   MainBadAppType(module: String, flags: Type, model: Type, msg: Type)
   MainMissing(module: String)
@@ -44,6 +45,7 @@ pub fn explain(error: Error) -> Nil {
     CannotStartFileWatcher(reason) -> cannot_start_file_watcher(reason)
     CannotWriteFile(reason, path) -> cannot_write_file(reason, path)
     ComponentMissing(module) -> component_missing(module)
+    IncompleteProxy(missing) -> incomplete_proxy(missing)
     InternalError(message) -> internal_error(message)
     MainBadAppType(module, flags, model, msg) ->
       main_bad_app_type(module, flags, model, msg)
@@ -183,6 +185,34 @@ Lustre `App`. Try adding a function like this:
 
   message
   |> string.replace("{module}", module)
+}
+
+fn incomplete_proxy(missing: List(String)) -> String {
+  let message =
+    "
+I'm missing some information needed to proxy requests from the development server.
+The following keys are missing:
+
+    {missing}
+
+You can provide the missing information either as flags when starting the
+development server, or by adding a `proxy` key to the `lustre-dev` section of
+your `gleam.toml`.
+
+To pass the information as flags, you should start the development server like
+this:
+
+    gleam run -m lustre/dev start --proxy-from=/api --proxy-to=http://localhost:4000/api
+
+To add the information to your `gleam.toml`, make sure it looks something like
+this:
+
+    [lustre-dev.start]
+    proxy = { from = \"/api\", to = \"http://localhost:4000/api\" }
+"
+
+  message
+  |> string.replace("{missing}", string.join(missing, ", "))
 }
 
 fn internal_error(info: String) -> String {
