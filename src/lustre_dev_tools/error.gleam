@@ -28,7 +28,6 @@ pub type Error {
   NameIncorrectType(module: String, got: Type)
   NameMissing(module: String)
   NetworkError(Dynamic)
-  SimplifileError(reason: simplifile.FileError, path: String)
   TemplateMissing(name: String, reason: simplifile.FileError)
   UnknownPlatform(binary: String, os: String, cpu: String)
   UnzipError(Dynamic)
@@ -54,7 +53,6 @@ pub fn explain(error: Error) -> Nil {
     NameIncorrectType(module, got) -> name_incorrect_type(module, got)
     NameMissing(module) -> name_missing(module)
     NetworkError(error) -> network_error(error)
-    SimplifileError(reason, path) -> simplifile_error(reason, path)
     TemplateMissing(name, reason) -> template_missing(name, reason)
     UnknownPlatform(binary, os, cpu) -> unknown_platform(binary, os, cpu)
     UnzipError(error) -> unzip_error(error)
@@ -369,28 +367,6 @@ some details about what you were trying to do when you ran into this issue.
 
   message
   |> string.replace("{error}", string.inspect(error))
-}
-
-fn simplifile_error(reason: simplifile.FileError, path: String) -> String {
-  let message =
-    "
-I ran into an unexpected filesystem error while trying to do something at the
-following path:
-
-    {path}
-
-Here's the error message I got:
-
-    {reason}
-
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{path}", path)
-  |> string.replace("{reason}", string.inspect(reason))
 }
 
 fn template_missing(name: String, reason: simplifile.FileError) -> String {

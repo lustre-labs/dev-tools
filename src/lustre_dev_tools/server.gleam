@@ -6,7 +6,7 @@ import gleam/http/response.{type Response}
 import gleam/regex
 import gleam/result
 import gleam/string_builder
-import lustre_dev_tools/cli
+import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{type Error, CannotStartDevServer}
 import lustre_dev_tools/project
 import lustre_dev_tools/server/live_reload
@@ -15,7 +15,7 @@ import simplifile
 import wisp
 
 pub fn start(port: Int) -> Result(Nil, Error) {
-  let assert Ok(cwd) = cli.cwd()
+  let assert Ok(cwd) = cmd.cwd()
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
 
   use make_socket <- result.try(live_reload.start(root))

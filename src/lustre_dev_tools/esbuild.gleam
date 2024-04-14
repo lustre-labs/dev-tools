@@ -6,16 +6,17 @@ import gleam/result
 import gleam/set
 import gleam/string
 import lustre_dev_tools/cli.{type Cli}
+import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{
-  type Error, BundleError, NetworkError, SimplifileError, UnknownPlatform,
-  UnzipError,
+  type Error, BundleError, CannotSetPermissions, CannotWriteFile, NetworkError,
+  UnknownPlatform, UnzipError,
 }
 import lustre_dev_tools/project
 import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
 
 // COMMANDS --------------------------------------------------------------------
 
-pub fn download(os: String, cpu: String) -> Cli(Nil, Error) {
+pub fn download(os: String, cpu: String) -> Cli(Nil) {
   use <- cli.log("Downloading esbuild")
 
   let outdir = filepath.join(project.root(), "build/.lustre/bin")
@@ -25,18 +26,15 @@ pub fn download(os: String, cpu: String) -> Cli(Nil, Error) {
     True -> cli.success("Esbuild already installed!", fn() { cli.return(Nil) })
     False -> {
       use <- cli.log("Detecting platform")
-      use url <- cli.do_result(get_download_url(os, cpu))
+      use url <- cli.try(get_download_url(os, cpu))
 
       use <- cli.log("Downloading from " <> url)
-      use tarball <- cli.try(get_esbuild(url), NetworkError)
+      use tarball <- cli.try(get_esbuild(url))
 
       use <- cli.log("Unzipping esbuild")
-      use bin <- cli.try(unzip_esbuild(tarball), UnzipError)
-      use _ <- cli.try(write_esbuild(bin, outdir, outfile), SimplifileError(
-        _,
-        outfile,
-      ))
-      use _ <- cli.try(set_filepermissions(outfile), SimplifileError(_, outfile))
+      use bin <- cli.try(unzip_esbuild(tarball))
+      use _ <- cli.try(write_esbuild(bin, outdir, outfile))
+      use _ <- cli.try(set_file_permissions(outfile))
 
       use <- cli.success("Esbuild installed!")
       cli.return(Nil)
@@ -44,13 +42,9 @@ pub fn download(os: String, cpu: String) -> Cli(Nil, Error) {
   }
 }
 
-pub fn bundle(
-  input_file: String,
-  output_file: String,
-  minify: Bool,
-) -> Cli(Nil, Error) {
+pub fn bundle(input_file: String, output_file: String, minify: Bool) -> Cli(Nil) {
   use _ <- cli.do(download(get_os(), get_cpu()))
-  use _ <- cli.do(cli.from_result(project.build()))
+  use _ <- cli.try(project.build())
   use <- cli.log("Getting everything ready for tree shaking")
 
   let root = project.root()
@@ -66,10 +60,7 @@ pub fn bundle(
   }
 
   use <- cli.log("Bundling with esbuild")
-  use _ <- cli.try(
-    cli.exec(run: "./build/.lustre/bin/esbuild", in: root, with: options),
-    fn(pair) { BundleError(pair.1) },
-  )
+  use _ <- cli.try(exec_esbuild(root, options))
 
   use <- cli.success("Bundle produced at `" <> output_file <> "`")
   cli.return(Nil)
@@ -121,13 +112,28 @@ fn get_download_url(os, cpu) {
   result.map(path, string.append(base, _))
 }
 
-fn write_esbuild(bin, outdir, outfile) {
+fn get_esbuild(url: String) -> Result(BitArray, Error) {
+  do_get_esbuild(url)
+  |> result.map_error(NetworkError)
+}
+
+fn unzip_esbuild(gzip: BitArray) -> Result(BitArray, Error) {
+  do_unzip_esbuild(gzip)
+  |> result.map_error(UnzipError)
+}
+
+fn write_esbuild(
+  bin: BitArray,
+  outdir: String,
+  outfile: String,
+) -> Result(Nil, Error) {
   let _ = simplifile.create_directory_all(outdir)
 
   simplifile.write_bits(outfile, bin)
+  |> result.map_error(CannotWriteFile(_, filepath.join(outdir, outfile)))
 }
 
-fn set_filepermissions(file) {
+fn set_file_permissions(file: String) -> Result(Nil, Error) {
   let permissions =
     FilePermissions(
       user: set.from_list([Read, Write, Execute]),
@@ -136,6 +142,12 @@ fn set_filepermissions(file) {
     )
 
   simplifile.set_permissions(file, permissions)
+  |> result.map_error(CannotSetPermissions(_, file))
+}
+
+fn exec_esbuild(root: String, options: List(String)) -> Result(String, Error) {
+  cmd.exec("./build/.lustre/bin/esbuild", in: root, with: options)
+  |> result.map_error(fn(pair) { BundleError(pair.1) })
 }
 
 // EXTERNALS -------------------------------------------------------------------
@@ -147,7 +159,7 @@ fn get_os() -> String
 fn get_cpu() -> String
 
 @external(erlang, "lustre_dev_tools_ffi", "get_esbuild")
-fn get_esbuild(url: String) -> Result(BitArray, Dynamic)
+fn do_get_esbuild(url: String) -> Result(BitArray, Dynamic)
 
 @external(erlang, "lustre_dev_tools_ffi", "unzip_esbuild")
-fn unzip_esbuild(tarball: BitArray) -> Result(BitArray, Dynamic)
+fn do_unzip_esbuild(tarball: BitArray) -> Result(BitArray, Dynamic)

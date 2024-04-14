@@ -10,7 +10,7 @@ import gleam/package_interface.{type Type, Fn, Named, Tuple, Variable}
 import gleam/pair
 import gleam/result
 import gleam/string
-import lustre_dev_tools/cli
+import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{type Error, BuildError}
 import simplifile
 import tom.{type Toml}
@@ -38,7 +38,7 @@ pub type Function {
 /// Compile the current project running the `gleam build` command.
 ///
 pub fn build() -> Result(Nil, Error) {
-  cli.exec(run: "gleam", in: ".", with: ["build", "--target", "javascript"])
+  cmd.exec(run: "gleam", in: ".", with: ["build", "--target", "javascript"])
   |> result.map_error(fn(err) { BuildError(pair.second(err)) })
   |> result.replace(Nil)
 }
@@ -69,7 +69,7 @@ pub fn interface() -> Result(Interface, Error) {
   let out = filepath.join(dir, "package-interface.json")
   let args = ["export", "package-interface", "--out", out]
 
-  cli.exec(run: "gleam", in: ".", with: args)
+  cmd.exec(run: "gleam", in: ".", with: args)
   |> result.map_error(fn(err) { BuildError(pair.second(err)) })
   |> result.then(fn(_) {
     let assert Ok(json) = simplifile.read(out)

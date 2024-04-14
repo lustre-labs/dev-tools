@@ -1,18 +1,25 @@
 // IMPORTS ---------------------------------------------------------------------
 
-import gleam/dynamic.{type Dynamic}
+import gleam/dict.{type Dict}
 import gleam/erlang
 import gleam/io
 import gleam/result
 import gleam_community/ansi
+import glint/flag.{type Flag}
 import lustre_dev_tools/error.{type Error, TemplateMissing}
+import lustre_dev_tools/project.{type Config}
 import simplifile
 import spinner.{type Spinner}
 
 // TYPES -----------------------------------------------------------------------
 
 pub opaque type Env {
-  Env(muted: Bool, spinner: SpinnerStatus)
+  Env(
+    muted: Bool,
+    spinner: SpinnerStatus,
+    flags: Dict(String, Flag),
+    config: Config,
+  )
 }
 
 type SpinnerStatus {
@@ -22,16 +29,17 @@ type SpinnerStatus {
 
 ///
 ///
-pub type Cli(a, e) {
-  Cli(run: fn(Env) -> #(Env, Result(a, e)))
+pub type Cli(a) {
+  Cli(run: fn(Env) -> #(Env, Result(a, Error)))
 }
 
-//
+// RUNNING CLI SCRIPTS ---------------------------------------------------------
 
 ///
 ///
-pub fn run(step: Cli(a, Error)) -> Result(a, Error) {
-  let env = Env(muted: False, spinner: Paused)
+pub fn run(step: Cli(a), flags: Dict(String, Flag)) -> Result(a, Error) {
+  use config <- result.try(project.config(True))
+  let env = Env(muted: False, spinner: Paused, flags: flags, config: config)
   let #(env, result) = step.run(env)
 
   case env.spinner {
@@ -49,27 +57,27 @@ pub fn run(step: Cli(a, Error)) -> Result(a, Error) {
   result
 }
 
-//
+// CREATING CLI SCRIPTS FROM SIMPLE VALUES -------------------------------------
 
 ///
 ///
-pub fn return(value: a) -> Cli(a, e) {
+pub fn return(value: a) -> Cli(a) {
   use env <- Cli
 
   #(env, Ok(value))
 }
 
-pub fn from_result(result: Result(a, e)) -> Cli(a, e) {
+pub fn from_result(result: Result(a, Error)) -> Cli(a) {
   use env <- Cli
 
   #(env, result)
 }
 
-//
+// COMBINATORS -----------------------------------------------------------------
 
 ///
 ///
-pub fn do(step: Cli(a, e), then next: fn(a) -> Cli(b, e)) -> Cli(b, e) {
+pub fn do(step: Cli(a), then next: fn(a) -> Cli(b)) -> Cli(b) {
   use env <- Cli
   let #(env, result) = step.run(env)
 
@@ -86,13 +94,13 @@ pub fn do(step: Cli(a, e), then next: fn(a) -> Cli(b, e)) -> Cli(b, e) {
   }
 }
 
-pub fn in(value: fn() -> a) -> Cli(a, e) {
+pub fn in(value: fn() -> a) -> Cli(a) {
   use env <- Cli
 
   #(env, Ok(value()))
 }
 
-pub fn map(step: Cli(a, e), then next: fn(a) -> b) -> Cli(b, e) {
+pub fn map(step: Cli(a), then next: fn(a) -> b) -> Cli(b) {
   use env <- Cli
   let #(env, result) = step.run(env)
   let result = result.map(result, next)
@@ -100,55 +108,29 @@ pub fn map(step: Cli(a, e), then next: fn(a) -> b) -> Cli(b, e) {
   #(env, result)
 }
 
-pub fn map_error(step: Cli(a, e), then next: fn(e) -> f) -> Cli(a, f) {
-  use env <- Cli
-  let #(env, result) = step.run(env)
-  let result = result.map_error(result, next)
-
-  #(env, result)
-}
-
 ///
 ///
-pub fn do_result(
-  result: Result(a, e),
-  then next: fn(a) -> Cli(b, e),
-) -> Cli(b, e) {
+pub fn try(result: Result(a, Error), then next: fn(a) -> Cli(b)) -> Cli(b) {
   use env <- Cli
 
   case result {
     Ok(a) -> next(a).run(env)
-    Error(e) -> #(env, Error(e))
-  }
-}
-
-///
-///
-pub fn try(
-  step: Result(a, x),
-  catch recover: fn(x) -> e,
-  then next: fn(a) -> Cli(b, e),
-) -> Cli(b, e) {
-  use env <- Cli
-
-  case step {
-    Ok(value) -> next(value).run(env)
     Error(error) -> {
       case env.spinner {
         Running(spinner, _message) -> spinner.stop(spinner)
         Paused -> Nil
       }
 
-      #(env, Error(recover(error)))
+      #(env, Error(error))
     }
   }
 }
 
-//
+// LOGGING ---------------------------------------------------------------------
 
 ///
 ///
-pub fn log(message: String, then next: fn() -> Cli(a, e)) -> Cli(a, e) {
+pub fn log(message: String, then next: fn() -> Cli(a)) -> Cli(a) {
   use env <- Cli
   let env = case env.muted {
     True -> env
@@ -176,7 +158,7 @@ pub fn log(message: String, then next: fn() -> Cli(a, e)) -> Cli(a, e) {
   next().run(env)
 }
 
-pub fn success(message: String, then next: fn() -> Cli(a, e)) -> Cli(a, e) {
+pub fn success(message: String, then next: fn() -> Cli(a)) -> Cli(a) {
   use env <- Cli
   let env =
     Env(
@@ -198,36 +180,21 @@ pub fn success(message: String, then next: fn() -> Cli(a, e)) -> Cli(a, e) {
   next().run(env)
 }
 
-pub fn mute() -> Cli(Nil, e) {
+pub fn mute() -> Cli(Nil) {
   use env <- Cli
 
   #(Env(..env, muted: True), Ok(Nil))
 }
 
-pub fn unmute() -> Cli(Nil, e) {
+pub fn unmute() -> Cli(Nil) {
   use env <- Cli
 
   #(Env(..env, muted: False), Ok(Nil))
 }
 
-//
+// UTILS -----------------------------------------------------------------------
 
-//
-
-@external(erlang, "lustre_dev_tools_ffi", "exec")
-pub fn exec(
-  run command: String,
-  with args: List(String),
-  in in: String,
-) -> Result(String, #(Int, String))
-
-@external(erlang, "lustre_dev_tools_ffi", "get_cwd")
-pub fn cwd() -> Result(String, Dynamic)
-
-pub fn template(
-  name: String,
-  then next: fn(String) -> Cli(a, Error),
-) -> Cli(a, Error) {
+pub fn template(name: String, then next: fn(String) -> Cli(a)) -> Cli(a) {
   use env <- Cli
   let assert Ok(priv) = erlang.priv_directory("lustre_dev_tools")
 
@@ -236,3 +203,4 @@ pub fn template(
     Error(error) -> #(env, Error(TemplateMissing(name, error)))
   }
 }
+// FLAGS -----------------------------------------------------------------------

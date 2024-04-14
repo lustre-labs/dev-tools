@@ -1,11 +1,13 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import filepath
+import gleam/result
 import gleam/string
 import glint.{type Command, CommandInput}
 import glint/flag
 import lustre_dev_tools/cli.{type Cli}
 import lustre_dev_tools/cli/build
+import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{type Error, CannotWriteFile}
 import lustre_dev_tools/project
 import lustre_dev_tools/server
@@ -37,7 +39,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
       cli.return(Nil)
     }
 
-    case cli.run(script) {
+    case cli.run(script, flags) {
       Ok(_) -> Nil
       Error(error) -> error.explain(error)
     }
@@ -57,8 +59,8 @@ Watchexec is a popular tool you can use to restart the server when files change.
 
 // STEPS -----------------------------------------------------------------------
 
-fn prepare_html() -> Cli(Nil, Error) {
-  let assert Ok(cwd) = cli.cwd()
+fn prepare_html() -> Cli(Nil) {
+  let assert Ok(cwd) = cmd.cwd()
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
   let index = filepath.join(root, "index.html")
 
@@ -68,11 +70,14 @@ fn prepare_html() -> Cli(Nil, Error) {
       use html <- cli.template("index.html")
       use config <- cli.do(cli.from_result(project.config(False)))
       let html = string.replace(html, "{app_name}", config.name)
-      use _ <- cli.try(simplifile.write(index, html), fn(reason) {
-        CannotWriteFile(reason, "index.html")
-      })
+      use _ <- cli.try(write_html(index, html))
 
       cli.return(Nil)
     }
   }
+}
+
+fn write_html(path: String, source: String) -> Result(Nil, Error) {
+  simplifile.write(path, source)
+  |> result.map_error(fn(reason) { CannotWriteFile(reason, path) })
 }

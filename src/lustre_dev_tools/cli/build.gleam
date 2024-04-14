@@ -10,6 +10,7 @@ import gleam/string
 import glint.{type Command, CommandInput}
 import glint/flag
 import lustre_dev_tools/cli.{type Cli}
+import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{
   type Error, BundleError, ComponentMissing, MainMissing, ModuleMissing,
   NameIncorrectType, NameMissing,
@@ -42,9 +43,11 @@ JavaScript module for you to host or distribute.
   glint.command(fn(input) {
     let CommandInput(flags: flags, ..) = input
     let assert Ok(minify) = flag.get_bool(flags, "minify")
-    let script = do_app(minify)
+    let script = {
+      do_app(minify)
+    }
 
-    case cli.run(script) {
+    case cli.run(script, flags) {
       Ok(_) -> Nil
       Error(error) -> error.explain(error)
     }
@@ -62,14 +65,14 @@ JavaScript module for you to host or distribute.
   })
 }
 
-pub fn do_app(minify: Bool) -> Cli(Nil, Error) {
+pub fn do_app(minify: Bool) -> Cli(Nil) {
   use <- cli.log("Building your project")
-  use project_name <- cli.do_result(get_project_name())
+  use project_name <- cli.try(get_project_name())
 
   use <- cli.success("Project compiled successfully")
   use <- cli.log("Checking if I can bundle your application")
-  use module <- cli.do_result(get_module_interface(project_name))
-  use _ <- cli.do_result(check_main_function(project_name, module))
+  use module <- cli.try(get_module_interface(project_name))
+  use _ <- cli.try(check_main_function(project_name, module))
 
   use <- cli.log("Creating the bundle entry file")
   let root = project.root()
@@ -123,11 +126,11 @@ returns a suitable Lustre `App`.
 
     let script = {
       use <- cli.log("Building your project")
-      use module <- cli.do_result(get_module_interface(module_path))
+      use module <- cli.try(get_module_interface(module_path))
       use <- cli.success("Project compiled successfully")
       use <- cli.log("Checking if I can bundle your component")
-      use _ <- cli.do_result(check_component_name(module_path, module))
-      use component <- cli.do_result(find_component(module_path, module))
+      use _ <- cli.try(check_component_name(module_path, module))
+      use component <- cli.try(find_component(module_path, module))
 
       use <- cli.log("Creating the bundle entry file")
       let root = project.root()
@@ -136,7 +139,7 @@ returns a suitable Lustre `App`.
       let _ = simplifile.create_directory_all(tempdir)
       let _ = simplifile.create_directory_all(outdir)
 
-      use project_name <- cli.do_result(get_project_name())
+      use project_name <- cli.try(get_project_name())
 
       // Esbuild bundling
       use template <- cli.template("component-entry.mjs")
@@ -171,7 +174,7 @@ returns a suitable Lustre `App`.
       cli.return(Nil)
     }
 
-    case cli.run(script) {
+    case cli.run(script, flags) {
       Ok(_) -> Nil
       Error(error) -> error.explain(error)
     }
@@ -245,7 +248,7 @@ fn bundle(
   tempdir: String,
   outfile: String,
   minify: Bool,
-) -> Cli(Nil, Error) {
+) -> Cli(Nil) {
   let entryfile = filepath.join(tempdir, "entry.mjs")
   let assert Ok(_) = simplifile.write(entryfile, entry)
   use _ <- cli.do(esbuild.bundle(entryfile, outfile, minify))
@@ -258,7 +261,7 @@ fn bundle_tailwind(
   tempdir: String,
   outfile: String,
   minify: Bool,
-) -> Cli(Nil, Error) {
+) -> Cli(Nil) {
   // We first check if there's a `tailwind.config.js` at the project's root.
   // If not present we do nothing; otherwise we go on with bundling.
   let root = project.root()
@@ -279,13 +282,15 @@ fn bundle_tailwind(
     True -> ["--minify", ..flags]
     False -> flags
   }
-  use _ <- cli.try(
-    cli.exec("./build/.lustre/bin/tailwind", in: root, with: options),
-    fn(pair) { BundleError(pair.1) },
-  )
+  use _ <- cli.try(exec_tailwind(root, options))
   use <- cli.success("Bundle produced at `" <> outfile <> "`")
 
   cli.return(Nil)
+}
+
+fn exec_tailwind(root: String, options: List(String)) -> Result(String, Error) {
+  cmd.exec("./build/.lustre/bin/tailwind", in: root, with: options)
+  |> result.map_error(fn(pair) { BundleError(pair.1) })
 }
 
 // UTILS -----------------------------------------------------------------------

@@ -18,14 +18,14 @@ const tailwind_version = "v3.4.1"
 
 // COMMANDS --------------------------------------------------------------------
 
-pub fn setup(os: String, cpu: String) -> Cli(Nil, Error) {
+pub fn setup(os: String, cpu: String) -> Cli(Nil) {
   use _ <- cli.do(download(os, cpu, tailwind_version))
   use _ <- cli.do(write_tailwind_config())
 
   cli.return(Nil)
 }
 
-fn download(os: String, cpu: String, version: String) -> Cli(Nil, Error) {
+fn download(os: String, cpu: String, version: String) -> Cli(Nil) {
   use <- cli.log("Downloading Tailwind")
 
   let root = project.root()
@@ -36,18 +36,13 @@ fn download(os: String, cpu: String, version: String) -> Cli(Nil, Error) {
     True -> cli.success("Tailwind already installed!", fn() { cli.return(Nil) })
     False -> {
       use <- cli.log("Detecting platform")
-      use url <- cli.do_result(get_download_url(os, cpu, version))
+      use url <- cli.try(get_download_url(os, cpu, version))
 
       use <- cli.log("Downloading from " <> url)
-      use bin <- cli.try(get_tailwind(url), NetworkError)
+      use bin <- cli.try(get_tailwind(url))
 
-      use _ <- cli.try(write_tailwind(bin, outdir, outfile), fn(reason) {
-        CannotWriteFile(reason, outfile)
-      })
-      use _ <- cli.try(set_filepermissions(outfile), fn(reason) {
-        CannotSetPermissions(reason, outfile)
-      })
-
+      use _ <- cli.try(write_tailwind(bin, outdir, outfile))
+      use _ <- cli.try(set_file_permissions(outfile))
       use <- cli.success("Tailwind installed!")
 
       cli.return(Nil)
@@ -55,7 +50,7 @@ fn download(os: String, cpu: String, version: String) -> Cli(Nil, Error) {
   }
 }
 
-fn write_tailwind_config() -> Cli(Nil, Error) {
+fn write_tailwind_config() -> Cli(Nil) {
   let config_filename = "tailwind.config.js"
   let config_outfile = filepath.join(project.root(), config_filename)
   let config_already_exists =
@@ -66,10 +61,7 @@ fn write_tailwind_config() -> Cli(Nil, Error) {
   use <- bool.guard(when: config_already_exists, return: cli.return(Nil))
   use <- cli.log("Writing `" <> config_filename <> "`")
   use config <- cli.template("tailwind.config.js")
-  use _ <- cli.try(
-    simplifile.write(to: config_outfile, contents: config),
-    CannotWriteFile(_, config_outfile),
-  )
+  use _ <- cli.try(write_config(config_outfile, config))
   use <- cli.success("Written `" <> config_outfile <> "`")
 
   cli.return(Nil)
@@ -107,13 +99,23 @@ fn get_download_url(os, cpu, version) {
   result.map(path, string.append(base, _))
 }
 
-fn write_tailwind(bin, outdir, outfile) {
+fn get_tailwind(url: String) -> Result(BitArray, Error) {
+  do_get_tailwind(url)
+  |> result.map_error(NetworkError)
+}
+
+fn write_tailwind(
+  bin: BitArray,
+  outdir: String,
+  outfile: String,
+) -> Result(Nil, Error) {
   let _ = simplifile.create_directory_all(outdir)
 
   simplifile.write_bits(outfile, bin)
+  |> result.map_error(CannotWriteFile(_, filepath.join(outdir, outfile)))
 }
 
-fn set_filepermissions(file) {
+fn set_file_permissions(file: String) -> Result(Nil, Error) {
   let permissions =
     FilePermissions(
       user: set.from_list([Read, Write, Execute]),
@@ -122,9 +124,15 @@ fn set_filepermissions(file) {
     )
 
   simplifile.set_permissions(file, permissions)
+  |> result.map_error(CannotSetPermissions(_, file))
+}
+
+fn write_config(path: String, content: String) -> Result(Nil, Error) {
+  simplifile.write(to: path, contents: content)
+  |> result.map_error(CannotWriteFile(_, path))
 }
 
 // EXTERNALS -------------------------------------------------------------------
 
 @external(erlang, "lustre_dev_tools_ffi", "get_esbuild")
-fn get_tailwind(url: String) -> Result(BitArray, Dynamic)
+fn do_get_tailwind(url: String) -> Result(BitArray, Dynamic)
