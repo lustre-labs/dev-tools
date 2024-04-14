@@ -100,6 +100,10 @@ exec(Command, Args, Cwd) ->
 do_exec(Port, Acc) ->
     receive
         {Port, {data, Data}} -> do_exec(Port, [Data | Acc]);
-        {Port, {exit_status, 0}} -> {ok, list_to_binary(lists:reverse(Acc))};
-        {Port, {exit_status, Code}} -> {error, {Code, list_to_binary(lists:reverse(Acc))}}
+        {Port, {exit_status, 0}} ->
+          port_close(Port),
+          {ok, list_to_binary(lists:reverse(Acc))};
+        {Port, {exit_status, Code}} ->
+          port_close(Port),
+          {error, {Code, list_to_binary(lists:reverse(Acc))}}
     end.
