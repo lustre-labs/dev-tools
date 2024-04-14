@@ -1,10 +1,10 @@
 // IMPORTS ---------------------------------------------------------------------
 
-import gleam_community/ansi
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang
 import gleam/io
 import gleam/result
+import gleam_community/ansi
 import lustre_dev_tools/error.{type Error, TemplateMissing}
 import simplifile
 import spinner.{type Spinner}
@@ -22,17 +22,17 @@ type SpinnerStatus {
 
 ///
 ///
-pub type Cli(state, a, e) {
-  Cli(run: fn(Env, state) -> #(Env, state, Result(a, e)))
+pub type Cli(a, e) {
+  Cli(run: fn(Env) -> #(Env, Result(a, e)))
 }
 
 //
 
 ///
 ///
-pub fn run(step: Cli(state, a, Error), with state: state) -> Result(a, Error) {
+pub fn run(step: Cli(a, Error)) -> Result(a, Error) {
   let env = Env(muted: False, spinner: Paused)
-  let #(env, _, result) = step.run(env, state)
+  let #(env, result) = step.run(env)
 
   case env.spinner {
     Running(spinner, _) -> spinner.stop(spinner)
@@ -53,78 +53,72 @@ pub fn run(step: Cli(state, a, Error), with state: state) -> Result(a, Error) {
 
 ///
 ///
-pub fn return(value: a) -> Cli(state, a, e) {
-  use env, state <- Cli
+pub fn return(value: a) -> Cli(a, e) {
+  use env <- Cli
 
-  #(env, state, Ok(value))
+  #(env, Ok(value))
 }
 
-pub fn from_result(result: Result(a, e)) -> Cli(state, a, e) {
-  use env, state <- Cli
+pub fn from_result(result: Result(a, e)) -> Cli(a, e) {
+  use env <- Cli
 
-  #(env, state, result)
+  #(env, result)
 }
 
 //
 
 ///
 ///
-pub fn do(
-  step: Cli(state, a, e),
-  then next: fn(a) -> Cli(state, b, e),
-) -> Cli(state, b, e) {
-  use env, state <- Cli
-  let #(env, state, result) = step.run(env, state)
+pub fn do(step: Cli(a, e), then next: fn(a) -> Cli(b, e)) -> Cli(b, e) {
+  use env <- Cli
+  let #(env, result) = step.run(env)
 
   case result {
-    Ok(value) -> next(value).run(env, state)
+    Ok(value) -> next(value).run(env)
     Error(error) -> {
       case env.spinner {
         Running(spinner, _message) -> spinner.stop(spinner)
         Paused -> Nil
       }
 
-      #(env, state, Error(error))
+      #(env, Error(error))
     }
   }
 }
 
-pub fn in(value: fn() -> a) -> Cli(state, a, e) {
-  use env, state <- Cli
+pub fn in(value: fn() -> a) -> Cli(a, e) {
+  use env <- Cli
 
-  #(env, state, Ok(value()))
+  #(env, Ok(value()))
 }
 
-pub fn map(step: Cli(state, a, e), then next: fn(a) -> b) -> Cli(state, b, e) {
-  use env, state <- Cli
-  let #(env, state, result) = step.run(env, state)
+pub fn map(step: Cli(a, e), then next: fn(a) -> b) -> Cli(b, e) {
+  use env <- Cli
+  let #(env, result) = step.run(env)
   let result = result.map(result, next)
 
-  #(env, state, result)
+  #(env, result)
 }
 
-pub fn map_error(
-  step: Cli(state, a, e),
-  then next: fn(e) -> f,
-) -> Cli(state, a, f) {
-  use env, state <- Cli
-  let #(env, state, result) = step.run(env, state)
+pub fn map_error(step: Cli(a, e), then next: fn(e) -> f) -> Cli(a, f) {
+  use env <- Cli
+  let #(env, result) = step.run(env)
   let result = result.map_error(result, next)
 
-  #(env, state, result)
+  #(env, result)
 }
 
 ///
 ///
 pub fn do_result(
   result: Result(a, e),
-  then next: fn(a) -> Cli(state, b, e),
-) -> Cli(state, b, e) {
-  use env, state <- Cli
+  then next: fn(a) -> Cli(b, e),
+) -> Cli(b, e) {
+  use env <- Cli
 
   case result {
-    Ok(a) -> next(a).run(env, state)
-    Error(e) -> #(env, state, Error(e))
+    Ok(a) -> next(a).run(env)
+    Error(e) -> #(env, Error(e))
   }
 }
 
@@ -133,19 +127,19 @@ pub fn do_result(
 pub fn try(
   step: Result(a, x),
   catch recover: fn(x) -> e,
-  then next: fn(a) -> Cli(state, b, e),
-) -> Cli(state, b, e) {
-  use env, state <- Cli
+  then next: fn(a) -> Cli(b, e),
+) -> Cli(b, e) {
+  use env <- Cli
 
   case step {
-    Ok(value) -> next(value).run(env, state)
+    Ok(value) -> next(value).run(env)
     Error(error) -> {
       case env.spinner {
         Running(spinner, _message) -> spinner.stop(spinner)
         Paused -> Nil
       }
 
-      #(env, state, Error(recover(error)))
+      #(env, Error(recover(error)))
     }
   }
 }
@@ -154,11 +148,8 @@ pub fn try(
 
 ///
 ///
-pub fn log(
-  message: String,
-  then next: fn() -> Cli(state, a, e),
-) -> Cli(state, a, e) {
-  use env, state <- Cli
+pub fn log(message: String, then next: fn() -> Cli(a, e)) -> Cli(a, e) {
+  use env <- Cli
   let env = case env.muted {
     True -> env
     False ->
@@ -182,14 +173,11 @@ pub fn log(
       )
   }
 
-  next().run(env, state)
+  next().run(env)
 }
 
-pub fn success(
-  message: String,
-  then next: fn() -> Cli(state, a, e),
-) -> Cli(state, a, e) {
-  use env, state <- Cli
+pub fn success(message: String, then next: fn() -> Cli(a, e)) -> Cli(a, e) {
+  use env <- Cli
   let env =
     Env(
       ..env,
@@ -207,38 +195,22 @@ pub fn success(
     False -> io.println("✅ " <> ansi.green(message))
   }
 
-  next().run(env, state)
+  next().run(env)
 }
 
-pub fn mute() -> Cli(state, Nil, e) {
-  use env, state <- Cli
+pub fn mute() -> Cli(Nil, e) {
+  use env <- Cli
 
-  #(Env(..env, muted: True), state, Ok(Nil))
+  #(Env(..env, muted: True), Ok(Nil))
 }
 
-pub fn unmute() -> Cli(state, Nil, e) {
-  use env, state <- Cli
+pub fn unmute() -> Cli(Nil, e) {
+  use env <- Cli
 
-  #(Env(..env, muted: False), state, Ok(Nil))
+  #(Env(..env, muted: False), Ok(Nil))
 }
 
 //
-
-///
-///
-pub fn get_state() -> Cli(state, state, e) {
-  use env, state <- Cli
-
-  #(env, state, Ok(state))
-}
-
-///
-///
-pub fn set_state(value: state) -> Cli(state, Nil, e) {
-  use env, _ <- Cli
-
-  #(env, value, Ok(Nil))
-}
 
 //
 
@@ -254,13 +226,13 @@ pub fn cwd() -> Result(String, Dynamic)
 
 pub fn template(
   name: String,
-  then next: fn(String) -> Cli(state, a, Error),
-) -> Cli(state, a, Error) {
-  use env, state <- Cli
+  then next: fn(String) -> Cli(a, Error),
+) -> Cli(a, Error) {
+  use env <- Cli
   let assert Ok(priv) = erlang.priv_directory("lustre_dev_tools")
 
   case simplifile.read(priv <> "/" <> name) {
-    Ok(template) -> next(template).run(env, state)
-    Error(error) -> #(env, state, Error(TemplateMissing(name, error)))
+    Ok(template) -> next(template).run(env)
+    Error(error) -> #(env, Error(TemplateMissing(name, error)))
   }
 }

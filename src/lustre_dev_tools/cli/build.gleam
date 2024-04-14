@@ -44,7 +44,7 @@ JavaScript module for you to host or distribute.
     let assert Ok(minify) = flag.get_bool(flags, "minify")
     let script = do_app(minify)
 
-    case cli.run(script, Nil) {
+    case cli.run(script) {
       Ok(_) -> Nil
       Error(error) -> error.explain(error)
     }
@@ -62,7 +62,7 @@ JavaScript module for you to host or distribute.
   })
 }
 
-pub fn do_app(minify: Bool) -> Cli(any, Nil, Error) {
+pub fn do_app(minify: Bool) -> Cli(Nil, Error) {
   use <- cli.log("Building your project")
   use project_name <- cli.do_result(get_project_name())
 
@@ -171,7 +171,7 @@ returns a suitable Lustre `App`.
       cli.return(Nil)
     }
 
-    case cli.run(script, Nil) {
+    case cli.run(script) {
       Ok(_) -> Nil
       Error(error) -> error.explain(error)
     }
@@ -245,7 +245,7 @@ fn bundle(
   tempdir: String,
   outfile: String,
   minify: Bool,
-) -> Cli(any, Nil, Error) {
+) -> Cli(Nil, Error) {
   let entryfile = filepath.join(tempdir, "entry.mjs")
   let assert Ok(_) = simplifile.write(entryfile, entry)
   use _ <- cli.do(esbuild.bundle(entryfile, outfile, minify))
@@ -258,7 +258,7 @@ fn bundle_tailwind(
   tempdir: String,
   outfile: String,
   minify: Bool,
-) -> Cli(any, Nil, Error) {
+) -> Cli(Nil, Error) {
   // We first check if there's a `tailwind.config.js` at the project's root.
   // If not present we do nothing; otherwise we go on with bundling.
   let root = project.root()

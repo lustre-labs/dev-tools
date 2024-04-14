@@ -18,14 +18,14 @@ const tailwind_version = "v3.4.1"
 
 // COMMANDS --------------------------------------------------------------------
 
-pub fn setup(os: String, cpu: String) -> Cli(any, Nil, Error) {
+pub fn setup(os: String, cpu: String) -> Cli(Nil, Error) {
   use _ <- cli.do(download(os, cpu, tailwind_version))
   use _ <- cli.do(write_tailwind_config())
 
   cli.return(Nil)
 }
 
-fn download(os: String, cpu: String, version: String) -> Cli(any, Nil, Error) {
+fn download(os: String, cpu: String, version: String) -> Cli(Nil, Error) {
   use <- cli.log("Downloading Tailwind")
 
   let root = project.root()
@@ -55,7 +55,7 @@ fn download(os: String, cpu: String, version: String) -> Cli(any, Nil, Error) {
   }
 }
 
-fn write_tailwind_config() -> Cli(any, Nil, Error) {
+fn write_tailwind_config() -> Cli(Nil, Error) {
   let config_filename = "tailwind.config.js"
   let config_outfile = filepath.join(project.root(), config_filename)
   let config_already_exists =

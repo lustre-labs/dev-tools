@@ -15,7 +15,7 @@ import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
 
 // COMMANDS --------------------------------------------------------------------
 
-pub fn download(os: String, cpu: String) -> Cli(any, Nil, Error) {
+pub fn download(os: String, cpu: String) -> Cli(Nil, Error) {
   use <- cli.log("Downloading esbuild")
 
   let outdir = filepath.join(project.root(), "build/.lustre/bin")
@@ -48,7 +48,7 @@ pub fn bundle(
   input_file: String,
   output_file: String,
   minify: Bool,
-) -> Cli(any, Nil, Error) {
+) -> Cli(Nil, Error) {
   use _ <- cli.do(download(get_os(), get_cpu()))
   use _ <- cli.do(cli.from_result(project.build()))
   use <- cli.log("Getting everything ready for tree shaking")

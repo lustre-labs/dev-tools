@@ -37,7 +37,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
       cli.return(Nil)
     }
 
-    case cli.run(script, Nil) {
+    case cli.run(script) {
       Ok(_) -> Nil
       Error(error) -> error.explain(error)
     }
@@ -57,7 +57,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
 
 // STEPS -----------------------------------------------------------------------
 
-fn prepare_html() -> Cli(any, Nil, Error) {
+fn prepare_html() -> Cli(Nil, Error) {
   let assert Ok(cwd) = cli.cwd()
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
   let index = filepath.join(root, "index.html")

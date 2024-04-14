@@ -51,15 +51,19 @@ pub fn interface() -> Result(Interface, Error) {
   // you try and export the interface multiple times (which happens regularly
   // for us).
   //
-  // We clear build files or *just*
-  let cache = filepath.join(root(), "build/prod/javascript/" <> name)
-  let _ = simplifile.delete(cache)
-  let cache = filepath.join(root(), "build/prod/erlang/" <> name)
-  let _ = simplifile.delete(cache)
-  let cache = filepath.join(root(), "build/dev/javascript/" <> name)
-  let _ = simplifile.delete(cache)
-  let cache = filepath.join(root(), "build/dev/erlang/" <> name)
-  let _ = simplifile.delete(cache)
+  // We clear build files for *just* the user's application (because we don't
+  // actually care about the dependencies) before running the export command.
+  // This forces Gleam to recompile them and properly emit the interface.
+  let caches = [
+    "build/prod/javascript", "build/prod/erlang", "build/dev/javascript",
+    "build/dev/erlang",
+  ]
+
+  list.each(caches, fn(cache) {
+    filepath.join(root(), cache)
+    |> filepath.join(name)
+    |> simplifile.delete
+  })
 
   let dir = filepath.join(root(), "build/.lustre")
   let out = filepath.join(dir, "package-interface.json")

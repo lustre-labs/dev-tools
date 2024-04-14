@@ -3,9 +3,9 @@
 import glint.{type Command, CommandInput}
 import glint/flag
 import glint/flag/constraint
+import lustre_dev_tools/cli
 import lustre_dev_tools/error
 import lustre_dev_tools/esbuild
-import lustre_dev_tools/cli
 import lustre_dev_tools/tailwind
 
 // DESCRIPTION -----------------------------------------------------------------
@@ -32,7 +32,7 @@ download the binary if either the `build` or `start` commands are run.
     let assert Ok(cpu) = flag.get_string(flags, "cpu")
     let script = esbuild.download(os, cpu)
 
-    case cli.run(script, Nil) {
+    case cli.run(script) {
       Ok(_) -> Nil
       Error(error) -> error.explain(error)
     }
@@ -78,7 +78,7 @@ in your project but will not download it automatically.
     let assert Ok(cpu) = flag.get_string(flags, "cpu")
     let script = tailwind.setup(os, cpu)
 
-    case cli.run(script, Nil) {
+    case cli.run(script) {
       Ok(_) -> Nil
       Error(error) -> error.explain(error)
     }

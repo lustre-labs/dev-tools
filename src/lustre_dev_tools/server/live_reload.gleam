@@ -189,7 +189,7 @@ fn loop_watcher(
         cli.return(Nil)
       }
 
-      case cli.run(script, Nil) {
+      case cli.run(script) {
         Ok(_) -> {
           use _, client <- set.fold(state, Nil)
           process.send(client, Reload)
