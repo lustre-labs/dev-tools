@@ -9,7 +9,7 @@ import gleam/result
 import gleam/string
 import glint.{type Command, CommandInput}
 import glint/flag
-import lustre_dev_tools/cli.{type Cli}
+import lustre_dev_tools/cli.{type Cli, do, try}
 import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{
   type Error, BundleError, ComponentMissing, MainMissing, ModuleMissing,
@@ -42,8 +42,9 @@ JavaScript module for you to host or distribute.
 
   glint.command(fn(input) {
     let CommandInput(flags: flags, ..) = input
-    let assert Ok(minify) = flag.get_bool(flags, "minify")
     let script = {
+      use minify <- do(cli.get_bool("minifiy", False, ["build"]))
+
       do_app(minify)
     }
 
@@ -57,22 +58,20 @@ JavaScript module for you to host or distribute.
   |> glint.flag("minify", {
     let description =
       "Minify the output, renaming variables and removing whitespace."
-    let default = False
 
     flag.bool()
-    |> flag.default(default)
     |> flag.description(description)
   })
 }
 
 pub fn do_app(minify: Bool) -> Cli(Nil) {
   use <- cli.log("Building your project")
-  use project_name <- cli.try(get_project_name())
+  use project_name <- do(cli.get_name())
 
   use <- cli.success("Project compiled successfully")
   use <- cli.log("Checking if I can bundle your application")
-  use module <- cli.try(get_module_interface(project_name))
-  use _ <- cli.try(check_main_function(project_name, module))
+  use module <- try(get_module_interface(project_name))
+  use _ <- try(check_main_function(project_name, module))
 
   use <- cli.log("Creating the bundle entry file")
   let root = project.root()
@@ -96,13 +95,13 @@ pub fn do_app(minify: Bool) -> Cli(Nil) {
 
   let assert Ok(_) = simplifile.write(entryfile, entry)
 
-  use _ <- cli.do(bundle(entry, tempdir, outfile, minify))
+  use _ <- do(bundle(entry, tempdir, outfile, minify))
   use entry <- cli.template("entry.css")
   let outfile =
     filepath.strip_extension(outfile)
     |> string.append(".css")
 
-  use _ <- cli.do(bundle_tailwind(entry, tempdir, outfile, minify))
+  use _ <- do(bundle_tailwind(entry, tempdir, outfile, minify))
 
   cli.return(Nil)
 }
@@ -122,15 +121,16 @@ returns a suitable Lustre `App`.
   glint.command(fn(input) {
     let CommandInput(flags: flags, named_args: args, ..) = input
     let assert Ok(module_path) = dict.get(args, "module_path")
-    let assert Ok(minify) = flag.get_bool(flags, "minify")
 
     let script = {
+      use minify <- do(cli.get_bool("minifiy", False, ["build"]))
+
       use <- cli.log("Building your project")
-      use module <- cli.try(get_module_interface(module_path))
+      use module <- try(get_module_interface(module_path))
       use <- cli.success("Project compiled successfully")
       use <- cli.log("Checking if I can bundle your component")
-      use _ <- cli.try(check_component_name(module_path, module))
-      use component <- cli.try(find_component(module_path, module))
+      use _ <- try(check_component_name(module_path, module))
+      use component <- try(find_component(module_path, module))
 
       use <- cli.log("Creating the bundle entry file")
       let root = project.root()
@@ -139,7 +139,7 @@ returns a suitable Lustre `App`.
       let _ = simplifile.create_directory_all(tempdir)
       let _ = simplifile.create_directory_all(outdir)
 
-      use project_name <- cli.try(get_project_name())
+      use project_name <- do(cli.get_name())
 
       // Esbuild bundling
       use template <- cli.template("component-entry.mjs")
@@ -161,7 +161,7 @@ returns a suitable Lustre `App`.
         |> result.map(filepath.join(outdir, _))
 
       let assert Ok(_) = simplifile.write(entryfile, entry)
-      use _ <- cli.do(bundle(entry, tempdir, outfile, minify))
+      use _ <- do(bundle(entry, tempdir, outfile, minify))
 
       // Tailwind bundling
       use entry <- cli.template("entry.css")
@@ -169,7 +169,7 @@ returns a suitable Lustre `App`.
         filepath.strip_extension(outfile)
         |> string.append(".css")
 
-      use _ <- cli.do(bundle_tailwind(entry, tempdir, outfile, minify))
+      use _ <- do(bundle_tailwind(entry, tempdir, outfile, minify))
 
       cli.return(Nil)
     }
@@ -185,20 +185,13 @@ returns a suitable Lustre `App`.
   |> glint.flag("minify", {
     let description =
       "Minify the output, renaming variables and removing whitespace."
-    let default = False
 
     flag.bool()
-    |> flag.default(default)
     |> flag.description(description)
   })
 }
 
 // STEPS -----------------------------------------------------------------------
-
-fn get_project_name() -> Result(String, Error) {
-  project.config(False)
-  |> result.map(fn(confg) { confg.name })
-}
 
 fn get_module_interface(module_path: String) -> Result(Module, Error) {
   project.interface()
@@ -251,7 +244,7 @@ fn bundle(
 ) -> Cli(Nil) {
   let entryfile = filepath.join(tempdir, "entry.mjs")
   let assert Ok(_) = simplifile.write(entryfile, entry)
-  use _ <- cli.do(esbuild.bundle(entryfile, outfile, minify))
+  use _ <- do(esbuild.bundle(entryfile, outfile, minify))
 
   cli.return(Nil)
 }
@@ -271,7 +264,7 @@ fn bundle_tailwind(
     |> result.unwrap(False)
   use <- bool.guard(when: !has_tailwind_config, return: cli.return(Nil))
 
-  use _ <- cli.do(tailwind.setup(get_os(), get_cpu()))
+  use _ <- do(tailwind.setup(get_os(), get_cpu()))
 
   use <- cli.log("Bundling with Tailwind")
   let entryfile = filepath.join(tempdir, "entry.css")
@@ -282,7 +275,7 @@ fn bundle_tailwind(
     True -> ["--minify", ..flags]
     False -> flags
   }
-  use _ <- cli.try(exec_tailwind(root, options))
+  use _ <- try(exec_tailwind(root, options))
   use <- cli.success("Bundle produced at `" <> outfile <> "`")
 
   cli.return(Nil)

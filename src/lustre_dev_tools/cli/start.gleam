@@ -5,7 +5,7 @@ import gleam/result
 import gleam/string
 import glint.{type Command, CommandInput}
 import glint/flag
-import lustre_dev_tools/cli.{type Cli}
+import lustre_dev_tools/cli.{type Cli, do, try}
 import lustre_dev_tools/cli/build
 import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{type Error, CannotWriteFile}
@@ -29,12 +29,12 @@ Watchexec is a popular tool you can use to restart the server when files change.
 
   glint.command(fn(input) {
     let CommandInput(flags: flags, ..) = input
-    let assert Ok(port) = flag.get_int(flags, "port")
-
     let script = {
-      use _ <- cli.do(build.do_app(False))
-      use _ <- cli.do(prepare_html())
-      use _ <- cli.do(cli.from_result(server.start(port)))
+      use port <- do(cli.get_int("port", 1234, ["start"]))
+
+      use _ <- do(build.do_app(False))
+      use _ <- do(prepare_html())
+      use _ <- try(server.start(port))
 
       cli.return(Nil)
     }
@@ -49,10 +49,8 @@ Watchexec is a popular tool you can use to restart the server when files change.
   |> glint.flag("port", {
     let description =
       "Specify server port. If the port is taken the dev server will not start."
-    let default = 1234
 
     flag.int()
-    |> flag.default(default)
     |> flag.description(description)
   })
 }
@@ -68,9 +66,9 @@ fn prepare_html() -> Cli(Nil) {
     Ok(True) -> cli.return(Nil)
     Ok(False) | Error(_) -> {
       use html <- cli.template("index.html")
-      use config <- cli.do(cli.from_result(project.config(False)))
-      let html = string.replace(html, "{app_name}", config.name)
-      use _ <- cli.try(write_html(index, html))
+      use app_name <- do(cli.get_name())
+      let html = string.replace(html, "{app_name}", app_name)
+      use _ <- try(write_html(index, html))
 
       cli.return(Nil)
     }
@@ -79,5 +77,5 @@ fn prepare_html() -> Cli(Nil) {
 
 fn write_html(path: String, source: String) -> Result(Nil, Error) {
   simplifile.write(path, source)
-  |> result.map_error(fn(reason) { CannotWriteFile(reason, path) })
+  |> result.map_error(CannotWriteFile(_, path))
 }

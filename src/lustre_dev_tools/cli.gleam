@@ -1,8 +1,12 @@
+//// The `cli` module is how we create "scripts" that are intended to be run from
+//// the command line.
+
 // IMPORTS ---------------------------------------------------------------------
 
 import gleam/dict.{type Dict}
 import gleam/erlang
 import gleam/io
+import gleam/list
 import gleam/result
 import gleam_community/ansi
 import glint/flag.{type Flag}
@@ -10,10 +14,17 @@ import lustre_dev_tools/error.{type Error, TemplateMissing}
 import lustre_dev_tools/project.{type Config}
 import simplifile
 import spinner.{type Spinner}
+import tom
 
 // TYPES -----------------------------------------------------------------------
 
-pub opaque type Env {
+///
+///
+pub opaque type Cli(a) {
+  Cli(run: fn(Env) -> #(Env, Result(a, Error)))
+}
+
+type Env {
   Env(
     muted: Bool,
     spinner: SpinnerStatus,
@@ -27,18 +38,12 @@ type SpinnerStatus {
   Paused
 }
 
-///
-///
-pub type Cli(a) {
-  Cli(run: fn(Env) -> #(Env, Result(a, Error)))
-}
-
 // RUNNING CLI SCRIPTS ---------------------------------------------------------
 
 ///
 ///
 pub fn run(step: Cli(a), flags: Dict(String, Flag)) -> Result(a, Error) {
-  use config <- result.try(project.config(True))
+  use config <- result.try(project.config())
   let env = Env(muted: False, spinner: Paused, flags: flags, config: config)
   let #(env, result) = step.run(env)
 
@@ -203,4 +208,66 @@ pub fn template(name: String, then next: fn(String) -> Cli(a)) -> Cli(a) {
     Error(error) -> #(env, Error(TemplateMissing(name, error)))
   }
 }
+
+// ENV -------------------------------------------------------------------------
+
+pub fn get_config() -> Cli(Config) {
+  use env <- Cli
+
+  #(env, Ok(env.config))
+}
+
+pub fn get_name() -> Cli(String) {
+  use env <- Cli
+
+  #(env, Ok(env.config.name))
+}
+
 // FLAGS -----------------------------------------------------------------------
+
+pub fn get_int(name: String, fallback: Int, namespace: List(String)) -> Cli(Int) {
+  use env <- Cli
+  let toml_path = list.concat([["lustre-dev"], namespace, [name]])
+  let value =
+    result.or(
+      result.nil_error(flag.get_int(env.flags, name)),
+      result.nil_error(tom.get_int(env.config.toml, toml_path)),
+    )
+    |> result.unwrap(fallback)
+
+  #(env, Ok(value))
+}
+
+pub fn get_string(
+  name: String,
+  fallback: String,
+  namespace: List(String),
+) -> Cli(String) {
+  use env <- Cli
+  let toml_path = list.concat([["lustre-dev"], namespace, [name]])
+  let value =
+    result.or(
+      result.nil_error(flag.get_string(env.flags, name)),
+      result.nil_error(tom.get_string(env.config.toml, toml_path)),
+    )
+    |> result.unwrap(fallback)
+
+  #(env, Ok(value))
+}
+
+pub fn get_bool(
+  name: String,
+  fallback: Bool,
+  namespace: List(String),
+) -> Cli(Bool) {
+  use env <- Cli
+  let toml_path = list.concat([["lustre-dev"], namespace, [name]])
+  let value =
+    result.or(
+      result.nil_error(flag.get_bool(env.flags, name)),
+      result.nil_error(tom.get_bool(env.config.toml, toml_path)),
+    )
+    |> result.unwrap(fallback)
+
+  #(env, Ok(value))
+}

@@ -44,7 +44,7 @@ pub fn build() -> Result(Nil, Error) {
 }
 
 pub fn interface() -> Result(Interface, Error) {
-  use Config(name, ..) <- result.try(config(prebuild: True))
+  use Config(name, ..) <- result.try(config())
 
   // Gleam currently has a bug with the `export package-interface` command that
   // means cached modules are not emitted. This is, obviously, a problem if a
@@ -54,6 +54,7 @@ pub fn interface() -> Result(Interface, Error) {
   // We clear build files for *just* the user's application (because we don't
   // actually care about the dependencies) before running the export command.
   // This forces Gleam to recompile them and properly emit the interface.
+  //
   let caches = [
     "build/prod/javascript", "build/prod/erlang", "build/dev/javascript",
     "build/dev/erlang",
@@ -81,12 +82,7 @@ pub fn interface() -> Result(Interface, Error) {
 
 /// Read the project configuration in the `gleam.toml` file.
 ///
-pub fn config(prebuild should_build: Bool) -> Result(Config, Error) {
-  use _ <- result.try(case should_build {
-    True -> build()
-    False -> Ok(Nil)
-  })
-
+pub fn config() -> Result(Config, Error) {
   // Since we made sure that the project could compile we're sure that there is
   // bound to be a `gleam.toml` file somewhere in the current directory (or in
   // its parent directories). So we can safely call `root()` without
