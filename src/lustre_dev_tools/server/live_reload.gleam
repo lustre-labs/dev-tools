@@ -42,7 +42,7 @@ pub type SocketMsg {
 const live_reload_script = "
   <script>
     function connect() {
-      let socket = new WebSocket(`/lustre-dev-tools`);
+      let socket = new WebSocket(`ws://${window.location.host}/lustre-dev-tools`);
 
       socket.onmessage = (event) => {
         if (event.data === 'reload') {
