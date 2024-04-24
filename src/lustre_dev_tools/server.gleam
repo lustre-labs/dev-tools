@@ -8,23 +8,26 @@ import gleam/http/response.{type Response}
 import gleam/regex
 import gleam/result
 import gleam/string_builder
+import lustre_dev_tools/cli.{type Cli, do, try}
 import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{type Error, CannotStartDevServer}
 import lustre_dev_tools/project
 import lustre_dev_tools/server/live_reload
-
-// import lustre_dev_tools/server/proxy.{type Proxy}
+import lustre_dev_tools/server/proxy
 import mist
 import simplifile
 import wisp
 
-pub fn start(port: Int) -> Result(Nil, Error) {
+pub fn start(port: Int) -> Cli(Nil) {
   let assert Ok(cwd) = cmd.cwd()
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
 
-  use make_socket <- result.try(live_reload.start(root))
-  use _ <- result.try(
+  use proxy <- do(proxy.get())
+  use make_socket <- try(live_reload.start(root))
+  use _ <- try(
     fn(req: Request(mist.Connection)) -> Response(mist.ResponseData) {
+      use <- proxy.middleware(req, proxy)
+
       case request.path_segments(req) {
         // We're going to inject a script that connects to /lustre-dev-tools over
         // websockets. Whenever we detect a file change we can broadcast a reload
@@ -45,7 +48,7 @@ pub fn start(port: Int) -> Result(Nil, Error) {
     |> result.map_error(CannotStartDevServer),
   )
 
-  Ok(process.sleep_forever())
+  cli.return(process.sleep_forever())
 }
 
 fn handler(req: wisp.Request, root: String) -> wisp.Response {

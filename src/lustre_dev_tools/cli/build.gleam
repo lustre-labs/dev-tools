@@ -312,11 +312,11 @@ fn is_type_variable(t: Type) -> Bool {
 fn is_compatible_app_type(t: Type) -> Bool {
   case t {
     Named(
-        name: "App",
-        package: "lustre",
-        module: "lustre",
-        parameters: [flags, ..],
-      ) -> is_nil_type(flags) || is_type_variable(flags)
+      name: "App",
+      package: "lustre",
+      module: "lustre",
+      parameters: [flags, ..],
+    ) -> is_nil_type(flags) || is_type_variable(flags)
     _ -> False
   }
 }

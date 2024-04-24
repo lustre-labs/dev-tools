@@ -1,10 +1,18 @@
+import filepath
+import gleam/bool
+import gleam/bytes_builder
+import gleam/http/request.{type Request, Request}
+import gleam/http/response.{type Response}
+import gleam/httpc
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import gleam/uri.{type Uri}
-import glint
-import glint/flag.{type Flag}
-import lustre_dev_tools/cli.{type Cli, do, try}
-import lustre_dev_tools/project.{type Config}
+import glint/flag
+import lustre_dev_tools/cli.{type Cli, do}
+import lustre_dev_tools/error.{IncompleteProxy, InvalidProxyTarget}
+import mist
 import tom
 
 // TYPES -----------------------------------------------------------------------
@@ -15,39 +23,83 @@ pub type Proxy {
 
 //
 
-pub fn get_proxy() -> Cli(Option(Proxy)) {
+pub fn middleware(
+  req: Request(mist.Connection),
+  proxy: Option(Proxy),
+  k: fn() -> Response(mist.ResponseData),
+) -> Response(mist.ResponseData) {
+  case proxy {
+    None -> k()
+    Some(Proxy(from, to)) -> {
+      use <- bool.lazy_guard(!string.starts_with(req.path, from), k)
+
+      let path = string.replace(req.path, from, "")
+      let assert Ok(req) = mist.read_body(req, 10 * 1024 * 1024)
+      let assert Ok(proxy_req) = request.from_uri(to)
+
+      let server_error =
+        response.new(404)
+        |> response.set_body(mist.Bytes(bytes_builder.new()))
+
+      proxy_req
+      |> request.set_body(req.body)
+      |> request.set_path(filepath.join(proxy_req.path, path))
+      |> list.fold(
+        req.headers,
+        _,
+        fn(req, header) { request.set_header(req, header.0, header.1) },
+      )
+      |> httpc.send_bits
+      |> result.map(response.map(_, bytes_builder.from_bit_array))
+      |> result.map(response.map(_, mist.Bytes))
+      |> result.unwrap(server_error)
+    }
+  }
+}
+
+pub fn get() -> Cli(Option(Proxy)) {
   use from <- do(get_proxy_from())
   use to <- do(get_proxy_to())
 
-  todo
+  case from, to {
+    Some(from), Some(to) -> cli.return(Some(Proxy(from, to)))
+    Some(_), None -> cli.throw(IncompleteProxy(["proxy-to"]))
+    None, Some(_) -> cli.throw(IncompleteProxy(["proxy-from"]))
+    None, None -> cli.return(None)
+  }
 }
 
 fn get_proxy_from() -> Cli(Option(String)) {
   use flags <- do(cli.get_flags())
   use config <- do(cli.get_config())
 
-  let from = result.nil_error(flag.get_string(flags, "proxy-from"))
+  let flag = result.nil_error(flag.get_string(flags, "proxy-from"))
   let toml =
     result.nil_error(
       tom.get_string(config.toml, ["lustre-dev", "start", "proxy", "from"]),
     )
 
-  result.or(from, toml)
+  result.or(flag, toml)
   |> option.from_result
   |> cli.return
 }
 
-fn get_proxy_to() -> Cli(Option(String)) {
+fn get_proxy_to() -> Cli(Option(Uri)) {
   use flags <- do(cli.get_flags())
   use config <- do(cli.get_config())
 
-  let to = result.nil_error(flag.get_string(flags, "proxy-to"))
+  let flag = result.nil_error(flag.get_string(flags, "proxy-to"))
   let toml =
     result.nil_error(
       tom.get_string(config.toml, ["lustre-dev", "start", "proxy", "to"]),
     )
 
-  result.or(to, toml)
-  |> option.from_result
-  |> cli.return
+  let from = result.or(flag, toml)
+  use <- bool.guard(from == Error(Nil), cli.return(None))
+  let assert Ok(from) = from
+
+  case uri.parse(from) {
+    Ok(from) -> cli.return(Some(from))
+    Error(_) -> cli.throw(InvalidProxyTarget(from))
+  }
 }

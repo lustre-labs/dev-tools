@@ -22,6 +22,7 @@ pub type Error {
   ComponentMissing(module: String)
   IncompleteProxy(missing: List(String))
   InternalError(message: String)
+  InvalidProxyTarget(to: String)
   MainBadAppType(module: String, flags: Type, model: Type, msg: Type)
   MainMissing(module: String)
   MainTakesAnArgument(module: String, got: Type)
@@ -47,6 +48,7 @@ pub fn explain(error: Error) -> Nil {
     ComponentMissing(module) -> component_missing(module)
     IncompleteProxy(missing) -> incomplete_proxy(missing)
     InternalError(message) -> internal_error(message)
+    InvalidProxyTarget(to) -> invalid_proxy_target(to)
     MainBadAppType(module, flags, model, msg) ->
       main_bad_app_type(module, flags, model, msg)
     MainMissing(module) -> main_missing(module)
@@ -227,6 +229,22 @@ the following message:
 
   message
   |> string.replace("{info}", info)
+}
+
+pub fn invalid_proxy_target(to: String) -> String {
+  let message =
+    "
+I ran into an issue reading your proxy configuration. The URI you provided as the
+target for the proxy is invalid:
+
+    {to}
+
+Please make sure the URI is valid and try again. If you think this is a bug,
+please open an issue at https://github.com/lustre-labs/dev-tools/issues/new
+"
+
+  message
+  |> string.replace("{to}", to)
 }
 
 fn main_bad_app_type(

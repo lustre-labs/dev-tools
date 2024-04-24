@@ -72,6 +72,14 @@ pub fn return(value: a) -> Cli(a) {
   #(env, Ok(value))
 }
 
+///
+///
+pub fn throw(error: Error) -> Cli(a) {
+  use env <- Cli
+
+  #(env, Error(error))
+}
+
 pub fn from_result(result: Result(a, Error)) -> Cli(a) {
   use env <- Cli
 
