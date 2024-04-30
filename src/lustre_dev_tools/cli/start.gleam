@@ -34,7 +34,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
 
       use _ <- do(build.do_app(False))
       use _ <- do(prepare_html())
-      use _ <- try(server.start(port))
+      use _ <- do(server.start(port))
 
       cli.return(Nil)
     }
@@ -51,6 +51,20 @@ Watchexec is a popular tool you can use to restart the server when files change.
       "Specify server port. If the port is taken the dev server will not start."
 
     flag.int()
+    |> flag.description(description)
+  })
+  |> glint.flag("proxy-from", {
+    let description =
+      "Proxy requests that start with this path to the URL specified by the --proxy-to flag."
+
+    flag.string()
+    |> flag.description(description)
+  })
+  |> glint.flag("proxy-to", {
+    let description =
+      "Proxy requests that start with the path specified by the --proxy-from flag to this URL."
+
+    flag.string()
     |> flag.description(description)
   })
 }

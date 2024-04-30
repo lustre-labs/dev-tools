@@ -34,7 +34,7 @@ pub fn middleware(
       use <- bool.lazy_guard(!string.starts_with(req.path, from), k)
 
       let path = string.replace(req.path, from, "")
-      let assert Ok(req) = mist.read_body(req, 10 * 1024 * 1024)
+      let assert Ok(req) = mist.read_body(req, 100 * 1024 * 1024)
       let assert Ok(proxy_req) = request.from_uri(to)
 
       let server_error =

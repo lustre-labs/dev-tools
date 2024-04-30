@@ -5,6 +5,8 @@ import gleam/bool
 import gleam/erlang/process
 import gleam/http/request.{type Request, Request}
 import gleam/http/response.{type Response}
+import gleam/io
+import gleam/option.{None, Some}
 import gleam/regex
 import gleam/result
 import gleam/string_builder
@@ -23,6 +25,20 @@ pub fn start(port: Int) -> Cli(Nil) {
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
 
   use proxy <- do(proxy.get())
+
+  case proxy {
+    Some(_) ->
+      io.println(
+        "
+[WARNING] Support for proxying requests to another server is currently still
+**experimental**. It's functionality or api may change is breaking ways even
+between minor versions. If you run into any problems please open an issue over
+at https://github.com/lustre-labs/dev-tools/issues/new
+      ",
+      )
+    None -> Nil
+  }
+
   use make_socket <- try(live_reload.start(root))
   use _ <- try(
     fn(req: Request(mist.Connection)) -> Response(mist.ResponseData) {
