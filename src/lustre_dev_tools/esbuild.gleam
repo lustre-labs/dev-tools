@@ -12,6 +12,7 @@ import lustre_dev_tools/error.{
   UnknownPlatform, UnzipError,
 }
 import lustre_dev_tools/project
+import lustre_dev_tools/utils
 import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
 
 // COMMANDS --------------------------------------------------------------------
@@ -28,7 +29,11 @@ pub fn download(os: String, cpu: String) -> Cli(Nil) {
       use <- cli.log("Detecting platform")
       use url <- cli.try(get_download_url(os, cpu))
 
-      use <- cli.log("Downloading from " <> url)
+      // 17 is the size of "Downloading from " and 2 is the space taken by the
+      // spinner.
+      let max_url_size = utils.term_width() - 17 - 2
+      let shortened_url = utils.shorten_url(url, to: max_url_size)
+      use <- cli.log("Downloading from " <> shortened_url)
       use tarball <- cli.try(get_esbuild(url))
 
       use <- cli.log("Unzipping esbuild")

@@ -12,6 +12,7 @@ import lustre_dev_tools/error.{
   UnknownPlatform,
 }
 import lustre_dev_tools/project
+import lustre_dev_tools/utils
 import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
 
 const tailwind_version = "v3.4.1"
@@ -38,7 +39,11 @@ fn download(os: String, cpu: String, version: String) -> Cli(Nil) {
       use <- cli.log("Detecting platform")
       use url <- cli.try(get_download_url(os, cpu, version))
 
-      use <- cli.log("Downloading from " <> url)
+      // We want to fit the url in the space remaining after the
+      // "⠸ Downloading from ": that takes 19 chars of the terminal width.
+      let max_url_size = utils.term_width() - 19
+      let shortened_url = utils.shorten_url(url, to: max_url_size)
+      use <- cli.log("Downloading from " <> shortened_url)
       use bin <- cli.try(get_tailwind(url))
 
       use _ <- cli.try(write_tailwind(bin, outdir, outfile))
