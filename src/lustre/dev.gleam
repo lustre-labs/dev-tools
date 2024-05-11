@@ -179,12 +179,7 @@ pub fn main() {
   )
   |> glint.add(at: ["add", "esbuild"], do: add.esbuild())
   |> glint.add(at: ["add", "tailwind"], do: add.tailwind())
-  |> glint.add(
-    at: ["build"],
-    do: glint.command(fn(_) { Nil })
-      |> glint.unnamed_args(glint.EqArgs(0))
-      |> glint.description(build.description),
-  )
+  |> glint.add(at: ["build"], do: build.app())
   |> glint.add(at: ["build", "app"], do: build.app())
   |> glint.add(at: ["build", "component"], do: build.component())
   |> glint.add(at: ["start"], do: start.run())
