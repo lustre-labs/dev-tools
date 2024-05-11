@@ -71,6 +71,20 @@ JavaScript module for you to host or distribute.
     flag.bool()
     |> flag.description(description)
   })
+  |> glint.flag("tailwind-entry", {
+    let description =
+      "Use a custom CSS file as the entry to a Tailwind CSS bundle."
+
+    flag.string()
+    |> flag.description(description)
+  })
+  |> glint.flag("outdir", {
+    let description =
+      "Use a custom directory as the destination for any built files."
+
+    flag.string()
+    |> flag.description(description)
+  })
 }
 
 pub fn do_app(minify: Bool, detect_tailwind: Bool) -> Cli(Nil) {
@@ -85,7 +99,8 @@ pub fn do_app(minify: Bool, detect_tailwind: Bool) -> Cli(Nil) {
   use <- cli.log("Creating the bundle entry file")
   let root = project.root()
   let tempdir = filepath.join(root, "build/.lustre")
-  let outdir = filepath.join(root, "priv/static")
+  let default_outdir = filepath.join(root, "priv/static")
+  use outdir <- cli.do(cli.get_string("outdir", default_outdir, ["build"]))
   let _ = simplifile.create_directory_all(tempdir)
   let _ = simplifile.create_directory_all(outdir)
   use template <- cli.template("entry-with-main.mjs")
@@ -277,8 +292,15 @@ fn bundle_tailwind(
   use _ <- do(tailwind.setup(get_os(), get_cpu()))
 
   use <- cli.log("Bundling with Tailwind")
-  let entryfile = filepath.join(tempdir, "entry.css")
-  let assert Ok(_) = simplifile.write(entryfile, entry)
+  let default_entryfile = filepath.join(tempdir, "entry.css")
+  use entryfile <- cli.do(
+    cli.get_string("tailwind-entry", default_entryfile, ["build"]),
+  )
+
+  let assert Ok(_) = case entryfile == default_entryfile {
+    True -> simplifile.write(entryfile, entry)
+    False -> Ok(Nil)
+  }
 
   let flags = ["--input=" <> entryfile, "--output=" <> outfile]
   let options = case minify {
