@@ -85,6 +85,13 @@ JavaScript module for you to host or distribute.
     flag.string()
     |> flag.description(description)
   })
+  |> glint.flag("ext", {
+    let description =
+      "Use a file extension other than 'mjs' for the built JavaScript."
+
+    flag.string()
+    |> flag.description(description)
+  })
 }
 
 pub fn do_app(minify: Bool, detect_tailwind: Bool) -> Cli(Nil) {
@@ -107,9 +114,10 @@ pub fn do_app(minify: Bool, detect_tailwind: Bool) -> Cli(Nil) {
   let entry = string.replace(template, "{app_name}", project_name)
 
   let entryfile = filepath.join(tempdir, "entry.mjs")
+  use ext <- cli.do(cli.get_string("ext", "mjs", ["build"]))
   let ext = case minify {
-    True -> ".min.mjs"
-    False -> ".mjs"
+    True -> ".min." <> ext
+    False -> "." <> ext
   }
 
   let outfile =
