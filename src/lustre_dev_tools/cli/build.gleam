@@ -44,8 +44,11 @@ JavaScript module for you to host or distribute.
     let CommandInput(flags: flags, ..) = input
     let script = {
       use minify <- do(cli.get_bool("minifiy", False, ["build"]))
+      use detect_tailwind <- do(
+        cli.get_bool("detect-tailwind", True, ["build"]),
+      )
 
-      do_app(minify)
+      do_app(minify, detect_tailwind)
     }
 
     case cli.run(script, flags) {
@@ -62,9 +65,15 @@ JavaScript module for you to host or distribute.
     flag.bool()
     |> flag.description(description)
   })
+  |> glint.flag("detect-tailwind", {
+    let description = "Detect and build Tailwind styles automatically."
+
+    flag.bool()
+    |> flag.description(description)
+  })
 }
 
-pub fn do_app(minify: Bool) -> Cli(Nil) {
+pub fn do_app(minify: Bool, detect_tailwind: Bool) -> Cli(Nil) {
   use <- cli.log("Building your project")
   use project_name <- do(cli.get_name())
 
@@ -94,8 +103,9 @@ pub fn do_app(minify: Bool) -> Cli(Nil) {
     |> filepath.join(outdir, _)
 
   let assert Ok(_) = simplifile.write(entryfile, entry)
-
   use _ <- do(bundle(entry, tempdir, outfile, minify))
+  use <- bool.guard(!detect_tailwind, cli.return(Nil))
+
   use entry <- cli.template("entry.css")
   let outfile =
     filepath.strip_extension(outfile)

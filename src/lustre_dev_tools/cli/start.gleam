@@ -31,8 +31,11 @@ Watchexec is a popular tool you can use to restart the server when files change.
     let CommandInput(flags: flags, ..) = input
     let script = {
       use port <- do(cli.get_int("port", 1234, ["start"]))
+      use detect_tailwind <- do(
+        cli.get_bool("detect_tailwind", True, ["build"]),
+      )
 
-      use _ <- do(build.do_app(False))
+      use _ <- do(build.do_app(False, detect_tailwind))
       use _ <- do(prepare_html())
       use _ <- do(server.start(port))
 
@@ -65,6 +68,12 @@ Watchexec is a popular tool you can use to restart the server when files change.
       "Proxy requests that start with the path specified by the --proxy-from flag to this URL."
 
     flag.string()
+    |> flag.description(description)
+  })
+  |> glint.flag("detect-tailwind", {
+    let description = "Detect and build Tailwind styles automatically."
+
+    flag.bool()
     |> flag.description(description)
   })
 }
