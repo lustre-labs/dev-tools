@@ -1,5 +1,5 @@
 module.exports = {
-  content: ["./src/**/*.{gleam,mjs}"],
+  content: ["./index.html", "./src/**/*.{gleam,mjs}"],
   theme: {
     extend: {},
   },
