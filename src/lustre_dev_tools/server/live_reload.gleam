@@ -184,7 +184,10 @@ fn loop_watcher(
     Broadcast -> {
       let script = {
         use _ <- cli.do(cli.mute())
-        use _ <- cli.do(build.do_app(False))
+        use detect_tailwind <- cli.do(
+          cli.get_bool("detect_tailwind", True, ["build"]),
+        )
+        use _ <- cli.do(build.do_app(False, detect_tailwind))
         use _ <- cli.do(cli.unmute())
 
         cli.return(Nil)
