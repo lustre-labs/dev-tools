@@ -43,7 +43,7 @@ JavaScript module for you to host or distribute.
   glint.command(fn(input) {
     let CommandInput(flags: flags, ..) = input
     let script = {
-      use minify <- do(cli.get_bool("minifiy", False, ["build"]))
+      use minify <- do(cli.get_bool("minify", False, ["build"]))
       use detect_tailwind <- do(
         cli.get_bool("detect-tailwind", True, ["build"]),
       )
