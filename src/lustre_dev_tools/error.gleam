@@ -441,7 +441,7 @@ ran into this issue.
 }
 
 fn unknown_platform(binary: String, os: String, cpu: String) -> String {
-  let path = "./build/.lustre/binary/" <> binary
+  let path = "./build/.lustre/bin/" <> binary
   let message =
     "
 I ran into a problem trying to download the {binary} binary. I couldn't find a
