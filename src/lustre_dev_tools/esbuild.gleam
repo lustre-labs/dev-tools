@@ -92,8 +92,8 @@ fn get_download_url(os, cpu) {
     "darwin", "arm64" -> Ok("darwin-arm64/-/darwin-arm64-0.19.10.tgz")
     "darwin", "x86_64" -> Ok("darwin-x64/-/darwin-x64-0.19.10.tgz")
 
-    "freebsd", "arm64" -> Ok("freebsd-arm64/-/freebsd-arm64-0.19.10.tgz")
-    "freebsd", "x64" -> Ok("freebsd-x64/-/freebsd-x64-0.19.10.tgz")
+    "freebsd", "aarch64" -> Ok("freebsd-arm64/-/freebsd-arm64-0.19.10.tgz")
+    "freebsd", "amd64" -> Ok("freebsd-x64/-/freebsd-x64-0.19.10.tgz")
 
     "linux", "aarch64" -> Ok("linux-arm64/-/linux-arm64-0.19.10.tgz")
     "linux", "arm" -> Ok("linux-arm/-/linux-arm-0.19.10.tgz")
