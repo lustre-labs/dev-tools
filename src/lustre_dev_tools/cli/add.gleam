@@ -1,9 +1,10 @@
 // IMPORTS ---------------------------------------------------------------------
 
-import glint.{type Command, CommandInput}
-import glint/flag
-import glint/flag/constraint
+import gleam/result
+import glint.{type Command}
+import glint/constraint
 import lustre_dev_tools/cli.{do}
+import lustre_dev_tools/cli/flag
 import lustre_dev_tools/error
 import lustre_dev_tools/esbuild
 import lustre_dev_tools/tailwind
@@ -26,41 +27,33 @@ to bundle applications and act as a development server, and will automatically
 download the binary if either the `build` or `start` commands are run.
     "
 
-  glint.command(fn(input) {
-    let CommandInput(flags: flags, ..) = input
-    let script = {
-      use os <- do(cli.get_string("os", get_os(), ["add"]))
-      use cpu <- do(cli.get_string("cpu", get_cpu(), ["add"]))
+  use <- glint.command_help(description)
+  use <- glint.unnamed_args(glint.EqArgs(0))
+  use os <- glint.flag(flag.esbuild_os())
+  use cpu <- glint.flag(flag.esbuild_cpu())
+  use _, _, flags <- glint.command()
 
-      esbuild.download(os, cpu)
-    }
+  let script = {
+    use os <- do(cli.get_string(
+      "os",
+      get_os(),
+      ["add"],
+      result.nil_error(os(flags)),
+    ))
+    use cpu <- do(cli.get_string(
+      "cpu",
+      get_cpu(),
+      ["add"],
+      result.nil_error(cpu(flags)),
+    ))
 
-    case cli.run(script, flags) {
-      Ok(_) -> Nil
-      Error(error) -> error.explain(error)
-    }
-  })
-  |> glint.description(description)
-  |> glint.unnamed_args(glint.EqArgs(0))
-  |> glint.flag("os", {
-    let description = "Override the automatic OS detection."
-    let allowed = [
-      "android", "darwin", "freebsd", "linux", "win32", "netbsd", "openbsd",
-      "sunos",
-    ]
+    esbuild.download(os, cpu)
+  }
 
-    flag.string()
-    |> flag.description(description)
-    |> flag.constraint(constraint.one_of(allowed))
-  })
-  |> glint.flag("cpu", {
-    let description = "Override the automatic CPU architecture detection."
-    let allowed = ["aarch64", "amd64", "arm", "arm64", "ia32", "x64", "x86_64"]
-
-    flag.string()
-    |> flag.description(description)
-    |> flag.constraint(constraint.one_of(allowed))
-  })
+  case cli.run(script) {
+    Ok(_) -> Nil
+    Error(error) -> error.explain(error)
+  }
 }
 
 pub fn tailwind() -> Command(Nil) {
@@ -71,42 +64,32 @@ automatically use this to compile your styles if it detects a `tailwind.config.j
 in your project but will not download it automatically.
     "
 
-  glint.command(fn(input) {
-    let CommandInput(flags: flags, ..) = input
-    let script = {
-      use os <- do(cli.get_string("os", get_os(), ["add"]))
-      use cpu <- do(cli.get_string("cpu", get_cpu(), ["add"]))
+  use <- glint.command_help(description)
+  use <- glint.unnamed_args(glint.EqArgs(0))
+  use os <- glint.flag(flag.tailwind_os())
+  use cpu <- glint.flag(flag.tailwind_cpu())
+  use _, _, flags <- glint.command()
+  let script = {
+    use os <- do(cli.get_string(
+      "os",
+      get_os(),
+      ["add"],
+      result.nil_error(os(flags)),
+    ))
+    use cpu <- do(cli.get_string(
+      "cpu",
+      get_cpu(),
+      ["add"],
+      result.nil_error(cpu(flags)),
+    ))
 
-      tailwind.setup(os, cpu)
-    }
+    tailwind.setup(os, cpu)
+  }
 
-    case cli.run(script, flags) {
-      Ok(_) -> Nil
-      Error(error) -> error.explain(error)
-    }
-  })
-  |> glint.description(description)
-  |> glint.unnamed_args(glint.EqArgs(0))
-  |> glint.flag("os", {
-    let description = "Override the automatic OS detection."
-    let default = get_os()
-    let allowed = ["linux", "win32", "darwin"]
-
-    flag.string()
-    |> flag.default(default)
-    |> flag.description(description)
-    |> flag.constraint(constraint.one_of(allowed))
-  })
-  |> glint.flag("cpu", {
-    let description = "Override the automatic CPU architecture detection."
-    let default = get_cpu()
-    let allowed = ["armv7", "arm64", "x64", "x86_64", "aarch64"]
-
-    flag.string()
-    |> flag.default(default)
-    |> flag.description(description)
-    |> flag.constraint(constraint.one_of(allowed))
-  })
+  case cli.run(script) {
+    Ok(_) -> Nil
+    Error(error) -> error.explain(error)
+  }
 }
 
 // EXTERNALS -------------------------------------------------------------------

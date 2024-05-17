@@ -3,13 +3,13 @@
 
 // IMPORTS ---------------------------------------------------------------------
 
-import gleam/dict.{type Dict}
+import gleam/dict
 import gleam/erlang
 import gleam/io
 import gleam/list
 import gleam/result
 import gleam_community/ansi
-import glint/flag.{type Flag}
+import glint
 import lustre_dev_tools/error.{type Error, TemplateMissing}
 import lustre_dev_tools/project.{type Config}
 import simplifile
@@ -25,12 +25,7 @@ pub opaque type Cli(a) {
 }
 
 type Env {
-  Env(
-    muted: Bool,
-    spinner: SpinnerStatus,
-    flags: Dict(String, Flag),
-    config: Config,
-  )
+  Env(muted: Bool, spinner: SpinnerStatus, config: Config)
 }
 
 type SpinnerStatus {
@@ -42,9 +37,9 @@ type SpinnerStatus {
 
 ///
 ///
-pub fn run(step: Cli(a), flags: Dict(String, Flag)) -> Result(a, Error) {
+pub fn run(step: Cli(a)) -> Result(a, Error) {
   use config <- result.try(project.config())
-  let env = Env(muted: False, spinner: Paused, flags: flags, config: config)
+  let env = Env(muted: False, spinner: Paused, config: config)
   let #(env, result) = step.run(env)
 
   case env.spinner {
@@ -233,55 +228,54 @@ pub fn get_name() -> Cli(String) {
 
 // FLAGS -----------------------------------------------------------------------
 
-pub fn get_flags() -> Cli(Dict(String, Flag)) {
-  use env <- Cli
+// pub fn get_flags() -> Cli(glint.Flags) {
+//   use env <- Cli
 
-  #(env, Ok(env.flags))
-}
+//   #(env, Ok(env.flags))
+// }
 
-pub fn get_int(name: String, fallback: Int, namespace: List(String)) -> Cli(Int) {
+fn get(
+  name: String,
+  fallback: a,
+  namespace: List(String),
+  toml: fn(dict.Dict(String, tom.Toml), List(String)) -> Result(a, _),
+  flag: Result(a, Nil),
+) -> Cli(a) {
   use env <- Cli
   let toml_path = list.concat([["lustre-dev"], namespace, [name]])
   let value =
     result.or(
-      result.nil_error(flag.get_int(env.flags, name)),
-      result.nil_error(tom.get_int(env.config.toml, toml_path)),
+      result.nil_error(flag),
+      result.nil_error(toml(env.config.toml, toml_path)),
     )
     |> result.unwrap(fallback)
 
   #(env, Ok(value))
+}
+
+pub fn get_int(
+  name: String,
+  fallback: Int,
+  namespace: List(String),
+  flag: Result(Int, Nil),
+) -> Cli(Int) {
+  get(name, fallback, namespace, tom.get_int, flag)
 }
 
 pub fn get_string(
   name: String,
   fallback: String,
   namespace: List(String),
+  flag: Result(String, Nil),
 ) -> Cli(String) {
-  use env <- Cli
-  let toml_path = list.concat([["lustre-dev"], namespace, [name]])
-  let value =
-    result.or(
-      result.nil_error(flag.get_string(env.flags, name)),
-      result.nil_error(tom.get_string(env.config.toml, toml_path)),
-    )
-    |> result.unwrap(fallback)
-
-  #(env, Ok(value))
+  get(name, fallback, namespace, tom.get_string, flag)
 }
 
 pub fn get_bool(
   name: String,
   fallback: Bool,
   namespace: List(String),
+  flag: Result(Bool, Nil),
 ) -> Cli(Bool) {
-  use env <- Cli
-  let toml_path = list.concat([["lustre-dev"], namespace, [name]])
-  let value =
-    result.or(
-      result.nil_error(flag.get_bool(env.flags, name)),
-      result.nil_error(tom.get_bool(env.config.toml, toml_path)),
-    )
-    |> result.unwrap(fallback)
-
-  #(env, Ok(value))
+  get(name, fallback, namespace, tom.get_bool, flag)
 }

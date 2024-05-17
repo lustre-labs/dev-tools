@@ -19,7 +19,7 @@ packages = [
   { name = "gleam_stdlib", version = "0.37.0", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "5398BD6C2ABA17338F676F42F404B9B7BABE1C8DC7380031ACB05BBE1BCF3742" },
   { name = "glearray", version = "0.2.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glearray", source = "hex", outer_checksum = "908154F695D330E06A37FAB2C04119E8F315D643206F8F32B6A6C14A8709FFF4" },
   { name = "gleeunit", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "72CDC3D3F719478F26C4E2C5FED3E657AC81EC14A47D2D2DEBB8693CA3220C3B" },
-  { name = "glint", version = "0.18.1", build_tools = ["gleam"], requirements = ["gleam_community_ansi", "gleam_community_colour", "gleam_stdlib", "snag"], otp_app = "glint", source = "hex", outer_checksum = "5FB54D7732B4105E4AF4D89A7EE6D5E8CF33DA13A3575D0C6ECE470B97958454" },
+  { name = "glint", version = "1.0.0-rc2", build_tools = ["gleam"], requirements = ["gleam_community_ansi", "gleam_community_colour", "gleam_stdlib", "snag"], otp_app = "glint", source = "hex", outer_checksum = "FD5C47CE237CA67121F3946ADE7C630750BB67F5E8A4717D2DF5B5EE758CCFDB" },
   { name = "glisten", version = "2.0.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_otp", "gleam_stdlib"], otp_app = "glisten", source = "hex", outer_checksum = "CF3A9383E9BA4A8CBAF2F7B799716290D02F2AC34E7A77556B49376B662B9314" },
   { name = "hpack_erl", version = "0.3.0", build_tools = ["rebar3"], requirements = [], otp_app = "hpack", source = "hex", outer_checksum = "D6137D7079169D8C485C6962DFE261AF5B9EF60FBC557344511C1E65E3D95FB0" },
   { name = "logging", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "logging", source = "hex", outer_checksum = "A996064F04EF6E67F0668FD0ACFB309830B05D0EE3A0C11BBBD2D4464334F792" },
@@ -31,7 +31,7 @@ packages = [
   { name = "snag", version = "0.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "54D32E16E33655346AA3E66CBA7E191DE0A8793D2C05284E3EFB90AD2CE92BCC" },
   { name = "spinner", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_community_ansi", "gleam_erlang", "gleam_stdlib", "glearray", "repeatedly"], otp_app = "spinner", source = "hex", outer_checksum = "200BA3D4A04D468898E63C0D316E23F526E02514BC46454091975CB5BAE41E8F" },
   { name = "term_size", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "term_size", source = "hex", outer_checksum = "D00BD2BC8FB3EBB7E6AE076F3F1FF2AC9D5ED1805F004D0896C784D06C6645F1" },
-  { name = "thoas", version = "1.2.0", build_tools = ["rebar3"], requirements = [], otp_app = "thoas", source = "hex", outer_checksum = "540C8CB7D9257F2AD0A14145DC23560F91ACDCA995F0CCBA779EB33AF5D859D1" },
+  { name = "thoas", version = "1.2.1", build_tools = ["rebar3"], requirements = [], otp_app = "thoas", source = "hex", outer_checksum = "E38697EDFFD6E91BD12CEA41B155115282630075C2A727E7A6B2947F5408B86A" },
   { name = "tom", version = "0.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "tom", source = "hex", outer_checksum = "0831C73E45405A2153091226BF98FB485ED16376988602CC01A5FD086B82D577" },
   { name = "wisp", version = "0.14.0", build_tools = ["gleam"], requirements = ["exception", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_json", "gleam_stdlib", "logging", "marceau", "mist", "simplifile"], otp_app = "wisp", source = "hex", outer_checksum = "9F5453AF1F9275E6F8707BC815D6A6A9DF41551921B16FBDBA52883773BAE684" },
 ]
@@ -49,11 +49,11 @@ gleam_otp = { version = "~> 0.10" }
 gleam_package_interface = { version = "~> 1.0" }
 gleam_stdlib = { version = "~> 0.34 or ~> 1.0" }
 gleeunit = { version = "~> 1.0" }
-glint = { version = "~> 0.18" }
+glint = { version = "1.0.0-rc2" }
 glisten = { version = "~> 2.0" }
 mist = { version = "~> 1.0" }
 simplifile = { version = "~> 1.5" }
 spinner = { version = "~> 1.1" }
-term_size = { version = ">= 1.0.1 and < 2.0.0"}
+term_size = { version = ">= 1.0.1 and < 2.0.0" }
 tom = { version = "~> 0.3" }
 wisp = { version = "~> 0.14" }

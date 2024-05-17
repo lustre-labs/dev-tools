@@ -20,11 +20,15 @@ import mist
 import simplifile
 import wisp
 
-pub fn start(port: Int) -> Cli(Nil) {
+pub fn start(
+  port: Int,
+  proxy_from_flag: Result(String, Nil),
+  proxy_to_flag: Result(String, Nil),
+) -> Cli(Nil) {
   let assert Ok(cwd) = cmd.cwd()
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
 
-  use proxy <- do(proxy.get())
+  use proxy <- do(proxy.get(proxy_from_flag, proxy_to_flag))
 
   case proxy {
     Some(_) ->

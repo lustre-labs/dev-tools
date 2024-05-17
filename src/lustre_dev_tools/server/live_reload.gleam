@@ -1,7 +1,6 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import filepath
-import gleam/dict
 import gleam/dynamic.{type DecodeError, type Dynamic}
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid, type Selector, type Subject}
@@ -190,7 +189,7 @@ fn loop_watcher(
         cli.return(Nil)
       }
 
-      case cli.run(script, dict.new()) {
+      case cli.run(script) {
         Ok(_) -> {
           use _, client <- set.fold(state, Nil)
           process.send(client, Reload)
