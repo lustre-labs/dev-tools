@@ -43,9 +43,9 @@ JavaScript module for you to host or distribute.
   use <- glint.unnamed_args(glint.EqArgs(0))
   use minify <- glint.flag(flag.minify())
   use detect_tailwind <- glint.flag(flag.detect_tailwind())
-  use tailwind_entry <- glint.flag(flag.tailwind_entry())
-  use outdir <- glint.flag(flag.outdir())
-  use ext <- glint.flag(flag.ext())
+  use _tailwind_entry <- glint.flag(flag.tailwind_entry())
+  use _outdir <- glint.flag(flag.outdir())
+  use _ext <- glint.flag(flag.ext())
   use _, _, flags <- glint.command()
   let script = {
     use minify <- do(cli.get_bool("minify", False, ["build"], minify))

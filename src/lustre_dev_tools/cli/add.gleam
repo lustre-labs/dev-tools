@@ -1,7 +1,6 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import glint.{type Command}
-import glint/constraint
 import lustre_dev_tools/cli.{do}
 import lustre_dev_tools/cli/flag
 import lustre_dev_tools/error
