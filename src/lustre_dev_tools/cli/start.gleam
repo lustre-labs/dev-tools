@@ -3,10 +3,10 @@
 import filepath
 import gleam/result
 import gleam/string
-import glint.{type Command, CommandInput}
-import glint/flag
+import glint.{type Command}
 import lustre_dev_tools/cli.{type Cli, do, try}
 import lustre_dev_tools/cli/build
+import lustre_dev_tools/cli/flag
 import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{type Error, CannotWriteFile}
 import lustre_dev_tools/project
@@ -26,63 +26,34 @@ Otherwise, your `main` function will be used as the entry point.
 This development server does *not* currently watch your files for changes.
 Watchexec is a popular tool you can use to restart the server when files change.
     "
+  use <- glint.command_help(description)
+  use <- glint.unnamed_args(glint.EqArgs(0))
+  use port <- glint.flag(flag.port())
+  use proxy_from <- glint.flag(flag.proxy_from())
+  use proxy_to <- glint.flag(flag.proxy_to())
+  use detect_tailwind <- glint.flag(flag.detect_tailwind())
+  use _tailwind_entry <- glint.flag(flag.tailwind_entry())
+  use _, _, flags <- glint.command()
+  let script = {
+    use port <- do(cli.get_int("port", 1234, ["start"], port))
+    use detect_tailwind <- do(cli.get_bool(
+      "detect_tailwind",
+      True,
+      ["build"],
+      detect_tailwind,
+    ))
 
-  glint.command(fn(input) {
-    let CommandInput(flags: flags, ..) = input
-    let script = {
-      use port <- do(cli.get_int("port", 1234, ["start"]))
-      use detect_tailwind <- do(
-        cli.get_bool("detect_tailwind", True, ["build"]),
-      )
+    use _ <- do(build.do_app(False, detect_tailwind))
+    use _ <- do(prepare_html())
+    use _ <- do(server.start(port))
 
-      use _ <- do(build.do_app(False, detect_tailwind))
-      use _ <- do(prepare_html())
-      use _ <- do(server.start(port))
+    cli.return(Nil)
+  }
 
-      cli.return(Nil)
-    }
-
-    case cli.run(script, flags) {
-      Ok(_) -> Nil
-      Error(error) -> error.explain(error)
-    }
-  })
-  |> glint.description(description)
-  |> glint.unnamed_args(glint.EqArgs(0))
-  |> glint.flag("port", {
-    let description =
-      "Specify server port. If the port is taken the dev server will not start."
-
-    flag.int()
-    |> flag.description(description)
-  })
-  |> glint.flag("proxy-from", {
-    let description =
-      "Proxy requests that start with this path to the URL specified by the --proxy-to flag."
-
-    flag.string()
-    |> flag.description(description)
-  })
-  |> glint.flag("proxy-to", {
-    let description =
-      "Proxy requests that start with the path specified by the --proxy-from flag to this URL."
-
-    flag.string()
-    |> flag.description(description)
-  })
-  |> glint.flag("detect-tailwind", {
-    let description = "Detect and build Tailwind styles automatically."
-
-    flag.bool()
-    |> flag.description(description)
-  })
-  |> glint.flag("tailwind-entry", {
-    let description =
-      "Use a custom CSS file as the entry to a Tailwind CSS bundle."
-
-    flag.string()
-    |> flag.description(description)
-  })
+  case cli.run(script, flags) {
+    Ok(_) -> Nil
+    Error(error) -> error.explain(error)
+  }
 }
 
 // STEPS -----------------------------------------------------------------------

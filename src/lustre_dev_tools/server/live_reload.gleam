@@ -1,7 +1,6 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import filepath
-import gleam/dict
 import gleam/dynamic.{type DecodeError, type Dynamic}
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid, type Selector, type Subject}
@@ -15,8 +14,10 @@ import gleam/result
 import gleam/set.{type Set}
 import gleam/string
 import gleam_community/ansi
+import glint
 import lustre_dev_tools/cli
 import lustre_dev_tools/cli/build
+import lustre_dev_tools/cli/flag
 import lustre_dev_tools/error.{type Error, CannotStartFileWatcher}
 import mist
 
@@ -80,8 +81,9 @@ const live_reload_script = "
 
 pub fn start(
   root: String,
+  flags: glint.Flags,
 ) -> Result(fn(Request(mist.Connection)) -> Response(mist.ResponseData), Error) {
-  use watcher <- result.try(start_watcher(root))
+  use watcher <- result.try(start_watcher(root, flags))
   let make_socket = mist.websocket(
     _,
     loop_socket,
@@ -140,8 +142,15 @@ fn close_socket(state: SocketState) -> Nil {
 
 // FILE WATCHER ----------------------------------------------------------------
 
-fn start_watcher(root: String) -> Result(Subject(WatcherMsg), Error) {
-  actor.start_spec(actor.Spec(fn() { init_watcher(root) }, 1000, loop_watcher))
+fn start_watcher(
+  root: String,
+  flags: glint.Flags,
+) -> Result(Subject(WatcherMsg), Error) {
+  actor.start_spec(
+    actor.Spec(fn() { init_watcher(root) }, 1000, fn(msg, state) {
+      loop_watcher(msg, state, flags)
+    }),
+  )
   |> result.map_error(CannotStartFileWatcher)
 }
 
@@ -193,6 +202,7 @@ fn init_watcher(root: String) -> actor.InitResult(WatcherState, WatcherMsg) {
 fn loop_watcher(
   msg: WatcherMsg,
   state: WatcherState,
+  flags: glint.Flags,
 ) -> actor.Next(WatcherMsg, WatcherState) {
   case msg {
     Add(client) ->
@@ -209,7 +219,12 @@ fn loop_watcher(
       let script = {
         use _ <- cli.do(cli.mute())
         use detect_tailwind <- cli.do(
-          cli.get_bool("detect_tailwind", True, ["build"]),
+          cli.get_bool(
+            "detect_tailwind",
+            True,
+            ["build"],
+            glint.get_flag(_, flag.detect_tailwind()),
+          ),
         )
         use _ <- cli.do(build.do_app(False, detect_tailwind))
         use _ <- cli.do(cli.unmute())
@@ -217,7 +232,7 @@ fn loop_watcher(
         cli.return(Nil)
       }
 
-      case cli.run(script, dict.new()) {
+      case cli.run(script, flags) {
         Ok(_) -> {
           use _, client <- set.fold(state, Nil)
           process.send(client, Reload)
