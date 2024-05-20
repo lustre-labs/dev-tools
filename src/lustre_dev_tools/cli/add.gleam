@@ -28,21 +28,19 @@ download the binary if either the `build` or `start` commands are run.
   use <- glint.command_help(description)
   use <- glint.unnamed_args(glint.EqArgs(0))
   use os <- glint.flag(flag.esbuild_os())
-
   use cpu <- glint.flag(flag.esbuild_cpu())
-  glint.command(fn(_, _, flags) {
-    let script = {
-      use os <- do(cli.get_string("os", get_os(), ["add"], os))
-      use cpu <- do(cli.get_string("cpu", get_cpu(), ["add"], cpu))
+  use _, _, flags <- glint.command()
+  let script = {
+    use os <- do(cli.get_string("os", get_os(), ["add"], os))
+    use cpu <- do(cli.get_string("cpu", get_cpu(), ["add"], cpu))
 
-      esbuild.download(os, cpu)
-    }
+    esbuild.download(os, cpu)
+  }
 
-    case cli.run(script, flags) {
-      Ok(_) -> Nil
-      Error(error) -> error.explain(error)
-    }
-  })
+  case cli.run(script, flags) {
+    Ok(_) -> Nil
+    Error(error) -> error.explain(error)
+  }
 }
 
 pub fn tailwind() -> Command(Nil) {
@@ -56,19 +54,18 @@ in your project but will not download it automatically.
   use <- glint.unnamed_args(glint.EqArgs(0))
   use os <- glint.flag(flag.tailwind_os())
   use cpu <- glint.flag(flag.tailwind_cpu())
-  glint.command(fn(_, _, flags) {
-    let script = {
-      use os <- do(cli.get_string("os", get_os(), ["add"], os))
-      use cpu <- do(cli.get_string("cpu", get_cpu(), ["add"], cpu))
+  use _, _, flags <- glint.command()
+  let script = {
+    use os <- do(cli.get_string("os", get_os(), ["add"], os))
+    use cpu <- do(cli.get_string("cpu", get_cpu(), ["add"], cpu))
 
-      tailwind.setup(os, cpu)
-    }
+    tailwind.setup(os, cpu)
+  }
 
-    case cli.run(script, flags) {
-      Ok(_) -> Nil
-      Error(error) -> error.explain(error)
-    }
-  })
+  case cli.run(script, flags) {
+    Ok(_) -> Nil
+    Error(error) -> error.explain(error)
+  }
 }
 
 // EXTERNALS -------------------------------------------------------------------
