@@ -76,6 +76,13 @@ Watchexec is a popular tool you can use to restart the server when files change.
     flag.bool()
     |> flag.description(description)
   })
+  |> glint.flag("tailwind-entry", {
+    let description =
+      "Use a custom CSS file as the entry to a Tailwind CSS bundle."
+
+    flag.string()
+    |> flag.description(description)
+  })
 }
 
 // STEPS -----------------------------------------------------------------------
