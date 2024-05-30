@@ -1,5 +1,7 @@
 -module(lustre_dev_tools_ffi).
 -export([
+    check_live_reloading/0,
+    fs_start_link/2,
     get_cwd/0,
     get_cpu/0,
     get_esbuild/1,
@@ -106,4 +108,41 @@ do_exec(Port, Acc) ->
         {Port, {exit_status, Code}} ->
           port_close(Port),
           {error, {Code, list_to_binary(lists:reverse(Acc))}}
+    end.
+
+fs_start_link(Id, Path) ->
+    % We temporarily disable all logs when we call `start_link` because we want
+    % to be displaying a nicer custom error message and not the logged error
+    % coming from `fs`.
+    logger:add_primary_filter(discard_all, {fun(_, _) -> stop end, no_extra}),
+    Result = fs:start_link(Id, Path),
+    logger:remove_primary_filter(discard_all),
+    Result.
+
+% This is what the underlying `fs` library does to check if it has support for
+% a given os:
+%
+% https://github.com/5HT/fs/blob/23a5b46b033437a3d69504811ae6c72f7704a78a/src/fs_sup.erl#L18-L46
+%
+% Sadly the library doesn't expose such a function and just logs any error
+% instead of surfacing it as a value, so we have to implement a slightly
+% modified version of it to have proper error messages.
+check_live_reloading() ->
+    Watcher =
+        case os:type() of
+            {unix, darwin} -> fsevents;
+            {unix, linux} -> inotifywait;
+            {unix, sunos} -> undefined;
+            {unix, _} -> kqueue;
+            {win32, nt} -> inotifywait_win32;
+            _ -> undefined
+        end,
+
+    case Watcher of
+        undefined -> {error, no_file_watcher_supported_for_os};
+        _ ->
+            case Watcher:find_executable() of
+                false -> {error, {no_file_watcher_installed, Watcher}};
+                _ -> {ok, nil}
+            end
     end.

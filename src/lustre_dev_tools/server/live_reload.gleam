@@ -7,12 +7,14 @@ import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid, type Selector, type Subject}
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
+import gleam/io
 import gleam/list
 import gleam/option.{type Option}
 import gleam/otp/actor
 import gleam/result
 import gleam/set.{type Set}
 import gleam/string
+import gleam_community/ansi
 import lustre_dev_tools/cli
 import lustre_dev_tools/cli/build
 import lustre_dev_tools/error.{type Error, CannotStartFileWatcher}
@@ -35,6 +37,11 @@ type SocketState =
 
 pub type SocketMsg {
   Reload
+}
+
+type LiveReloadingError {
+  NoFileWatcherSupportedForOs
+  NoFileWatcherInstalled(watcher: Dynamic)
 }
 
 // CONSTANTS -------------------------------------------------------------------
@@ -142,6 +149,23 @@ fn init_watcher(root: String) -> actor.InitResult(WatcherState, WatcherMsg) {
   let src = filepath.join(root, "src")
   let id = atom.create_from_string(src)
 
+  case check_live_reloading() {
+    Ok(_) -> Nil
+    Error(NoFileWatcherSupportedForOs) ->
+      "⚠️ There's no live realoading support for your os!"
+      |> ansi.yellow
+      |> io.println
+
+    Error(NoFileWatcherInstalled(watcher)) ->
+      {
+        "⚠️ You need to install "
+        <> string.inspect(watcher)
+        <> " for live reloading to work!"
+      }
+      |> ansi.yellow
+      |> io.println
+  }
+
   case fs_start_link(id, src) {
     Ok(_) -> {
       let self = process.new_subject()
@@ -233,8 +257,11 @@ fn is_interesting_event(event: Dynamic) -> Bool {
 
 // EXTERNALS -------------------------------------------------------------------
 
-@external(erlang, "fs", "start_link")
+@external(erlang, "lustre_dev_tools_ffi", "fs_start_link")
 fn fs_start_link(id: Atom, path: String) -> Result(Pid, Dynamic)
+
+@external(erlang, "lustre_dev_tools_ffi", "check_live_reloading")
+fn check_live_reloading() -> Result(Nil, LiveReloadingError)
 
 @external(erlang, "fs", "subscribe")
 fn fs_subscribe(id: Atom) -> Atom
