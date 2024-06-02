@@ -105,6 +105,7 @@ and options. Here's a brief overview of the commands provided by Lustre's dev to
     Tailwind binary. Lustre will automatically use this to compile your styles if
     it detects a `tailwind.config.js` in your project but will not download it
     automatically. Be sure to add the following to your root level `index.html`
+  
     `<link rel="stylesheet" type="text/css" href="./priv/static/my_app.css" />`
 
 - `lustre/dev build` - Commands to build different kinds of Lustre application.
