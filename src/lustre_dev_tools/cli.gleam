@@ -193,6 +193,28 @@ pub fn success(message: String, then next: fn() -> Cli(a)) -> Cli(a) {
   next().run(env)
 }
 
+pub fn notify(message: String, then next: fn() -> Cli(a)) -> Cli(a) {
+  use env <- Cli
+  let env =
+    Env(
+      ..env,
+      spinner: case env.spinner {
+        Paused -> Paused
+        Running(spinner, _) -> {
+          spinner.stop(spinner)
+          Paused
+        }
+      },
+    )
+
+  case env.muted {
+    True -> Nil
+    False -> io.println(ansi.bright_cyan(message))
+  }
+
+  next().run(env)
+}
+
 pub fn mute() -> Cli(Nil) {
   use env <- Cli
 

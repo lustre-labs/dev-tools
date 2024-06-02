@@ -6,6 +6,7 @@ import gleam/dynamic.{type Dynamic}
 import gleam/result
 import gleam/set
 import gleam/string
+import gleam_community/ansi
 import lustre_dev_tools/cli.{type Cli}
 import lustre_dev_tools/error.{
   type Error, CannotSetPermissions, CannotWriteFile, NetworkError,
@@ -22,6 +23,7 @@ const tailwind_version = "v3.4.1"
 pub fn setup(os: String, cpu: String) -> Cli(Nil) {
   use _ <- cli.do(download(os, cpu, tailwind_version))
   use _ <- cli.do(write_tailwind_config())
+  use _ <- cli.do(display_next_steps())
 
   cli.return(Nil)
 }
@@ -53,6 +55,14 @@ fn download(os: String, cpu: String, version: String) -> Cli(Nil) {
       cli.return(Nil)
     }
   }
+}
+
+fn display_next_steps() -> Cli(Nil) {
+  use <- cli.notify(ansi.bold("\nNext Steps:\n"))
+  use <- cli.notify(
+    "1. Be sure to update your root `index.html` file to include \n   `<link rel='stylesheet' type='text/css' href='./priv/static/your_app.css' />`",
+  )
+  cli.return(Nil)
 }
 
 fn write_tailwind_config() -> Cli(Nil) {
