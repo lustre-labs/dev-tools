@@ -3,6 +3,7 @@
 import filepath
 import gleam/dict
 import gleam/dynamic.{type DecodeError, type Dynamic}
+import gleam/erlang
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid, type Selector, type Subject}
 import gleam/http/request.{type Request}
@@ -19,6 +20,7 @@ import lustre_dev_tools/cli
 import lustre_dev_tools/cli/build
 import lustre_dev_tools/error.{type Error, CannotStartFileWatcher}
 import mist
+import simplifile
 
 // TYPES -----------------------------------------------------------------------
 
@@ -44,38 +46,6 @@ type LiveReloadingError {
   NoFileWatcherInstalled(watcher: Dynamic)
 }
 
-// CONSTANTS -------------------------------------------------------------------
-
-const live_reload_script = "
-  <script>
-    function connect() {
-      let socket = new WebSocket(`ws://${window.location.host}/lustre-dev-tools`);
-
-      socket.onmessage = (event) => {
-        if (event.data === 'reload') {
-          window.location.reload();
-        }
-      };
-
-      // If the dev server goes down we'll continue to try to reconnect
-      // every 5 seconds. If the user needs to kill the server for some
-      // reason, this means the page will restore live reload without a
-      // refresh.
-      socket.onclose = () => {
-        socket = null;
-        setTimeout(() => connect(), 5000);
-      };
-
-      socket.onerror = () => {
-        socket = null;
-        setTimeout(() => connect(), 5000);
-      };
-    }
-
-    connect();
-  </script>
-"
-
 // PUBLIC API ------------------------------------------------------------------
 
 pub fn start(
@@ -93,8 +63,12 @@ pub fn start(
 }
 
 pub fn inject(html: String) -> String {
+  let assert Ok(priv) = erlang.priv_directory("lustre_dev_tools")
+  let assert Ok(source) = simplifile.read(priv <> "/server/live-reload.js")
+  let script = "<script>" <> source <> "</script>"
+
   html
-  |> string.replace("</head>", live_reload_script <> "</head>")
+  |> string.replace("</head>", script <> "</head>")
 }
 
 // WEB SOCKET ------------------------------------------------------------------
@@ -152,7 +126,7 @@ fn init_watcher(root: String) -> actor.InitResult(WatcherState, WatcherMsg) {
   case check_live_reloading() {
     Ok(_) -> Nil
     Error(NoFileWatcherSupportedForOs) ->
-      "⚠️ There's no live realoading support for your os!"
+      "⚠️ There's no live reloading support for your os!"
       |> ansi.yellow
       |> io.println
 
