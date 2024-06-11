@@ -211,7 +211,7 @@ pub fn template(name: String, then next: fn(String) -> Cli(a)) -> Cli(a) {
   use env <- Cli
   let assert Ok(priv) = erlang.priv_directory("lustre_dev_tools")
 
-  case simplifile.read(priv <> "/" <> name) {
+  case simplifile.read(priv <> "/template/" <> name) {
     Ok(template) -> next(template).run(env)
     Error(error) -> #(env, Error(TemplateMissing(name, error)))
   }

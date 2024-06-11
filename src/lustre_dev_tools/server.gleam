@@ -74,13 +74,6 @@ fn handler(req: wisp.Request, root: String) -> wisp.Response {
   handler(Request(..req, path: "/index.html"), root)
 }
 
-// fn proxy_handler(
-//   req: Request(mist.Connection),
-//   proxy: Proxy,
-// ) -> Response(mist.ResponseData) {
-//   todo
-// }
-
 fn inject_live_reload(
   req: wisp.Request,
   root: String,
