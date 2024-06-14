@@ -21,12 +21,16 @@ function connect() {
   // refresh.
   socket.onclose = () => {
     socket = null;
-    if (!timeout) timeout = setTimeout(() => connect(), 5000);
+
+    if (timeout) clearTimeout(timeout);
+    if (!socket) timeout = setTimeout(() => connect(), 5000);
   };
 
   socket.onerror = () => {
     socket = null;
-    if (!timeout) timeout = setTimeout(() => connect(), 5000);
+
+    if (timeout) clearTimeout(timeout);
+    if (!socket) timeout = setTimeout(() => connect(), 5000);
   };
 }
 
