@@ -1,7 +1,13 @@
 let socket = null;
+let timeout = null;
 
 function connect() {
   socket = new WebSocket(`ws://${window.location.host}/lustre-dev-tools`);
+
+  if (timeout) {
+    clearTimeout(timeout);
+    timeout = null;
+  }
 
   socket.onmessage = (event) => {
     if (event.data === "reload") {
@@ -15,12 +21,12 @@ function connect() {
   // refresh.
   socket.onclose = () => {
     socket = null;
-    setTimeout(() => connect(), 5000);
+    if (!timeout) timeout = setTimeout(() => connect(), 5000);
   };
 
   socket.onerror = () => {
     socket = null;
-    setTimeout(() => connect(), 5000);
+    if (!timeout) timeout = setTimeout(() => connect(), 5000);
   };
 }
 
