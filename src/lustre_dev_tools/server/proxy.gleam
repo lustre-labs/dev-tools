@@ -1,6 +1,7 @@
 import filepath
 import gleam/bool
 import gleam/bytes_builder
+import gleam/http
 import gleam/http/request.{type Request, Request}
 import gleam/http/response.{type Response}
 import gleam/httpc
@@ -32,27 +33,22 @@ pub fn middleware(
     None -> k()
     Some(Proxy(from, to)) -> {
       use <- bool.lazy_guard(!string.starts_with(req.path, from), k)
-
-      let path = string.replace(req.path, from, "")
-      let assert Ok(req) = mist.read_body(req, 100 * 1024 * 1024)
-      let assert Ok(proxy_req) = request.from_uri(to)
-
-      let server_error =
-        response.new(404)
+      let internal_error =
+        response.new(500)
         |> response.set_body(mist.Bytes(bytes_builder.new()))
 
-      proxy_req
-      |> request.set_body(req.body)
-      |> request.set_path(filepath.join(proxy_req.path, path))
-      |> list.fold(
-        req.headers,
-        _,
-        fn(req, header) { request.set_header(req, header.0, header.1) },
-      )
+      let assert Some(host) = to.host
+      let path =
+        req.path
+        |> string.replace(from, "")
+        |> filepath.join(to.path, _)
+      let assert Ok(req) = mist.read_body(req, 100 * 1024 * 1024)
+
+      Request(..req, host: host, port: to.port, path: path)
       |> httpc.send_bits
       |> result.map(response.map(_, bytes_builder.from_bit_array))
       |> result.map(response.map(_, mist.Bytes))
-      |> result.unwrap(server_error)
+      |> result.unwrap(internal_error)
     }
   }
 }
