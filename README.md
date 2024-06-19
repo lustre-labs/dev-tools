@@ -68,6 +68,10 @@ package.
 Lustre's dev tools are published on [Hex](https://hex.pm/packages/lustre_dev_tools)!
 You can add them as a dev dependency to your Gleam projects from the command line:
 
+> **Note**: currently one of lustre_dev_tools' dependencies is not compatible with
+> the most recent version of `gleam_json`, making it impossible to install. To fix
+> this, add `gleam_json = "1.0.1"` as a dependency in your `gleam.toml` file.
+
 ```sh
 gleam add lustre_dev_tools --dev
 ```
@@ -105,7 +109,7 @@ and options. Here's a brief overview of the commands provided by Lustre's dev to
     Tailwind binary. Lustre will automatically use this to compile your styles if
     it detects a `tailwind.config.js` in your project but will not download it
     automatically. Be sure to add the following to your root level `index.html`
-  
+
     `<link rel="stylesheet" type="text/css" href="./priv/static/my_app.css" />`
 
 - `lustre/dev build` - Commands to build different kinds of Lustre application.

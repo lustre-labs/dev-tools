@@ -1,8 +1,13 @@
-//// Lustres Dev Tools is a CLI (Command Line Interface) that provides a set of commands
+//// Lustre's Dev Tools is a CLI (Command Line Interface) that provides a set of commands
 //// for running and building Lustre projects. If you're familiar with frontend Web
 //// development, you could consider the Lustre Dev Tools as something similar to
 //// [vite](https://vitejs.dev) but built right into the framework! If you're not
 //// familiar with what these tools are used for... then read on.
+////
+//// > **Note**: currently one of lustre_dev_tools' dependencies is not compatible
+//// > with the most recent version of `gleam_json`, making it impossible to install.
+//// > To fix this, add `gleam_json = "1.0.1"` as a dependency in your `gleam.toml`
+//// > file.
 ////
 //// Lustre Dev Tools is written in Gleam and requires **Erlang** to be installed even
 //// if you are only building a JavaScript project. Most methods of installing Gleam
