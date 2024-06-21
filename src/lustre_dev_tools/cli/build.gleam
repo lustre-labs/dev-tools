@@ -36,6 +36,7 @@ Build and bundle an entire Lustre application. The generated JavaScript module
 calls your app's `main` function on page load and can be included in any Web
 page without Gleam or Lustre being present.
 
+
 This is different from using `gleam build` directly because it produces a single
 JavaScript module for you to host or distribute.
 "
@@ -125,6 +126,7 @@ pub fn component() -> Command(Nil) {
 Build a Lustre component as a portable Web Component. The generated JavaScript
 module can be included in any Web page and used without Gleam or Lustre being
 present.
+
 
 For a module to be built as a component, it must expose a `name` constant that
 will be the name of the component's HTML tag, and contain a public function that
