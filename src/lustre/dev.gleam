@@ -174,14 +174,9 @@ pub fn main() {
   let args = argv.load().arguments
 
   glint.new()
-  |> glint.as_gleam_module
+  |> glint.as_module
   |> glint.with_name("lustre/dev")
-  |> glint.add(
-    at: ["add"],
-    do: glint.command(fn(_) { Nil })
-      |> glint.unnamed_args(glint.EqArgs(0))
-      |> glint.description(add.description),
-  )
+  |> glint.path_help(["add"], add.description)
   |> glint.add(at: ["add", "esbuild"], do: add.esbuild())
   |> glint.add(at: ["add", "tailwind"], do: add.tailwind())
   |> glint.add(at: ["build"], do: build.app())

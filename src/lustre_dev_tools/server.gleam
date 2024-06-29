@@ -38,8 +38,9 @@ at https://github.com/lustre-labs/dev-tools/issues/new
       )
     None -> Nil
   }
+  use flags <- do(cli.get_flags())
 
-  use make_socket <- try(live_reload.start(root))
+  use make_socket <- try(live_reload.start(root, flags))
   use _ <- try(
     fn(req: Request(mist.Connection)) -> Response(mist.ResponseData) {
       use <- proxy.middleware(req, proxy)

@@ -8,8 +8,9 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import gleam/uri.{type Uri}
-import glint/flag
+import glint
 import lustre_dev_tools/cli.{type Cli, do}
+import lustre_dev_tools/cli/flag
 import lustre_dev_tools/error.{IncompleteProxy, InvalidProxyTarget}
 import mist
 import tom
@@ -67,7 +68,7 @@ fn get_proxy_from() -> Cli(Option(String)) {
   use flags <- do(cli.get_flags())
   use config <- do(cli.get_config())
 
-  let flag = result.nil_error(flag.get_string(flags, "proxy-from"))
+  let flag = result.nil_error(glint.get_flag(flags, flag.proxy_from()))
   let toml =
     result.nil_error(
       tom.get_string(config.toml, ["lustre-dev", "start", "proxy", "from"]),
@@ -82,7 +83,7 @@ fn get_proxy_to() -> Cli(Option(Uri)) {
   use flags <- do(cli.get_flags())
   use config <- do(cli.get_config())
 
-  let flag = result.nil_error(flag.get_string(flags, "proxy-to"))
+  let flag = result.nil_error(glint.get_flag(flags, flag.proxy_to()))
   let toml =
     result.nil_error(
       tom.get_string(config.toml, ["lustre-dev", "start", "proxy", "to"]),
