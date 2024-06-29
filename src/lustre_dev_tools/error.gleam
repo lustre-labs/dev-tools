@@ -33,6 +33,8 @@ pub type Error {
   TemplateMissing(name: String, reason: simplifile.FileError)
   UnknownPlatform(binary: String, os: String, cpu: String)
   UnzipError(Dynamic)
+  InvalidEsbuildBinary
+  InvalidTailwindBinary
 }
 
 // CONVERSIONS -----------------------------------------------------------------
@@ -60,6 +62,8 @@ pub fn explain(error: Error) -> Nil {
     TemplateMissing(name, reason) -> template_missing(name, reason)
     UnknownPlatform(binary, os, cpu) -> unknown_platform(binary, os, cpu)
     UnzipError(error) -> unzip_error(error)
+    InvalidEsbuildBinary -> invalid_esbuild_binary()
+    InvalidTailwindBinary -> invalid_tailwind_binary()
   }
   |> io.print_error
 }
@@ -482,6 +486,20 @@ you were trying to do when you ran into this issue.
 
   message
   |> string.replace("{error}", string.inspect(error))
+}
+
+fn invalid_esbuild_binary() -> String {
+  "
+It looks like the downloaded Esbuild tarball has a different hash from what I
+expected.
+"
+}
+
+fn invalid_tailwind_binary() -> String {
+  "
+It looks like the downloaded Tailwind binary has a different hash from what I
+expected.
+"
 }
 
 // UTILS -----------------------------------------------------------------------

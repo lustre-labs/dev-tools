@@ -1,11 +1,12 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import filepath
+import gleam/bit_array
 import gleam/bool
+import gleam/crypto
 import gleam/dynamic.{type Dynamic}
 import gleam/result
 import gleam/set
-import gleam/string
 import gleam_community/ansi
 import lustre_dev_tools/cli.{type Cli}
 import lustre_dev_tools/error.{
@@ -16,19 +17,17 @@ import lustre_dev_tools/project
 import lustre_dev_tools/utils
 import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
 
-const tailwind_version = "v3.4.1"
-
 // COMMANDS --------------------------------------------------------------------
 
 pub fn setup(os: String, cpu: String) -> Cli(Nil) {
-  use _ <- cli.do(download(os, cpu, tailwind_version))
+  use _ <- cli.do(download(os, cpu))
   use _ <- cli.do(write_tailwind_config())
   use _ <- cli.do(display_next_steps())
 
   cli.return(Nil)
 }
 
-fn download(os: String, cpu: String, version: String) -> Cli(Nil) {
+fn download(os: String, cpu: String) -> Cli(Nil) {
   use <- cli.log("Downloading Tailwind")
 
   let root = project.root()
@@ -39,7 +38,7 @@ fn download(os: String, cpu: String, version: String) -> Cli(Nil) {
     True -> cli.success("Tailwind already installed!", fn() { cli.return(Nil) })
     False -> {
       use <- cli.log("Detecting platform")
-      use url <- cli.try(get_download_url(os, cpu, version))
+      use #(url, hash) <- cli.try(get_download_url_and_hash(os, cpu))
 
       // We want to fit the url in the space remaining after the
       // "⠸ Downloading from ": that takes 19 chars of the terminal width.
@@ -47,6 +46,9 @@ fn download(os: String, cpu: String, version: String) -> Cli(Nil) {
       let shortened_url = utils.shorten_url(url, to: max_url_size)
       use <- cli.log("Downloading from " <> shortened_url)
       use bin <- cli.try(get_tailwind(url))
+
+      use <- cli.log("Checking the downloaded Tailwind binary")
+      use _ <- cli.try(check_tailwind_integrity(bin, hash))
 
       use _ <- cli.try(write_tailwind(bin, outdir, outfile))
       use _ <- cli.try(set_file_permissions(outfile))
@@ -91,32 +93,68 @@ fn check_tailwind_exists(path) {
   }
 }
 
-fn get_download_url(os, cpu, version) {
+/// Returns the appropriate url to download the tailwind binary and the expected
+/// base16-encoded sha256 hash to check the downloaded binary's integrity.
+///
+fn get_download_url_and_hash(os, cpu) {
   let base =
-    "https://github.com/tailwindlabs/tailwindcss/releases/download/"
-    <> version
-    <> "/tailwindcss-"
+    "https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.1/tailwindcss-"
 
-  let path = case os, cpu {
-    "linux", "armv7" -> Ok("linux-armv7")
-    "linux", "arm64" -> Ok("linux-arm64")
-    "linux", "x64" | "linux", "x86_64" -> Ok("linux-x64")
+  case os, cpu {
+    "linux", "armv7" ->
+      Ok(#(
+        base <> "linux-armv7",
+        "38E004B144004495CD148621ADB852C21D5D350E66308C8FF9E2FD90A15726F5",
+      ))
+    "linux", "arm64" ->
+      Ok(#(
+        base <> "linux-arm64",
+        "1178C3E8B44B9EB43F40E786EE25664C93D83F6D05B062C0D9CAF410D64D5587",
+      ))
+    "linux", "x64" | "linux", "x86_64" ->
+      Ok(#(
+        base <> "linux-x64",
+        "A6814CC8FB6E573DD637352093F3B8E927C5C8628B1FF87826652935AF1430B1",
+      ))
 
-    "win32", "arm64" -> Ok("windows-arm64.exe")
-    "win32", "x64" | "win32", "x86_64" -> Ok("windows-x64.exe")
+    "win32", "arm64" ->
+      Ok(#(
+        base <> "windows-arm64.exe",
+        "AC06BC274FAED7A0C9C0C7E9058D87A428B574BCF8FCE85330F576DE4568BB81",
+      ))
+    "win32", "x64" | "win32", "x86_64" ->
+      Ok(#(
+        base <> "windows-x64.exe",
+        "EF2FE367DAA8204CB186796C1833FAEE81A5B20E4C80E533F7A3B3DCC7DB6C54",
+      ))
 
-    "darwin", "arm64" | "darwin", "aarch64" -> Ok("macos-arm64")
-    "darwin", "x64" | "darwin", "x86_64" -> Ok("macos-x64")
+    "darwin", "arm64" | "darwin", "aarch64" ->
+      Ok(#(
+        base <> "macos-arm64",
+        "40738E59ECEF06F955243154E7D1C6EAF11370037CBEEE4A32C3138387E2DA5D",
+      ))
+    "darwin", "x64" | "darwin", "x86_64" ->
+      Ok(#(
+        base <> "macos-x64",
+        "594D01B032125199DB105C661FE23DE4C069006921B96F7FEE98EE4FBC15F800",
+      ))
 
     _, _ -> Error(UnknownPlatform("tailwind", os, cpu))
   }
-
-  result.map(path, string.append(base, _))
 }
 
 fn get_tailwind(url: String) -> Result(BitArray, Error) {
   do_get_tailwind(url)
   |> result.map_error(NetworkError)
+}
+
+fn check_tailwind_integrity(bin: BitArray, expected_hash: String) {
+  let hash = crypto.hash(crypto.Sha256, bin)
+  let hash_string = bit_array.base16_encode(hash)
+  case hash_string == expected_hash {
+    True -> Ok(Nil)
+    False -> Error(error.InvalidTailwindBinary)
+  }
 }
 
 fn write_tailwind(
