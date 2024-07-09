@@ -137,6 +137,7 @@ returns a suitable Lustre `App`.
   use module_path <- glint.named_arg("module_path")
   use <- glint.unnamed_args(glint.EqArgs(0))
   use minify <- glint.flag(flag.minify())
+  use _outdir <- glint.flag(flag.outdir())
   use args, _, flags <- glint.command
   let module_path = module_path(args)
 
@@ -153,7 +154,15 @@ returns a suitable Lustre `App`.
     use <- cli.log("Creating the bundle entry file")
     let root = project.root()
     let tempdir = filepath.join(root, "build/.lustre")
-    let outdir = filepath.join(root, "priv/static")
+    let default_outdir = filepath.join(root, "priv/static")
+    use outdir <- cli.do(
+      cli.get_string(
+        "outdir",
+        default_outdir,
+        ["build"],
+        glint.get_flag(_, flag.outdir()),
+      ),
+    )
     let _ = simplifile.create_directory_all(tempdir)
     let _ = simplifile.create_directory_all(outdir)
 
