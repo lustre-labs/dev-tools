@@ -84,7 +84,7 @@ fn inject_live_reload(
   use <- bool.lazy_guard(!regex.check(is_interesting, req.path), k)
   let path = filepath.join(root, req.path)
 
-  case simplifile.verify_is_file(path) {
+  case simplifile.is_file(path) {
     Ok(False) | Error(_) -> k()
     Ok(True) -> {
       let assert Ok(html) = simplifile.read(path)
