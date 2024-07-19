@@ -78,7 +78,7 @@ pub fn bundle(input_file: String, output_file: String, minify: Bool) -> Cli(Nil)
 // STEPS -----------------------------------------------------------------------
 
 fn check_esbuild_exists(path) {
-  case simplifile.verify_is_file(path) {
+  case simplifile.is_file(path) {
     Ok(True) -> True
     Ok(False) | Error(_) -> False
   }

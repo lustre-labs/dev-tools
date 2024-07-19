@@ -276,7 +276,7 @@ fn bundle_tailwind(
   let root = project.root()
   let tailwind_config_file = filepath.join(root, "tailwind.config.js")
   let has_tailwind_config =
-    simplifile.verify_is_file(tailwind_config_file)
+    simplifile.is_file(tailwind_config_file)
     |> result.unwrap(False)
   use <- bool.guard(when: !has_tailwind_config, return: cli.return(Nil))
 

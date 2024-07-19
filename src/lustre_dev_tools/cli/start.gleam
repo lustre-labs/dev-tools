@@ -64,7 +64,7 @@ fn prepare_html() -> Cli(Nil) {
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
   let index = filepath.join(root, "index.html")
 
-  case simplifile.verify_is_file(index) {
+  case simplifile.is_file(index) {
     Ok(True) -> cli.return(Nil)
     Ok(False) | Error(_) -> {
       use html <- cli.template("index.html")

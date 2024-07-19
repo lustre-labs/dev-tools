@@ -71,7 +71,7 @@ fn write_tailwind_config() -> Cli(Nil) {
   let config_filename = "tailwind.config.js"
   let config_outfile = filepath.join(project.root(), config_filename)
   let config_already_exists =
-    simplifile.verify_is_file(config_outfile)
+    simplifile.is_file(config_outfile)
     |> result.unwrap(False)
 
   // If there already is a configuration file, we make sure not to override it.
@@ -87,7 +87,7 @@ fn write_tailwind_config() -> Cli(Nil) {
 // STEPS -----------------------------------------------------------------------
 
 fn check_tailwind_exists(path) {
-  case simplifile.verify_is_file(path) {
+  case simplifile.is_file(path) {
     Ok(True) -> True
     Ok(False) | Error(_) -> False
   }
