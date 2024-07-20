@@ -3,6 +3,8 @@
 import filepath
 import gleam/bool
 import gleam/list
+import gleam/option.{Some}
+import gleam/regex.{Match, Options}
 import gleam/result
 import gleam/string
 import lustre_dev_tools/cli.{type Cli}
@@ -34,6 +36,8 @@ pub fn copy_deep_ffi() -> Cli(Nil) {
     let out_path = filepath.join(out, module_path)
     let out_dir = filepath.directory_name(out_path)
 
+    let source = resolve_relative_gleam_imports(path, source)
+
     use _ <- result.try(
       simplifile.create_directory_all(out_dir)
       |> result.map_error(CannotCreateDirectory(_, out_dir)),
@@ -46,4 +50,24 @@ pub fn copy_deep_ffi() -> Cli(Nil) {
 
     Ok(Nil)
   })
+}
+
+fn can_resolve_relative_gleam_imports(path: String) -> Bool {
+  case filepath.extension(path) {
+    Ok("js") | Ok("mjs") | Ok("ts") | Ok("mts") -> True
+    _ -> False
+  }
+}
+
+fn resolve_relative_gleam_imports(path: String, source: String) -> String {
+  use <- bool.guard(!can_resolve_relative_gleam_imports(path), source)
+  let options = Options(case_insensitive: False, multi_line: True)
+  let assert Ok(re) = regex.compile("^import.+\"(\\..+)\";$", options)
+
+  use source, match <- list.fold(regex.scan(re, source), source)
+  let assert Match(match, [Some(import_path)]) = match
+  let resolved_import_path = string.replace(import_path, ".gleam", ".mjs")
+  let resolved_import = string.replace(match, import_path, resolved_import_path)
+
+  string.replace(source, match, resolved_import)
 }
