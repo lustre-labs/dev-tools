@@ -50,8 +50,6 @@ pub fn download(os: String, cpu: String) -> Cli(Nil) {
       cli.return(Nil)
     }
   }
-
-  cli.return(Nil)
 }
 
 pub fn bundle(input_file: String, output_file: String, minify: Bool) -> Cli(Nil) {
