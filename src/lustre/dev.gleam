@@ -79,6 +79,16 @@
 //// `App(Nil, model, msg)` then Lustre will automatically generate some boilerplate
 //// to mount the app onto an element with the id `"app"` and start it.
 ////
+//// In addition to bundling, Lustre's dev tools will apply the following
+//// transformations to the output:
+////
+//// - FFI modules will be copied into Gleam's build directory even if they are
+////   not directly under the `src/` directory. This is a temporary patch until
+////   the Gleam compiler supports this itself.
+////
+//// - FFI modules that have *relative* imports to `*.gleam` modules will have
+////   their imports rewritten to point to the compiled `*.mjs` files instead.
+////
 //// Flags:
 ////
 //// - `--minify` - Reduce the size of the output bundle by removing whitespace and
@@ -107,6 +117,16 @@
 //// - There must be a `pub fn` that has the type `fn() -> App(Nil, model, msg)`. It's
 ////   name is not important but in cases where multiple functions in a module fit this
 ////   type, the _first_ one will be used.
+////
+//// In addition to bundling, Lustre's dev tools will apply the following
+//// transformations to the output:
+////
+//// - FFI modules will be copied into Gleam's build directory even if they are
+////   not directly under the `src/` directory. This is a temporary patch until
+////   the Gleam compiler supports this itself.
+////
+//// - FFI modules that have *relative* imports to `*.gleam` modules will have
+////   their imports rewritten to point to the compiled `*.mjs` files instead.
 ////
 //// Arguments:
 ////
