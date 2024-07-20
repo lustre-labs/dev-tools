@@ -15,6 +15,8 @@ import simplifile
 pub type Error {
   BuildError(reason: String)
   BundleError(reason: String)
+  CannotCreateDirectory(reason: simplifile.FileError, path: String)
+  CannotReadFile(reason: simplifile.FileError, path: String)
   CannotSetPermissions(reason: simplifile.FileError, path: String)
   CannotStartDevServer(reason: glisten.StartError)
   CannotStartFileWatcher(reason: actor.StartError)
@@ -43,6 +45,8 @@ pub fn explain(error: Error) -> Nil {
   case error {
     BuildError(reason) -> build_error(reason)
     BundleError(reason) -> bundle_error(reason)
+    CannotCreateDirectory(reason, path) -> cannot_create_directory(reason, path)
+    CannotReadFile(reason, path) -> cannot_read_file(reason, path)
     CannotSetPermissions(reason, path) -> cannot_set_permissions(reason, path)
     CannotStartDevServer(reason) -> cannot_start_dev_server(reason)
     CannotStartFileWatcher(reason) -> cannot_start_file_watcher(reason)
@@ -96,6 +100,48 @@ you were trying to do when you ran into this issue.
 
   message
   |> string.replace("{reason}", reason)
+}
+
+fn cannot_create_directory(reason: simplifile.FileError, path: String) -> String {
+  let message =
+    "
+I ran into an error while trying to create the following directory:
+
+    {path}
+
+Here's the error message I got:
+
+    {reason}
+
+If you think this is a bug, please open an issue at
+https://github.com/lustre-labs/dev-tools/issues/new with some details about what
+you were trying to do when you ran into this issue.
+"
+
+  message
+  |> string.replace("{path}", path)
+  |> string.replace("{reason}", string.inspect(reason))
+}
+
+fn cannot_read_file(reason: simplifile.FileError, path: String) -> String {
+  let message =
+    "
+I ran into an error while trying to read the following file:
+
+    {path}
+
+Here's the error message I got:
+
+    {reason}
+
+If you think this is a bug, please open an issue at
+https://github.com/lustre-labs/dev-tools/issues/new with some details about what
+you were trying to do when you ran into this issue.
+"
+
+  message
+  |> string.replace("{path}", path)
+  |> string.replace("{reason}", string.inspect(reason))
 }
 
 fn cannot_set_permissions(reason: simplifile.FileError, path: String) -> String {
