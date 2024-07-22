@@ -94,7 +94,7 @@ pub fn do_app(minify: Bool, detect_tailwind: Bool) -> Cli(Nil) {
 
   let entryfile = filepath.join(tempdir, "entry.mjs")
   use ext <- cli.do(
-    cli.get_string("ext", "mjs", ["build"], glint.get_flag(_, flag.outdir())),
+    cli.get_string("ext", "mjs", ["build"], glint.get_flag(_, flag.ext())),
   )
   let ext = case minify {
     True -> ".min." <> ext
