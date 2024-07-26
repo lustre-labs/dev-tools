@@ -106,7 +106,7 @@ fn get_download_url_and_hash(os, cpu) {
         base <> "linux-armv7",
         "38E004B144004495CD148621ADB852C21D5D350E66308C8FF9E2FD90A15726F5",
       ))
-    "linux", "arm64" ->
+    "linux", "arm64" | "linux", "aarch64" ->
       Ok(#(
         base <> "linux-arm64",
         "1178C3E8B44B9EB43F40E786EE25664C93D83F6D05B062C0D9CAF410D64D5587",
