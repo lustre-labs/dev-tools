@@ -2,6 +2,7 @@
 
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/otp/actor
@@ -34,6 +35,7 @@ pub type Error {
   NetworkError(Dynamic)
   TemplateMissing(name: String, reason: simplifile.FileError)
   UnknownPlatform(binary: String, os: String, cpu: String)
+  OtpTooOld(version: Int)
   UnzipError(Dynamic)
   InvalidEsbuildBinary
   InvalidTailwindBinary
@@ -65,6 +67,7 @@ pub fn explain(error: Error) -> Nil {
     NetworkError(error) -> network_error(error)
     TemplateMissing(name, reason) -> template_missing(name, reason)
     UnknownPlatform(binary, os, cpu) -> unknown_platform(binary, os, cpu)
+    OtpTooOld(version) -> otp_too_old(version)
     UnzipError(error) -> unzip_error(error)
     InvalidEsbuildBinary -> invalid_esbuild_binary()
     InvalidTailwindBinary -> invalid_tailwind_binary()
@@ -515,6 +518,20 @@ you were trying to do when you ran into this issue.
   |> string.replace("{os}", os)
   |> string.replace("{cpu}", cpu)
   |> string.replace("{path}", path)
+}
+
+fn otp_too_old(version: Int) -> String {
+  let message =
+    "
+It looks like you're running an OTP version that is not supported by the dev
+tools: {version}.
+
+You should upgrade to OTP 26 or newer to run this command:
+https://gleam.run/getting-started/installing/#installing-erlang
+"
+
+  message
+  |> string.replace("{version}", int.to_string(version))
 }
 
 fn unzip_error(error: Dynamic) -> String {

@@ -44,6 +44,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
       detect_tailwind,
     ))
 
+    use _ <- do(check_otp_version())
     use _ <- do(build.do_app(False, detect_tailwind))
     use _ <- do(prepare_html())
     use _ <- do(server.start(port))
@@ -58,6 +59,15 @@ Watchexec is a popular tool you can use to restart the server when files change.
 }
 
 // STEPS -----------------------------------------------------------------------
+
+fn check_otp_version() -> Cli(Nil) {
+  use <- cli.log("Checking OTP version")
+  let version = project.otp_version()
+  case version <= 25 {
+    False -> cli.return(Nil)
+    True -> cli.throw(error.OtpTooOld(version))
+  }
+}
 
 fn prepare_html() -> Cli(Nil) {
   let assert Ok(cwd) = cmd.cwd()

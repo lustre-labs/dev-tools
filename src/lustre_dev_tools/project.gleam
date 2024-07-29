@@ -35,6 +35,17 @@ pub type Function {
 
 // COMMANDS --------------------------------------------------------------------
 
+pub fn otp_version() -> Int {
+  let version = do_otp_version()
+  case int.parse(version) {
+    Ok(version) -> version
+    Error(_) -> panic as { "unexpected version number format: " <> version }
+  }
+}
+
+@external(erlang, "lustre_dev_tools_ffi", "otp_version")
+fn do_otp_version() -> String
+
 /// Compile the current project running the `gleam build` command.
 ///
 pub fn build() -> Result(Nil, Error) {

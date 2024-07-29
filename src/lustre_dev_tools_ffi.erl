@@ -7,9 +7,14 @@
     get_esbuild/1,
     get_tailwind/1,
     get_os/0,
+    otp_version/0,
     unzip_esbuild/1,
     exec/3
 ]).
+
+otp_version() ->
+    Version = erlang:system_info(otp_release),
+    list_to_binary(Version).
 
 get_cwd() ->
     case file:get_cwd() of
