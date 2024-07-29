@@ -526,7 +526,8 @@ fn otp_too_old(version: Int) -> String {
 It looks like you're running an OTP version that is not supported by the dev
 tools: {version}.
 
-You should upgrade to OTP 26 or newer to run this command.
+You should upgrade to OTP 26 or newer to run this command:
+https://gleam.run/getting-started/installing/#installing-erlang
 "
 
   message
