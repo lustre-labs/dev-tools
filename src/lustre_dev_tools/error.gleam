@@ -2,6 +2,7 @@
 
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/otp/actor
@@ -34,7 +35,7 @@ pub type Error {
   NetworkError(Dynamic)
   TemplateMissing(name: String, reason: simplifile.FileError)
   UnknownPlatform(binary: String, os: String, cpu: String)
-  OtpTooOld(version: String)
+  OtpTooOld(version: Int)
   UnzipError(Dynamic)
   InvalidEsbuildBinary
   InvalidTailwindBinary
@@ -519,7 +520,7 @@ you were trying to do when you ran into this issue.
   |> string.replace("{path}", path)
 }
 
-fn otp_too_old(version: String) -> String {
+fn otp_too_old(version: Int) -> String {
   let message =
     "
 It looks like you're running an OTP version that is not supported by the dev
@@ -529,7 +530,7 @@ You should upgrade to OTP 26 or newer to run this command.
 "
 
   message
-  |> string.replace("{version}", version)
+  |> string.replace("{version}", int.to_string(version))
 }
 
 fn unzip_error(error: Dynamic) -> String {

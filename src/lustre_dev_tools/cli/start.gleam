@@ -62,9 +62,10 @@ Watchexec is a popular tool you can use to restart the server when files change.
 
 fn check_otp_version() -> Cli(Nil) {
   use <- cli.log("Checking OTP version")
-  case project.otp_version() {
-    "26" <> _ | "27" <> _ -> cli.return(Nil)
-    version -> cli.throw(error.OtpTooOld(version))
+  let version = project.otp_version()
+  case version <= 25 {
+    False -> cli.return(Nil)
+    True -> cli.throw(error.OtpTooOld(version))
   }
 }
 
