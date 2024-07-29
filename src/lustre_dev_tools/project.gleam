@@ -35,6 +35,9 @@ pub type Function {
 
 // COMMANDS --------------------------------------------------------------------
 
+@external(erlang, "lustre_dev_tools_ffi", "otp_version")
+pub fn otp_version() -> String
+
 /// Compile the current project running the `gleam build` command.
 ///
 pub fn build() -> Result(Nil, Error) {
