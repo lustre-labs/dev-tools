@@ -8,6 +8,7 @@ import gleam/erlang/process.{type Pid, type Selector, type Subject}
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/io
+import gleam/json
 import gleam/list
 import gleam/option.{type Option}
 import gleam/otp/actor
@@ -39,7 +40,8 @@ type SocketState =
   #(Subject(SocketMsg), Subject(WatcherMsg))
 
 pub type SocketMsg {
-  Reload
+  ReloadMsg
+  ErrorMsg(error: String)
 }
 
 type LiveReloadingError {
@@ -98,8 +100,25 @@ fn loop_socket(
   case msg {
     mist.Text(_) | mist.Binary(_) -> actor.continue(state)
 
-    mist.Custom(Reload) -> {
-      let assert Ok(_) = mist.send_text_frame(connection, "reload")
+    mist.Custom(ReloadMsg) -> {
+      let assert Ok(_) =
+        mist.send_text_frame(
+          connection,
+          json.object([#("$", json.string("reload"))]) |> json.to_string,
+        )
+      actor.continue(state)
+    }
+
+    mist.Custom(ErrorMsg(error)) -> {
+      let assert Ok(_) =
+        mist.send_text_frame(
+          connection,
+          json.object([
+            #("$", json.string("error")),
+            #("error", json.string(error)),
+          ])
+            |> json.to_string,
+        )
       actor.continue(state)
     }
 
@@ -209,10 +228,13 @@ fn loop_watcher(
       case cli.run(script, flags) {
         Ok(_) -> {
           use _, client <- set.fold(state, Nil)
-          process.send(client, Reload)
+          process.send(client, ReloadMsg)
         }
 
-        Error(_) -> Nil
+        Error(error) -> {
+          use _, client <- set.fold(state, Nil)
+          process.send(client, ErrorMsg(error: error.explain_to_string(error)))
+        }
       }
 
       actor.continue(state)
