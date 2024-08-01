@@ -10,8 +10,14 @@ function connect() {
   }
 
   socket.onmessage = (event) => {
-    if (event.data === "reload") {
-      window.location.reload();
+    const data = JSON.parse(event.data);
+    switch (data.$) {
+      case "reload":
+        window.location.reload();
+        break;
+      case "error":
+        replace_body_with_error(data.error);
+        break;
     }
   };
 
@@ -32,6 +38,15 @@ function connect() {
     if (timeout) clearTimeout(timeout);
     if (!socket) timeout = setTimeout(() => connect(), 5000);
   };
+}
+
+function replace_body_with_error(error) {
+  document.body.innerHTML = `
+<div style="display: flex; justify-content: center; border-top: 5px solid red;">
+  <div style="font-family: monospace, monospace; white-space: pre-wrap; max-width: 100vw;">
+    Error: ${error}
+  </div>
+</div>`;
 }
 
 connect();

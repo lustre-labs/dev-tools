@@ -43,7 +43,7 @@ pub type Error {
 
 // CONVERSIONS -----------------------------------------------------------------
 
-pub fn explain(error: Error) -> Nil {
+pub fn explain_to_string(error: Error) -> String {
   case error {
     BuildError(reason) -> build_error(reason)
     BundleError(reason) -> bundle_error(reason)
@@ -72,6 +72,11 @@ pub fn explain(error: Error) -> Nil {
     InvalidEsbuildBinary -> invalid_esbuild_binary()
     InvalidTailwindBinary -> invalid_tailwind_binary()
   }
+}
+
+pub fn explain(error: Error) -> Nil {
+  error
+  |> explain_to_string
   |> io.print_error
 }
 
