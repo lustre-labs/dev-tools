@@ -1,6 +1,7 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import filepath
+import gleam/io
 import gleam/result
 import gleam/string
 import glint.{type Command}
@@ -54,7 +55,7 @@ Watchexec is a popular tool you can use to restart the server when files change.
 
   case cli.run(script, flags) {
     Ok(_) -> Nil
-    Error(error) -> error.explain(error)
+    Error(error) -> error.explain(error) |> io.print_error
   }
 }
 
