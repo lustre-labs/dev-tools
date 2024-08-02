@@ -3,6 +3,7 @@
 import filepath
 import gleam/bool
 import gleam/dict
+import gleam/io
 import gleam/list
 import gleam/package_interface.{type Type, Named, Variable}
 import gleam/result
@@ -62,7 +63,7 @@ JavaScript module for you to host or distribute.
 
   case cli.run(script, flags) {
     Ok(_) -> Nil
-    Error(error) -> error.explain(error)
+    Error(error) -> error.explain(error) |> io.print_error
   }
 }
 
@@ -203,7 +204,7 @@ returns a suitable Lustre `App`.
 
   case cli.run(script, flags) {
     Ok(_) -> Nil
-    Error(error) -> error.explain(error)
+    Error(error) -> error.explain(error) |> io.print_error
   }
 }
 

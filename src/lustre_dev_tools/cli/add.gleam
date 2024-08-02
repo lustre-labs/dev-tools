@@ -1,5 +1,6 @@
 // IMPORTS ---------------------------------------------------------------------
 
+import gleam/io
 import glint.{type Command}
 import lustre_dev_tools/cli.{do}
 import lustre_dev_tools/cli/flag
@@ -39,7 +40,7 @@ download the binary if either the `build` or `start` commands are run.
 
   case cli.run(script, flags) {
     Ok(_) -> Nil
-    Error(error) -> error.explain(error)
+    Error(error) -> error.explain(error) |> io.print_error
   }
 }
 
@@ -64,7 +65,7 @@ in your project but will not download it automatically.
 
   case cli.run(script, flags) {
     Ok(_) -> Nil
-    Error(error) -> error.explain(error)
+    Error(error) -> error.explain(error) |> io.print_error
   }
 }
 

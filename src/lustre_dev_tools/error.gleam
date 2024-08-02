@@ -3,7 +3,6 @@
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/otp/actor
 import gleam/package_interface.{type Type, Fn, Named, Tuple, Variable}
@@ -43,7 +42,7 @@ pub type Error {
 
 // CONVERSIONS -----------------------------------------------------------------
 
-pub fn explain_to_string(error: Error) -> String {
+pub fn explain(error: Error) -> String {
   case error {
     BuildError(reason) -> build_error(reason)
     BundleError(reason) -> bundle_error(reason)
@@ -72,12 +71,6 @@ pub fn explain_to_string(error: Error) -> String {
     InvalidEsbuildBinary -> invalid_esbuild_binary()
     InvalidTailwindBinary -> invalid_tailwind_binary()
   }
-}
-
-pub fn explain(error: Error) -> Nil {
-  error
-  |> explain_to_string
-  |> io.print_error
 }
 
 fn build_error(reason: String) -> String {

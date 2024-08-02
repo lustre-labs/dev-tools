@@ -40,8 +40,8 @@ type SocketState =
   #(Subject(SocketMsg), Subject(WatcherMsg))
 
 pub type SocketMsg {
-  ReloadMsg
-  ErrorMsg(error: String)
+  Reload
+  ShowError(Error)
 }
 
 type LiveReloadingError {
@@ -100,7 +100,7 @@ fn loop_socket(
   case msg {
     mist.Text(_) | mist.Binary(_) -> actor.continue(state)
 
-    mist.Custom(ReloadMsg) -> {
+    mist.Custom(Reload) -> {
       let assert Ok(_) =
         mist.send_text_frame(
           connection,
@@ -109,13 +109,13 @@ fn loop_socket(
       actor.continue(state)
     }
 
-    mist.Custom(ErrorMsg(error)) -> {
+    mist.Custom(ShowError(error)) -> {
       let assert Ok(_) =
         mist.send_text_frame(
           connection,
           json.object([
             #("$", json.string("error")),
-            #("error", json.string(error)),
+            #("error", json.string(error.explain(error))),
           ])
             |> json.to_string,
         )
@@ -228,12 +228,14 @@ fn loop_watcher(
       case cli.run(script, flags) {
         Ok(_) -> {
           use _, client <- set.fold(state, Nil)
-          process.send(client, ReloadMsg)
+          process.send(client, Reload)
         }
 
         Error(error) -> {
+          error.explain(error) |> io.println_error
+
           use _, client <- set.fold(state, Nil)
-          process.send(client, ErrorMsg(error: error.explain_to_string(error)))
+          process.send(client, ShowError(error))
         }
       }
 
