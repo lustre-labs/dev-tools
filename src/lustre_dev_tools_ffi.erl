@@ -18,7 +18,7 @@ otp_version() ->
 
 get_cwd() ->
     case file:get_cwd() of
-        {ok, Cwd} -> {ok, uncode:characters_to_binary(Cwd)};
+        {ok, Cwd} -> {ok, unicode:characters_to_binary(Cwd)};
         {error, Reason} -> {error, Reason}
     end.
 
