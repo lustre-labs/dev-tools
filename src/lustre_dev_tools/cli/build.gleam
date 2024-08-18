@@ -95,12 +95,16 @@ pub fn do_app(minify: Bool, detect_tailwind: Bool) -> Cli(Nil) {
 
   let entryfile = filepath.join(tempdir, "entry.mjs")
   use ext <- cli.do(
-    cli.get_string("ext", "mjs", ["build"], glint.get_flag(_, flag.ext())),
+    cli.get_string(
+      "ext",
+      case minify {
+        True -> ".min.mjs"
+        False -> ".mjs"
+      },
+      ["build"],
+      glint.get_flag(_, flag.ext()),
+    ),
   )
-  let ext = case minify {
-    True -> ".min." <> ext
-    False -> "." <> ext
-  }
 
   let outfile =
     project_name
@@ -178,10 +182,18 @@ returns a suitable Lustre `App`.
       |> string.replace("{module_path}", module_path)
 
     let entryfile = filepath.join(tempdir, "entry.mjs")
-    let ext = case minify {
-      True -> ".min.mjs"
-      False -> ".mjs"
-    }
+    use ext <- cli.do(
+      cli.get_string(
+        "ext",
+        case minify {
+          True -> ".min.mjs"
+          False -> ".mjs"
+        },
+        ["build"],
+        glint.get_flag(_, flag.ext()),
+      ),
+    )
+
     let assert Ok(outfile) =
       string.split(module_path, "/")
       |> list.last
