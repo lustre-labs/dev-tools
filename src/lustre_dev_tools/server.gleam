@@ -19,6 +19,7 @@ import lustre_dev_tools/server/proxy
 import mist
 import simplifile
 import wisp
+import wisp/wisp_mist
 
 pub fn start(port: Int) -> Cli(Nil) {
   let assert Ok(cwd) = cmd.cwd()
@@ -52,11 +53,11 @@ at https://github.com/lustre-labs/dev-tools/issues/new
         ["lustre-dev-tools"] -> make_socket(req)
         [] ->
           Request(..req, path: "/index.html")
-          |> wisp.mist_handler(handler(_, root), "")
+          |> wisp_mist.handler(handler(_, root), "")
 
         // For everything else we're just going to serve any static files directly
         // from the project's root.
-        _ -> wisp.mist_handler(handler(_, root), "")(req)
+        _ -> wisp_mist.handler(handler(_, root), "")(req)
       }
     }
     |> mist.new
