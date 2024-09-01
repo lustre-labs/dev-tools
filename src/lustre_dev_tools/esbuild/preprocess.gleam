@@ -27,26 +27,51 @@ pub fn copy_deep_ffi() -> Cli(Nil) {
   cli.from_result({
     use path <- list.try_each(files)
     use <- bool.guard(string.ends_with(path, ".gleam"), Ok(Nil))
-    use source <- result.try(
-      simplifile.read(path)
-      |> result.map_error(CannotReadFile(_, path)),
-    )
 
     let assert "./src/" <> module_path = path
     let out_path = filepath.join(out, module_path)
     let out_dir = filepath.directory_name(out_path)
 
-    let source = resolve_relative_gleam_imports(path, source)
+    use _ <- result.try(case filepath.extension(path) {
+      // For all javascript source files, we will re-write any relative imports
+      // to `*.gleam` modules until the Gleam compiler supports FFI code in folders
+      // deeper than just `src/`
+      Ok("js") | Ok("mjs") | Ok("ts") | Ok("mts") -> {
+        use source <- result.try(
+          simplifile.read(path)
+          |> result.map_error(CannotReadFile(_, path))
+          |> result.map(resolve_relative_gleam_imports(path, _)),
+        )
 
-    use _ <- result.try(
-      simplifile.create_directory_all(out_dir)
-      |> result.map_error(CannotCreateDirectory(_, out_dir)),
-    )
+        use _ <- result.try(
+          simplifile.create_directory_all(out_dir)
+          |> result.map_error(CannotCreateDirectory(_, out_dir)),
+        )
 
-    use _ <- result.try(
-      simplifile.write(out_path, source)
-      |> result.map_error(CannotWriteFile(_, out_path)),
-    )
+        use _ <- result.try(
+          simplifile.write(out_path, source)
+          |> result.map_error(CannotWriteFile(_, out_path)),
+        )
+
+        Ok(Nil)
+      }
+
+      // All other files we will just copy them over, until the Gleam compiler
+      // supports FFI code in folders deeper than just `src/`
+      _ -> {
+        use _ <- result.try(
+          simplifile.create_directory_all(out_dir)
+          |> result.map_error(CannotCreateDirectory(_, out_dir)),
+        )
+
+        use _ <- result.try(
+          simplifile.copy_file(path, out_path)
+          |> result.map_error(CannotWriteFile(_, out_path)),
+        )
+
+        Ok(Nil)
+      }
+    })
 
     Ok(Nil)
   })
