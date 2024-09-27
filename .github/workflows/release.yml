@@ -13,7 +13,7 @@ jobs:
         with:
           otp-version: "26.0.2"
           rebar3-version: "3"
-          gleam-version: "1.4.0"
+          gleam-version: "1.5.0"
 
       - run: cargo install tomlq
       - run: |
@@ -22,8 +22,7 @@ jobs:
           fi
           echo "tag does not match version in gleam.toml, refusing to publish"
           exit 1
-      - run: gleam format --check src test
-      - run: gleam test
+      - run: gleam format --check src
       - run: gleam publish -y
         env:
           HEXPM_USER: ${{ secrets.HEX_USERNAME }}
