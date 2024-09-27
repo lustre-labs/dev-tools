@@ -11,7 +11,7 @@ import gleam/pair
 import gleam/result
 import gleam/string
 import lustre_dev_tools/cmd
-import lustre_dev_tools/error.{type Error, BuildError}
+import lustre_dev_tools/error.{type Error, BuildError, UnknownFileError}
 import simplifile
 import tom.{type Toml}
 
@@ -71,11 +71,27 @@ pub fn interface() -> Result(Interface, Error) {
     "build/dev/erlang",
   ]
 
-  list.each(caches, fn(cache) {
-    filepath.join(root(), cache)
-    |> filepath.join(name)
-    |> simplifile.delete
-  })
+  use _ <- result.try(
+    list.try_each(caches, fn(cache) {
+      let path = filepath.join(root(), cache)
+      let moved = filepath.join(root(), cache <> "_moved")
+      // Renaming is an atomic operation, so we can perform this without worrying
+      // about the build dir getting corrupted if the process crashes or is killed.
+      use _ <- result.try(
+        simplifile.rename(path, moved)
+        |> result.map_error(UnknownFileError),
+      )
+
+      // After the move we can safely delete the new directory, if this gets into
+      // a bad state it doesn't matter because nothing should be using it.
+      use _ <- result.try(
+        simplifile.delete(moved)
+        |> result.map_error(UnknownFileError),
+      )
+
+      Ok(Nil)
+    }),
+  )
 
   let dir = filepath.join(root(), "build/.lustre")
   let out = filepath.join(dir, "package-interface.json")

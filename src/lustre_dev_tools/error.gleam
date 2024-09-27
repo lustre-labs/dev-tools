@@ -33,6 +33,7 @@ pub type Error {
   NameMissing(module: String)
   NetworkError(Dynamic)
   TemplateMissing(name: String, reason: simplifile.FileError)
+  UnknownFileError(simplifile.FileError)
   UnknownPlatform(binary: String, os: String, cpu: String)
   OtpTooOld(version: Int)
   UnzipError(Dynamic)
@@ -65,6 +66,7 @@ pub fn explain(error: Error) -> String {
     NameMissing(module) -> name_missing(module)
     NetworkError(error) -> network_error(error)
     TemplateMissing(name, reason) -> template_missing(name, reason)
+    UnknownFileError(error) -> unknown_file_error(error)
     UnknownPlatform(binary, os, cpu) -> unknown_platform(binary, os, cpu)
     OtpTooOld(version) -> otp_too_old(version)
     UnzipError(error) -> unzip_error(error)
@@ -489,6 +491,23 @@ ran into this issue.
   message
   |> string.replace("{name}", name)
   |> string.replace("{reason}", string.inspect(reason))
+}
+
+fn unknown_file_error(error: simplifile.FileError) -> String {
+  let message =
+    "
+I ran into an unexpected file system error while trying to do something. Here's
+the error message I got:
+
+    {error}
+
+If you think this is a bug, please open an issue at
+https://github.com/lustre-labs/dev-tools/issues/new with some details about what
+you were trying to do when you ran into this issue.
+"
+
+  message
+  |> string.replace("{error}", string.inspect(error))
 }
 
 fn unknown_platform(binary: String, os: String, cpu: String) -> String {
