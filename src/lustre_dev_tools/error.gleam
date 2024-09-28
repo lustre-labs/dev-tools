@@ -397,9 +397,16 @@ I couldn't find the following module:
 Make sure the module path is correct and also the module is not included in the
 `internal_modules` list in your `gleam.toml`.
 
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
+The Gleam compiler currently has a bug with it's package-interface export that
+will affect lustre_dev_tools. You can find more information about that bug here:
+
+    https://github.com/gleam-lang/gleam/issues/2898
+
+If you know the above module exists, try running `gleam clean` and then run the
+dev tools again. If you think this is a bug, please open an issue on GitHub with
+some details about what you were trying to do when you ran into this issue:
+
+    https://github.com/lustre-labs/dev-tools/issues/new
 "
 
   message
