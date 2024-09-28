@@ -20,13 +20,7 @@ pub fn run() -> Command(Nil) {
   let description =
     "
 Start a development server for your Lustre project. This command will compile your
-application and serve it on a local server. If your application's `main` function
-returns a compatible `App`, this will generate the necessary code to start it.
-Otherwise, your `main` function will be used as the entry point.
-
-
-This development server does *not* currently watch your files for changes.
-Watchexec is a popular tool you can use to restart the server when files change.
+application and serve it on a local server.
     "
   use <- glint.command_help(description)
   use <- glint.unnamed_args(glint.EqArgs(0))
