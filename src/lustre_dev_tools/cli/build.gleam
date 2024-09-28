@@ -58,7 +58,7 @@ JavaScript module for you to host or distribute.
       detect_tailwind,
     ))
 
-    do_app(minify, detect_tailwind)
+    do_app(minify, detect_tailwind, False)
   }
 
   case cli.run(script, flags) {
@@ -67,14 +67,19 @@ JavaScript module for you to host or distribute.
   }
 }
 
-pub fn do_app(minify: Bool, detect_tailwind: Bool) -> Cli(Nil) {
+pub fn do_app(minify: Bool, detect_tailwind: Bool, dirty: Bool) -> Cli(Nil) {
   use <- cli.log("Building your project")
   use project_name <- do(cli.get_name())
 
   use <- cli.success("Project compiled successfully")
   use <- cli.log("Checking if I can bundle your application")
-  use module <- try(get_module_interface(project_name))
-  use _ <- try(check_main_function(project_name, module))
+  use _ <- cli.do({
+    use <- bool.guard(dirty == False, cli.return(Nil))
+    use module <- try(get_module_interface(project_name))
+    use _ <- try(check_main_function(project_name, module))
+
+    cli.return(Nil)
+  })
 
   use <- cli.log("Creating the bundle entry file")
   let root = project.root()

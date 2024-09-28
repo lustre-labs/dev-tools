@@ -219,7 +219,7 @@ fn loop_watcher(
             glint.get_flag(_, flag.detect_tailwind()),
           ),
         )
-        use _ <- cli.do(build.do_app(False, detect_tailwind))
+        use _ <- cli.do(build.do_app(False, detect_tailwind, True))
         use _ <- cli.do(cli.unmute())
 
         cli.return(Nil)
