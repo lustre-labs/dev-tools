@@ -11,7 +11,7 @@ import gleam/pair
 import gleam/result
 import gleam/string
 import lustre_dev_tools/cmd
-import lustre_dev_tools/error.{type Error, BuildError, UnknownFileError}
+import lustre_dev_tools/error.{type Error, BuildError}
 import simplifile
 import tom.{type Toml}
 
@@ -55,56 +55,19 @@ pub fn build() -> Result(Nil, Error) {
 }
 
 pub fn interface() -> Result(Interface, Error) {
-  use Config(name, ..) <- result.try(config())
-
-  // Gleam currently has a bug with the `export package-interface` command that
-  // means cached modules are not emitted. This is, obviously, a problem if a
-  // you try and export the interface multiple times (which happens regularly
-  // for us).
-  //
-  // We clear build files for *just* the user's application (because we don't
-  // actually care about the dependencies) before running the export command.
-  // This forces Gleam to recompile them and properly emit the interface.
-  //
-  let caches = [
-    "build/prod/javascript", "build/prod/erlang", "build/dev/javascript",
-    "build/dev/erlang",
-  ]
-
-  use _ <- result.try(
-    list.try_each(caches, fn(cache) {
-      let path = filepath.join(root(), cache)
-      let moved = filepath.join(root(), cache <> "_moved")
-      // Renaming is an atomic operation, so we can perform this without worrying
-      // about the build dir getting corrupted if the process crashes or is killed.
-      use _ <- result.try(
-        simplifile.rename(path, moved)
-        |> result.map_error(UnknownFileError),
-      )
-
-      // After the move we can safely delete the new directory, if this gets into
-      // a bad state it doesn't matter because nothing should be using it.
-      use _ <- result.try(
-        simplifile.delete(moved)
-        |> result.map_error(UnknownFileError),
-      )
-
-      Ok(Nil)
-    }),
-  )
-
   let dir = filepath.join(root(), "build/.lustre")
   let out = filepath.join(dir, "package-interface.json")
   let args = ["export", "package-interface", "--out", out]
 
-  cmd.exec(run: "gleam", in: ".", with: args)
-  |> result.map_error(fn(err) { BuildError(pair.second(err)) })
-  |> result.then(fn(_) {
-    let assert Ok(json) = simplifile.read(out)
-    let assert Ok(interface) = json.decode(json, interface_decoder)
+  use _ <- result.try(
+    cmd.exec(run: "gleam", in: ".", with: args)
+    |> result.map_error(fn(err) { BuildError(pair.second(err)) }),
+  )
 
-    Ok(interface)
-  })
+  let assert Ok(json) = simplifile.read(out)
+  let assert Ok(interface) = json.decode(json, interface_decoder)
+
+  Ok(interface)
 }
 
 /// Read the project configuration in the `gleam.toml` file.
