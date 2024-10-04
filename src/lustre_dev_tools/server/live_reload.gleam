@@ -232,6 +232,7 @@ fn loop_watcher(
         }
 
         Error(error) -> {
+          "\u{001b}c" |> io.print_error
           error.explain(error) |> io.println_error
 
           use _, client <- set.fold(state, Nil)
