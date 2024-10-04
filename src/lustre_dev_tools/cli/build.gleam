@@ -74,7 +74,13 @@ pub fn do_app(minify: Bool, detect_tailwind: Bool, dirty: Bool) -> Cli(Nil) {
   use <- cli.success("Project compiled successfully")
   use <- cli.log("Checking if I can bundle your application")
   use _ <- cli.do({
-    use <- bool.guard(dirty == False, cli.return(Nil))
+    // If we're running a dirty build we don't bother checking the package interface
+    // to see if the main function is correct. We skip this check during live
+    // reloads to work around a current compiler issue:
+    //
+    //    https://github.com/gleam-lang/gleam/issues/2898
+    //
+    use <- bool.guard(dirty == True, cli.return(Nil))
     use module <- try(get_module_interface(project_name))
     use _ <- try(check_main_function(project_name, module))
 
