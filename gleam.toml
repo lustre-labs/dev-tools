@@ -1,5 +1,5 @@
 name = "lustre_dev_tools"
-version = "1.5.8"
+version = "1.5.9"
 target = "erlang"
 gleam = ">= 1.1.0"
 
