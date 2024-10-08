@@ -13,8 +13,8 @@ import lustre_dev_tools/cli.{type Cli, do, try}
 import lustre_dev_tools/cli/flag
 import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{
-  type Error, BundleError, ComponentMissing, MainMissing, ModuleMissing,
-  NameIncorrectType, NameMissing,
+  type Error, BundleError, ComponentMissing, ModuleMissing, NameIncorrectType,
+  NameMissing,
 }
 import lustre_dev_tools/esbuild
 import lustre_dev_tools/project.{type Module}
@@ -46,10 +46,12 @@ JavaScript module for you to host or distribute.
   use minify <- glint.flag(flag.minify())
   use detect_tailwind <- glint.flag(flag.detect_tailwind())
   use _tailwind_entry <- glint.flag(flag.tailwind_entry())
+  use entry <- glint.flag(flag.entry())
   use _outdir <- glint.flag(flag.outdir())
   use _ext <- glint.flag(flag.ext())
   use _, _, flags <- glint.command()
   let script = {
+    use project_name <- do(cli.get_name())
     use minify <- do(cli.get_bool("minify", False, ["build"], minify))
     use detect_tailwind <- do(cli.get_bool(
       "detect-tailwind",
@@ -58,7 +60,9 @@ JavaScript module for you to host or distribute.
       detect_tailwind,
     ))
 
-    do_app(minify, detect_tailwind, False)
+    use entry <- do(cli.get_string("entry", project_name, ["build"], entry))
+
+    do_app(entry, minify, detect_tailwind)
   }
 
   case cli.run(script, flags) {
@@ -67,26 +71,14 @@ JavaScript module for you to host or distribute.
   }
 }
 
-pub fn do_app(minify: Bool, detect_tailwind: Bool, dirty: Bool) -> Cli(Nil) {
+pub fn do_app(
+  entry_module: String,
+  minify: Bool,
+  detect_tailwind: Bool,
+) -> Cli(Nil) {
   use <- cli.log("Building your project")
-  use project_name <- do(cli.get_name())
 
   use <- cli.success("Project compiled successfully")
-  use <- cli.log("Checking if I can bundle your application")
-  use _ <- cli.do({
-    // If we're running a dirty build we don't bother checking the package interface
-    // to see if the main function is correct. We skip this check during live
-    // reloads to work around a current compiler issue:
-    //
-    //    https://github.com/gleam-lang/gleam/issues/2898
-    //
-    use <- bool.guard(dirty == True, cli.return(Nil))
-    use module <- try(get_module_interface(project_name))
-    use _ <- try(check_main_function(project_name, module))
-
-    cli.return(Nil)
-  })
-
   use <- cli.log("Creating the bundle entry file")
   let root = project.root()
   let tempdir = filepath.join(root, "build/.lustre")
@@ -102,7 +94,7 @@ pub fn do_app(minify: Bool, detect_tailwind: Bool, dirty: Bool) -> Cli(Nil) {
   let _ = simplifile.create_directory_all(tempdir)
   let _ = simplifile.create_directory_all(outdir)
   use template <- cli.template("entry-with-main.mjs")
-  let entry = string.replace(template, "{app_name}", project_name)
+  let entry = string.replace(template, "{app_name}", entry_module)
 
   let entryfile = filepath.join(tempdir, "entry.mjs")
   use ext <- cli.do(
@@ -118,7 +110,7 @@ pub fn do_app(minify: Bool, detect_tailwind: Bool, dirty: Bool) -> Cli(Nil) {
   )
 
   let outfile =
-    project_name
+    entry_module
     |> string.append(ext)
     |> filepath.join(outdir, _)
 
@@ -239,16 +231,6 @@ fn get_module_interface(module_path: String) -> Result(Module, Error) {
     dict.get(interface.modules, module_path)
     |> result.replace_error(ModuleMissing(module_path))
   })
-}
-
-fn check_main_function(
-  module_path: String,
-  module: Module,
-) -> Result(Nil, Error) {
-  case dict.has_key(module.functions, "main") {
-    True -> Ok(Nil)
-    False -> Error(MainMissing(module_path))
-  }
 }
 
 fn check_component_name(

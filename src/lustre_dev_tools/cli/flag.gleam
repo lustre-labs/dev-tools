@@ -102,3 +102,10 @@ pub fn proxy_to() -> glint.Flag(String) {
   glint.string_flag("proxy-to")
   |> glint.flag_help(description)
 }
+
+pub fn entry() -> glint.Flag(String) {
+  let description = "Specify an entry other than your app's main module."
+
+  glint.string_flag("entry")
+  |> glint.flag_help(description)
+}
