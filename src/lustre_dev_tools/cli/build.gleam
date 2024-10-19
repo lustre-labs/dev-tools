@@ -30,7 +30,7 @@ integration with other build tools.
 
 // COMMANDS --------------------------------------------------------------------
 
-pub fn app() -> Command(Nil) {
+pub fn app(build_hook: fn()->Nil) -> Command(Nil) {
   let description =
     "
 Build and bundle an entire Lustre application. The generated JavaScript module
@@ -62,7 +62,7 @@ JavaScript module for you to host or distribute.
 
     use entry <- do(cli.get_string("entry", project_name, ["build"], entry))
 
-    do_app(entry, minify, detect_tailwind)
+    do_app(entry, minify, detect_tailwind, build_hook)
   }
 
   case cli.run(script, flags) {
@@ -75,9 +75,10 @@ pub fn do_app(
   entry_module: String,
   minify: Bool,
   detect_tailwind: Bool,
+  build_hook: fn()->Nil
 ) -> Cli(Nil) {
   use <- cli.log("Building your project")
-
+  build_hook()
   use <- cli.success("Project compiled successfully")
   use <- cli.log("Creating the bundle entry file")
   let root = project.root()
