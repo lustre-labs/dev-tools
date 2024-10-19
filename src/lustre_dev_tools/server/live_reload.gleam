@@ -55,8 +55,9 @@ pub fn start(
   entry: String,
   root: String,
   flags: glint.Flags,
+  build_hook: fn()->Nil,
 ) -> Result(fn(Request(mist.Connection)) -> Response(mist.ResponseData), Error) {
-  use watcher <- result.try(start_watcher(entry, root, flags))
+  use watcher <- result.try(start_watcher(entry, root, flags, build_hook))
   let make_socket = mist.websocket(
     _,
     loop_socket,
@@ -140,10 +141,11 @@ fn start_watcher(
   entry: String,
   root: String,
   flags: glint.Flags,
+  build_hook: fn()->Nil,
 ) -> Result(Subject(WatcherMsg), Error) {
   actor.start_spec(
     actor.Spec(fn() { init_watcher(root) }, 1000, fn(msg, state) {
-      loop_watcher(msg, state, entry, flags)
+      loop_watcher(msg, state, entry, flags, build_hook)
     }),
   )
   |> result.map_error(CannotStartFileWatcher)
@@ -199,6 +201,7 @@ fn loop_watcher(
   state: WatcherState,
   entry: String,
   flags: glint.Flags,
+  build_hook: fn()->Nil
 ) -> actor.Next(WatcherMsg, WatcherState) {
   case msg {
     Add(client) ->
@@ -222,7 +225,7 @@ fn loop_watcher(
             glint.get_flag(_, flag.detect_tailwind()),
           ),
         )
-        use _ <- cli.do(build.do_app(entry, False, detect_tailwind))
+        use _ <- cli.do(build.do_app(entry, False, detect_tailwind, build_hook))
         use _ <- cli.do(cli.unmute())
 
         cli.return(Nil)
