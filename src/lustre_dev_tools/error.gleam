@@ -2,6 +2,7 @@
 
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
+import gleam/erlang/process
 import gleam/int
 import gleam/list
 import gleam/otp/actor
@@ -18,7 +19,7 @@ pub type Error {
   CannotCreateDirectory(reason: simplifile.FileError, path: String)
   CannotReadFile(reason: simplifile.FileError, path: String)
   CannotSetPermissions(reason: simplifile.FileError, path: String)
-  CannotStartDevServer(reason: glisten.StartError)
+  CannotStartDevServer(reason: glisten.StartError, port: Int)
   CannotStartFileWatcher(reason: actor.StartError)
   CannotWriteFile(reason: simplifile.FileError, path: String)
   ComponentMissing(module: String)
@@ -50,7 +51,7 @@ pub fn explain(error: Error) -> String {
     CannotCreateDirectory(reason, path) -> cannot_create_directory(reason, path)
     CannotReadFile(reason, path) -> cannot_read_file(reason, path)
     CannotSetPermissions(reason, path) -> cannot_set_permissions(reason, path)
-    CannotStartDevServer(reason) -> cannot_start_dev_server(reason)
+    CannotStartDevServer(reason, port) -> cannot_start_dev_server(reason, port)
     CannotStartFileWatcher(reason) -> cannot_start_file_watcher(reason)
     CannotWriteFile(reason, path) -> cannot_write_file(reason, path)
     ComponentMissing(module) -> component_missing(module)
@@ -168,7 +169,18 @@ you were trying to do when you ran into this issue.
   |> string.replace("{reason}", string.inspect(reason))
 }
 
-fn cannot_start_dev_server(reason: glisten.StartError) -> String {
+fn cannot_start_dev_server(reason: glisten.StartError, port: Int) -> String {
+  case reason {
+    glisten.AcceptorFailed(process.Abnormal(message)) ->
+      case string.contains(message, "Eaddrinuse") {
+        True -> cannot_start_dev_server_port_in_use_message(port)
+        False -> cannot_start_dev_server_default_message(reason)
+      }
+    _ -> cannot_start_dev_server_default_message(reason)
+  }
+}
+
+fn cannot_start_dev_server_default_message(reason: glisten.StartError) -> String {
   let message =
     "
 I ran into an error while trying to start the development server. Here's the
@@ -182,6 +194,18 @@ some details about what you were trying to do when you ran into this issue.
 
   message
   |> string.replace("{reason}", string.inspect(reason))
+}
+
+fn cannot_start_dev_server_port_in_use_message(port: Int) -> String {
+  let message =
+    "
+I ran into an error while trying to start the development server:
+port {port} is already in use.
+You can change the port to start the dev server on using the `--port` flag.
+"
+
+  message
+  |> string.replace("{port}", int.to_string(port))
 }
 
 fn cannot_start_file_watcher(reason: actor.StartError) -> String {
