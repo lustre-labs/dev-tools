@@ -84,7 +84,11 @@ pub fn config() -> Result(Config, Error) {
   let assert Ok(configuration) = simplifile.read(configuration_path)
   let assert Ok(toml) = tom.parse(configuration)
   let assert Ok(name) = tom.get_string(toml, ["name"])
-  let assert Ok(version) = tom.get_string(toml, ["version"])
+
+  // Version is optional and if not specified it defaults to `0.1.0`.
+  let version =
+    tom.get_string(toml, ["version"])
+    |> result.unwrap("0.1.0")
 
   Ok(Config(name: name, version: version, toml: toml))
 }
