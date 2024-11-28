@@ -18,7 +18,7 @@ import tom.{type Toml}
 // TYPES -----------------------------------------------------------------------
 
 pub type Config {
-  Config(name: String, version: String, toml: Dict(String, Toml))
+  Config(name: String, toml: Dict(String, Toml))
 }
 
 pub type Interface {
@@ -84,9 +84,8 @@ pub fn config() -> Result(Config, Error) {
   let assert Ok(configuration) = simplifile.read(configuration_path)
   let assert Ok(toml) = tom.parse(configuration)
   let assert Ok(name) = tom.get_string(toml, ["name"])
-  let assert Ok(version) = tom.get_string(toml, ["version"])
 
-  Ok(Config(name: name, version: version, toml: toml))
+  Ok(Config(name: name, toml: toml))
 }
 
 // UTILS -----------------------------------------------------------------------
