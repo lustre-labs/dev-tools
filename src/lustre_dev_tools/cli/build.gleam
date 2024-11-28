@@ -80,6 +80,7 @@ pub fn do_app(
 
   use <- cli.success("Project compiled successfully")
   use <- cli.log("Creating the bundle entry file")
+  use app_name <- cli.do(cli.get_name())
   let root = project.root()
   let tempdir = filepath.join(root, "build/.lustre")
   let default_outdir = filepath.join(root, "priv/static")
@@ -94,7 +95,10 @@ pub fn do_app(
   let _ = simplifile.create_directory_all(tempdir)
   let _ = simplifile.create_directory_all(outdir)
   use template <- cli.template("entry-with-main.mjs")
-  let entry = string.replace(template, "{app_name}", entry_module)
+  let entry =
+    template
+    |> string.replace("{app_name}", app_name)
+    |> string.replace("{entry_module}", entry_module)
 
   let entryfile = filepath.join(tempdir, "entry.mjs")
   use ext <- cli.do(
