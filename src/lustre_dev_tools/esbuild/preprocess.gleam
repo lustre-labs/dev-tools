@@ -4,7 +4,7 @@ import filepath
 import gleam/bool
 import gleam/list
 import gleam/option.{Some}
-import gleam/regex.{Match, Options}
+import gleam/regexp.{Match, Options}
 import gleam/result
 import gleam/string
 import lustre_dev_tools/cli.{type Cli}
@@ -87,9 +87,9 @@ fn can_resolve_relative_gleam_imports(path: String) -> Bool {
 fn resolve_relative_gleam_imports(path: String, source: String) -> String {
   use <- bool.guard(!can_resolve_relative_gleam_imports(path), source)
   let options = Options(case_insensitive: False, multi_line: True)
-  let assert Ok(re) = regex.compile("^import.+\"(\\..+)\";$", options)
+  let assert Ok(re) = regexp.compile("^import.+\"(\\..+)\";$", options)
 
-  use source, match <- list.fold(regex.scan(re, source), source)
+  use source, match <- list.fold(regexp.scan(re, source), source)
   let assert Match(match, [Some(import_path)]) = match
   let resolved_import_path = string.replace(import_path, ".gleam", ".mjs")
   let resolved_import = string.replace(match, import_path, resolved_import_path)

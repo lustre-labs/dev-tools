@@ -267,8 +267,8 @@ pub fn get_config_value(
   let toml_path = list.flatten([["lustre-dev"], namespace, [name]])
   let value =
     result.or(
-      result.nil_error(flag(env.flags)),
-      result.nil_error(toml(env.config.toml, toml_path)),
+      result.replace_error(flag(env.flags), Nil),
+      result.replace_error(toml(env.config.toml, toml_path), Nil),
     )
     |> result.unwrap(fallback)
 

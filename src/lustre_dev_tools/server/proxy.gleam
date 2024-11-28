@@ -1,6 +1,6 @@
 import filepath
 import gleam/bool
-import gleam/bytes_builder
+import gleam/bytes_tree
 import gleam/http/request.{type Request, Request}
 import gleam/http/response.{type Response}
 import gleam/httpc
@@ -34,7 +34,7 @@ pub fn middleware(
       use <- bool.lazy_guard(!string.starts_with(req.path, from), k)
       let internal_error =
         response.new(500)
-        |> response.set_body(mist.Bytes(bytes_builder.new()))
+        |> response.set_body(mist.Bytes(bytes_tree.new()))
 
       let assert Some(host) = to.host
       let path =
@@ -45,7 +45,7 @@ pub fn middleware(
 
       Request(..req, host: host, port: to.port, path: path)
       |> httpc.send_bits
-      |> result.map(response.map(_, bytes_builder.from_bit_array))
+      |> result.map(response.map(_, bytes_tree.from_bit_array))
       |> result.map(response.map(_, mist.Bytes))
       |> result.unwrap(internal_error)
     }
@@ -68,10 +68,11 @@ fn get_proxy_from() -> Cli(Option(String)) {
   use flags <- do(cli.get_flags())
   use config <- do(cli.get_config())
 
-  let flag = result.nil_error(glint.get_flag(flags, flag.proxy_from()))
+  let flag = result.replace_error(glint.get_flag(flags, flag.proxy_from()), Nil)
   let toml =
-    result.nil_error(
+    result.replace_error(
       tom.get_string(config.toml, ["lustre-dev", "start", "proxy", "from"]),
+      Nil,
     )
 
   result.or(flag, toml)
@@ -83,10 +84,11 @@ fn get_proxy_to() -> Cli(Option(Uri)) {
   use flags <- do(cli.get_flags())
   use config <- do(cli.get_config())
 
-  let flag = result.nil_error(glint.get_flag(flags, flag.proxy_to()))
+  let flag = result.replace_error(glint.get_flag(flags, flag.proxy_to()), Nil)
   let toml =
-    result.nil_error(
+    result.replace_error(
       tom.get_string(config.toml, ["lustre-dev", "start", "proxy", "to"]),
+      Nil,
     )
 
   let from = result.or(flag, toml)

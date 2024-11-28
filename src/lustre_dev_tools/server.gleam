@@ -7,9 +7,9 @@ import gleam/http/request.{type Request, Request}
 import gleam/http/response.{type Response}
 import gleam/io
 import gleam/option.{None, Some}
-import gleam/regex
+import gleam/regexp
 import gleam/result
-import gleam/string_builder
+import gleam/string_tree
 import lustre_dev_tools/cli.{type Cli, do, try}
 import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{type Error, CannotStartDevServer}
@@ -81,8 +81,8 @@ fn inject_live_reload(
   root: String,
   k: fn() -> wisp.Response,
 ) -> wisp.Response {
-  let assert Ok(is_interesting) = regex.from_string(".*\\.html$")
-  use <- bool.lazy_guard(!regex.check(is_interesting, req.path), k)
+  let assert Ok(is_interesting) = regexp.from_string(".*\\.html$")
+  use <- bool.lazy_guard(!regexp.check(is_interesting, req.path), k)
   let path = filepath.join(root, req.path)
 
   case simplifile.is_file(path) {
@@ -92,7 +92,7 @@ fn inject_live_reload(
 
       html
       |> live_reload.inject
-      |> string_builder.from_string
+      |> string_tree.from_string
       |> wisp.html_response(200)
     }
   }
