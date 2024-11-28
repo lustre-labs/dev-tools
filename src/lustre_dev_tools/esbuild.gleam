@@ -12,7 +12,6 @@ import lustre_dev_tools/error.{
   type Error, BundleError, CannotSetPermissions, CannotWriteFile, NetworkError,
   UnknownPlatform, UnzipError,
 }
-import lustre_dev_tools/esbuild/preprocess
 import lustre_dev_tools/project
 import lustre_dev_tools/utils
 import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
@@ -69,8 +68,6 @@ pub fn bundle(input_file: String, output_file: String, minify: Bool) -> Cli(Nil)
   }
 
   use <- cli.log("Bundling with esbuild")
-
-  use _ <- cli.do(preprocess.copy_deep_ffi())
   use _ <- cli.try(exec_esbuild(root, options))
 
   use <- cli.success("Bundle produced at `" <> output_file <> "`")
