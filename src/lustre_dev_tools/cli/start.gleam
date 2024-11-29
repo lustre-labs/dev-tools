@@ -16,7 +16,7 @@ import simplifile
 
 // COMMANDS --------------------------------------------------------------------
 
-pub fn run() -> Command(Nil) {
+pub fn run(build_hook: fn()->Nil) -> Command(Nil) {
   let description =
     "
 Start a development server for your Lustre project. This command will compile your
@@ -44,9 +44,9 @@ application and serve it on a local server.
     use entry <- do(cli.get_string("entry", project_name, ["build"], entry))
 
     use _ <- do(check_otp_version())
-    use _ <- do(build.do_app(entry, False, detect_tailwind))
+    use _ <- do(build.do_app(entry, False, detect_tailwind, build_hook))
     use _ <- do(prepare_html())
-    use _ <- do(server.start(entry, port))
+    use _ <- do(server.start(entry, port, build_hook))
 
     cli.return(Nil)
   }

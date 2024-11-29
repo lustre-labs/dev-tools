@@ -21,7 +21,7 @@ import simplifile
 import wisp
 import wisp/wisp_mist
 
-pub fn start(entry: String, port: Int) -> Cli(Nil) {
+pub fn start(entry: String, port: Int, build_hook: fn()->Nil) -> Cli(Nil) {
   let assert Ok(cwd) = cmd.cwd()
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
 
@@ -41,7 +41,7 @@ at https://github.com/lustre-labs/dev-tools/issues/new
   }
   use flags <- do(cli.get_flags())
 
-  use make_socket <- try(live_reload.start(entry, root, flags))
+  use make_socket <- try(live_reload.start(entry, root, flags, build_hook))
   use _ <- try(
     fn(req: Request(mist.Connection)) -> Response(mist.ResponseData) {
       use <- proxy.middleware(req, proxy)
