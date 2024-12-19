@@ -33,7 +33,7 @@ simplifile = ">= 2.2.0 and < 3.0.0"
 spinner = "~> 1.1"
 term_size = ">= 1.0.1 and < 2.0.0"
 tom = ">= 1.0.1 and < 2.0.0"
-wisp = ">= 1.1.0 and < 2.0.0"
+wisp = "~> 1.1"
 lustre = ">= 4.6.1 and < 5.0.0"
 gleam_regexp = ">= 1.0.0 and < 2.0.0"
 
