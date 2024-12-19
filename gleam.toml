@@ -8,7 +8,7 @@ repository = { type = "github", user = "lustre-labs", repo = "dev-tools" }
 licences = ["MIT"]
 
 links = [
-    { title = "Sponsor", href = "https://github.com/sponsors/hayleigh-dot-dev" },
+  { title = "Sponsor", href = "https://github.com/sponsors/hayleigh-dot-dev" },
 ]
 
 internal_modules = ["lustre_dev_tools", "lustre_dev_tools/*"]
@@ -27,8 +27,8 @@ gleam_otp = "~> 0.10"
 gleam_package_interface = "~> 1.0"
 gleam_stdlib = "~> 0.34 or ~> 1.0"
 glint = ">=1.0.0 and < 2.0.0"
-glisten = ">= 6.0.0 and < 7.0.0"
-mist = ">= 1.2.0 and < 4.0.0"
+glisten = ">= 7.0.0 and < 8.0.0"
+mist = ">= 4.0.0  and < 5.0.0"
 simplifile = ">= 2.2.0 and < 3.0.0"
 spinner = "~> 1.1"
 term_size = ">= 1.0.1 and < 2.0.0"
