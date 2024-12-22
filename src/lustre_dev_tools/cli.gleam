@@ -12,8 +12,8 @@ import gleam_community/ansi
 import glint
 import lustre_dev_tools/error.{type Error, TemplateMissing}
 import lustre_dev_tools/project.{type Config}
+import lustre_dev_tools/vendor/spinner.{type Spinner}
 import simplifile
-import spinner.{type Spinner}
 import tom
 
 // TYPES -----------------------------------------------------------------------
