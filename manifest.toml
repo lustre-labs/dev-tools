@@ -52,7 +52,7 @@ gleam_http = { version = "~> 3.6" }
 gleam_httpc = { version = ">= 4.0.0 and < 5.0.0" }
 gleam_json = { version = "~> 1.0 or ~> 2.0" }
 gleam_otp = { version = "~> 0.10" }
-gleam_package_interface = { version = "~> 1.0" }
+gleam_package_interface = { version = "1.2.0" }
 gleam_regexp = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_stdlib = { version = "~> 0.34 or ~> 1.0" }
 gleeunit = { version = "~> 1.0" }
