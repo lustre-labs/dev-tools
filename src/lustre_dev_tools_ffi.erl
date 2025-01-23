@@ -9,7 +9,8 @@
     get_os/0,
     otp_version/0,
     unzip_esbuild/1,
-    exec/3
+    exec/3,
+    find_executable/1
 ]).
 
 otp_version() ->
@@ -113,6 +114,14 @@ do_exec(Port, Acc) ->
         {Port, {exit_status, Code}} ->
           port_close(Port),
           {error, {Code, list_to_binary(lists:reverse(Acc))}}
+    end.
+
+find_executable(Command) ->
+    Command_ = binary_to_list(Command),
+
+    case os:find_executable(Command_) of
+        false -> {error, nil};
+        CommandPath -> {ok, list_to_binary(CommandPath)}
     end.
 
 fs_start_link(Id, Path) ->
