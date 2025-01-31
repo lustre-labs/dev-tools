@@ -25,6 +25,7 @@ application and serve it on a local server.
   use <- glint.command_help(description)
   use <- glint.unnamed_args(glint.EqArgs(0))
   use port <- glint.flag(flag.port())
+  use bind <- glint.flag(flag.bind())
   use _proxy_from <- glint.flag(flag.proxy_from())
   use _proxy_to <- glint.flag(flag.proxy_to())
   use detect_tailwind <- glint.flag(flag.detect_tailwind())
@@ -34,6 +35,7 @@ application and serve it on a local server.
   let script = {
     use project_name <- do(cli.get_name())
     use port <- do(cli.get_int("port", 1234, ["start"], port))
+    use bind <- do(cli.get_string("bind", "localhost", ["start"], bind))
     use detect_tailwind <- do(cli.get_bool(
       "detect_tailwind",
       True,
@@ -46,7 +48,7 @@ application and serve it on a local server.
     use _ <- do(check_otp_version())
     use _ <- do(build.do_app(entry, False, detect_tailwind))
     use _ <- do(prepare_html())
-    use _ <- do(server.start(entry, port))
+    use _ <- do(server.start(entry, port, bind))
 
     cli.return(Nil)
   }

@@ -21,7 +21,7 @@ import simplifile
 import wisp
 import wisp/wisp_mist
 
-pub fn start(entry: String, port: Int) -> Cli(Nil) {
+pub fn start(entry: String, port: Int, bind: String) -> Cli(Nil) {
   let assert Ok(cwd) = cmd.cwd()
   let assert Ok(root) = filepath.expand(filepath.join(cwd, project.root()))
 
@@ -62,6 +62,7 @@ at https://github.com/lustre-labs/dev-tools/issues/new
     }
     |> mist.new
     |> mist.port(port)
+    |> mist.bind(bind)
     |> mist.start_http
     |> result.map_error(CannotStartDevServer(_, port)),
   )
