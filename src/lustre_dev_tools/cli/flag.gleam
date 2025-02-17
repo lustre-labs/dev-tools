@@ -87,6 +87,14 @@ pub fn port() -> glint.Flag(Int) {
   |> glint.flag_help(description)
 }
 
+pub fn bind() -> glint.Flag(String) {
+  let description =
+    "Specify server interface binding. If the provided interface is not valid or unavailable, the dev server will not start."
+
+  glint.string_flag("bind")
+  |> glint.flag_help(description)
+}
+
 pub fn proxy_from() -> glint.Flag(String) {
   let description =
     "Proxy requests that start with this path to the URL specified by the --proxy-to flag."
