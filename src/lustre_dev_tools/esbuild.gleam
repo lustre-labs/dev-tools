@@ -18,14 +18,27 @@ import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
 
 // COMMANDS --------------------------------------------------------------------
 
-pub fn download(os: String, cpu: String) -> Cli(Nil) {
+pub fn get_esbuild_path() -> Cli(String) {
+  use <- cli.log("Getting esbuild path")
+
+  case cmd.find_executable("esbuild") {
+    Ok(path) -> {
+      use <- cli.success("Using system esbuild!")
+      cli.return(path)
+    }
+    Error(_) -> download(get_os(), get_cpu())
+  }
+}
+
+pub fn download(os: String, cpu: String) -> Cli(String) {
   use <- cli.log("Downloading esbuild")
 
   let outdir = filepath.join(project.root(), "build/.lustre/bin")
   let outfile = filepath.join(outdir, "esbuild")
 
   case check_esbuild_exists(outfile) {
-    True -> cli.success("Esbuild already installed!", fn() { cli.return(Nil) })
+    True ->
+      cli.success("Esbuild already installed!", fn() { cli.return(outfile) })
     False -> {
       use <- cli.log("Detecting platform")
       use #(url, hash) <- cli.try(get_download_url_and_hash(os, cpu))
@@ -46,13 +59,13 @@ pub fn download(os: String, cpu: String) -> Cli(Nil) {
       use _ <- cli.try(set_file_permissions(outfile))
 
       use <- cli.success("Esbuild installed!")
-      cli.return(Nil)
+      cli.return(outfile)
     }
   }
 }
 
 pub fn bundle(input_file: String, output_file: String, minify: Bool) -> Cli(Nil) {
-  use _ <- cli.do(download(get_os(), get_cpu()))
+  use esbuild_path <- cli.do(get_esbuild_path())
   use _ <- cli.try(project.build())
 
   let root = project.root()
@@ -68,7 +81,7 @@ pub fn bundle(input_file: String, output_file: String, minify: Bool) -> Cli(Nil)
   }
 
   use <- cli.log("Bundling with esbuild")
-  use _ <- cli.try(exec_esbuild(root, options))
+  use _ <- cli.try(exec_esbuild(esbuild_path, root, options))
 
   use <- cli.success("Bundle produced at `" <> output_file <> "`")
   cli.return(Nil)
@@ -251,8 +264,12 @@ fn set_file_permissions(file: String) -> Result(Nil, Error) {
   |> result.map_error(CannotSetPermissions(_, file))
 }
 
-fn exec_esbuild(root: String, options: List(String)) -> Result(String, Error) {
-  cmd.exec("./build/.lustre/bin/esbuild", in: root, with: options)
+fn exec_esbuild(
+  esbuild_path: String,
+  root: String,
+  options: List(String),
+) -> Result(String, Error) {
+  cmd.exec(esbuild_path, in: root, with: options)
   |> result.map_error(fn(pair) { BundleError(pair.1) })
 }
 
