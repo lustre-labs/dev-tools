@@ -36,7 +36,7 @@ repeatedly = ">= 2.1.2 and < 3.0.0"
 simplifile = ">= 2.2.0 and < 3.0.0"
 term_size = ">= 1.0.1 and < 2.0.0"
 tom = ">= 1.0.1 and < 2.0.0"
-wisp = "~> 1.1"
+wisp = "~> 1.5"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"
