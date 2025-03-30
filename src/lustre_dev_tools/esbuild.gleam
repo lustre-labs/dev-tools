@@ -194,10 +194,15 @@ fn get_download_url_and_hash(os, cpu) {
         base <> "netbsd-x64/-/netbsd-x64-0.19.10.tgz",
         "C8F6E2CB79B1DDC2AD42C0AE25FB2A769A989E36B917B231CF9847B683D6DD8D",
       ))
-    "openbsd", "x64" ->
+    "openbsd", "x86_64" ->
       Ok(#(
-        base <> "openbsd-x64/-/openbsd-x64-0.19.10.tgz",
-        "AFEBEAD35BB5A1B921C126E70E0D76CF04DB64FA53C60E0779816CFA9E1F9A11",
+        base <> "openbsd-x64/-/openbsd-x64-0.25.1.tgz",
+        "C3445E0A10F937088B79C1382A2578D1ACCFE9549E3ABB9BB166C47DD430B587",
+      ))
+    "openbsd", "arm64" ->
+      Ok(#(
+        base <> "openbsd-arm64/-/openbsd-arm64-0.25.1.tgz",
+        "7E12C970BBC4DBA7C1B6E09E9A10C7B9E51EB63708E52FA3BFB26CCE66A3F6E1",
       ))
     "sunos", "x64" ->
       Ok(#(
