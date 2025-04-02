@@ -17,3 +17,8 @@ pub fn exec(
 ///
 @external(erlang, "lustre_dev_tools_ffi", "get_cwd")
 pub fn cwd() -> Result(String, Dynamic)
+
+///
+///
+@external(erlang, "lustre_dev_tools_ffi", "find_executable")
+pub fn find_executable(command: String) -> Result(String, Nil)
