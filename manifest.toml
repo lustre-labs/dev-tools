@@ -37,7 +37,7 @@ packages = [
   { name = "telemetry", version = "1.3.0", build_tools = ["rebar3"], requirements = [], otp_app = "telemetry", source = "hex", outer_checksum = "7015FC8919DBE63764F4B4B87A95B7C0996BD539E0D499BE6EC9D7F3875B79E6" },
   { name = "term_size", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "term_size", source = "hex", outer_checksum = "D00BD2BC8FB3EBB7E6AE076F3F1FF2AC9D5ED1805F004D0896C784D06C6645F1" },
   { name = "tom", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "tom", source = "hex", outer_checksum = "228E667239504B57AD05EC3C332C930391592F6C974D0EFECF32FFD0F3629A27" },
-  { name = "wisp", version = "1.4.0", build_tools = ["gleam"], requirements = ["directories", "exception", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_json", "gleam_stdlib", "logging", "marceau", "mist", "simplifile"], otp_app = "wisp", source = "hex", outer_checksum = "ADD438907EEDA25384BCD5893BEBE91EE9E32759E156C7DC5B4FE8E758508DC4" },
+  { name = "wisp", version = "1.5.1", build_tools = ["gleam"], requirements = ["directories", "exception", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_json", "gleam_stdlib", "logging", "marceau", "mist", "simplifile"], otp_app = "wisp", source = "hex", outer_checksum = "DB7968F777CA77B41AAC8067A5151B022E857E1EECF16BFC9D5F914D0F628844" },
 ]
 
 [requirements]
@@ -48,7 +48,7 @@ gleam_community_ansi = { version = "~> 1.4" }
 gleam_crypto = { version = ">= 1.3.0 and < 2.0.0" }
 gleam_deque = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_erlang = { version = "~> 0.25" }
-gleam_http = { version = "~> 3.6" }
+gleam_http = { version = ">= 3.6.0 and < 5.0.0" }
 gleam_httpc = { version = ">= 4.0.0 and < 5.0.0" }
 gleam_json = { version = "~> 1.0 or ~> 2.0" }
 gleam_otp = { version = "~> 0.10" }
@@ -64,4 +64,4 @@ repeatedly = { version = ">= 2.1.2 and < 3.0.0" }
 simplifile = { version = ">= 2.2.0 and < 3.0.0" }
 term_size = { version = ">= 1.0.1 and < 2.0.0" }
 tom = { version = ">= 1.0.1 and < 2.0.0" }
-wisp = { version = "~> 1.1" }
+wisp = { version = "~> 1.5" }
