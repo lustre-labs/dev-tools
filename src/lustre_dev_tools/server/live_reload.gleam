@@ -1,7 +1,8 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import filepath
-import gleam/dynamic.{type DecodeError, type Dynamic}
+import gleam/dynamic.{type Dynamic}
+import gleam/dynamic/decode.{type Decoder}
 import gleam/erlang
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid, type Selector, type Subject}
@@ -177,7 +178,7 @@ fn init_watcher(root: String) -> actor.InitResult(WatcherState, WatcherMsg) {
         process.new_selector()
         |> process.selecting(self, fn(msg) { msg })
         |> process.selecting_anything(fn(msg) {
-          case change_decoder(msg) {
+          case decode.run(msg, change_decoder()) {
             Ok(broadcast) -> broadcast
             Error(_) -> Unknown(msg)
           }
@@ -215,12 +216,10 @@ fn loop_watcher(
       let script = {
         use _ <- cli.do(cli.mute())
         use detect_tailwind <- cli.do(
-          cli.get_bool(
-            "detect_tailwind",
-            True,
-            ["build"],
-            glint.get_flag(_, flag.detect_tailwind()),
-          ),
+          cli.get_bool("detect_tailwind", True, ["build"], glint.get_flag(
+            _,
+            flag.detect_tailwind(),
+          )),
         )
         use _ <- cli.do(build.do_app(entry, False, detect_tailwind))
         use _ <- cli.do(cli.unmute())
@@ -250,13 +249,13 @@ fn loop_watcher(
   }
 }
 
-fn change_decoder(dyn: Dynamic) -> Result(WatcherMsg, List(DecodeError)) {
-  let events_decoder = dynamic.element(1, dynamic.list(dynamic.dynamic))
-  use events <- result.try(dynamic.element(2, events_decoder)(dyn))
+fn change_decoder() -> Decoder(WatcherMsg) {
+  let events_decoder = decode.at([1], decode.list(decode.dynamic))
+  use events <- decode.field(2, events_decoder)
 
   case list.any(events, is_interesting_event) {
-    True -> Ok(Broadcast)
-    False -> Error([])
+    True -> decode.success(Broadcast)
+    False -> decode.failure(Broadcast, "")
   }
 }
 

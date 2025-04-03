@@ -2,7 +2,7 @@
 
 import filepath
 import gleam/dict.{type Dict}
-import gleam/dynamic.{type DecodeError, type Decoder, type Dynamic, DecodeError}
+import gleam/dynamic/decode.{type Decoder}
 import gleam/int
 import gleam/json
 import gleam/list
@@ -65,7 +65,7 @@ pub fn interface() -> Result(Interface, Error) {
   )
 
   let assert Ok(json) = simplifile.read(out)
-  let assert Ok(interface) = json.decode(json, interface_decoder)
+  let assert Ok(interface) = json.parse(json, interface_decoder())
 
   Ok(interface)
 }
@@ -131,40 +131,40 @@ pub fn type_to_string(type_: Type) -> String {
 
 // DECODERS --------------------------------------------------------------------
 
-fn interface_decoder(dyn: Dynamic) -> Result(Interface, List(DecodeError)) {
-  dynamic.decode3(
-    Interface,
-    dynamic.field("name", dynamic.string),
-    dynamic.field("version", dynamic.string),
-    dynamic.field("modules", string_dict(module_decoder)),
-  )(dyn)
+fn interface_decoder() -> Decoder(Interface) {
+  use name <- decode.field("name", decode.string)
+  use version <- decode.field("version", decode.string)
+  use modules <- decode.field("modules", string_dict(module_decoder()))
+
+  decode.success(Interface(name:, version:, modules:))
 }
 
-fn module_decoder(dyn: Dynamic) -> Result(Module, List(DecodeError)) {
-  dynamic.decode2(
-    Module,
-    dynamic.field(
-      "constants",
-      string_dict(dynamic.field("type", package_interface.type_decoder)),
-    ),
-    dynamic.field("functions", string_dict(function_decoder)),
-  )(dyn)
+fn module_decoder() -> Decoder(Module) {
+  use constants <- decode.field(
+    "constants",
+    string_dict(decode.at(["type"], package_interface.type_decoder())),
+  )
+  use functions <- decode.field("functions", string_dict(function_decoder()))
+
+  decode.success(Module(constants:, functions:))
 }
 
-fn function_decoder(dyn: Dynamic) -> Result(Function, List(DecodeError)) {
-  dynamic.decode2(
-    Function,
-    dynamic.field("parameters", dynamic.list(labelled_argument_decoder)),
-    dynamic.field("return", package_interface.type_decoder),
-  )(dyn)
+fn function_decoder() -> Decoder(Function) {
+  use parameters <- decode.field(
+    "parameters",
+    decode.list(labelled_argument_decoder()),
+  )
+  use return <- decode.field("return", package_interface.type_decoder())
+
+  decode.success(Function(parameters:, return:))
 }
 
-fn labelled_argument_decoder(dyn: Dynamic) -> Result(Type, List(DecodeError)) {
+fn labelled_argument_decoder() -> Decoder(Type) {
   // In this case we don't really care about the label, so we're just ignoring
   // it and returning the argument's type.
-  dynamic.field("type", package_interface.type_decoder)(dyn)
+  decode.at(["type"], package_interface.type_decoder())
 }
 
 fn string_dict(values: Decoder(a)) -> Decoder(Dict(String, a)) {
-  dynamic.dict(dynamic.string, values)
+  decode.dict(decode.string, values)
 }
