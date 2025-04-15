@@ -2,7 +2,8 @@ let socket = null;
 let timeout = null;
 
 function connect() {
-  socket = new WebSocket(`ws://${window.location.host}/lustre-dev-tools`);
+  let protocol = window.location.protocol === "https:" ? "wss" : "ws"
+  socket = new WebSocket(`${protocol}://${window.location.host}/lustre-dev-tools`);
 
   if (timeout) {
     clearTimeout(timeout);
