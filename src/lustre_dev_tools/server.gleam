@@ -12,7 +12,7 @@ import gleam/result
 import gleam/string_tree
 import lustre_dev_tools/cli.{type Cli, do, try}
 import lustre_dev_tools/cmd
-import lustre_dev_tools/error.{type Error, CannotStartDevServer}
+import lustre_dev_tools/error.{CannotStartDevServer}
 import lustre_dev_tools/project
 import lustre_dev_tools/server/live_reload
 import lustre_dev_tools/server/proxy

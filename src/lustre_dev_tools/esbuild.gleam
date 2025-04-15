@@ -14,7 +14,7 @@ import lustre_dev_tools/error.{
 }
 import lustre_dev_tools/project
 import lustre_dev_tools/utils
-import simplifile.{type FilePermissions, Execute, FilePermissions, Read, Write}
+import simplifile.{Execute, FilePermissions, Read, Write}
 
 // COMMANDS --------------------------------------------------------------------
 
