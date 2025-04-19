@@ -1,7 +1,7 @@
 name = "lustre_dev_tools"
 version = "1.7.0"
 target = "erlang"
-gleam = ">= 1.4.0"
+gleam = ">= 1.6.0"
 
 description = "Lustre's official CLI and development tooling."
 repository = { type = "github", user = "lustre-labs", repo = "dev-tools" }
