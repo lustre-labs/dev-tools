@@ -85,12 +85,10 @@ pub fn do_app(
   let tempdir = filepath.join(root, "build/.lustre")
   let default_outdir = filepath.join(root, "priv/static")
   use outdir <- cli.do(
-    cli.get_string(
-      "outdir",
-      default_outdir,
-      ["build"],
-      glint.get_flag(_, flag.outdir()),
-    ),
+    cli.get_string("outdir", default_outdir, ["build"], glint.get_flag(
+      _,
+      flag.outdir(),
+    )),
   )
   let _ = simplifile.create_directory_all(tempdir)
   let _ = simplifile.create_directory_all(outdir)
@@ -168,12 +166,10 @@ returns a suitable Lustre `App`.
     let tempdir = filepath.join(root, "build/.lustre")
     let default_outdir = filepath.join(root, "priv/static")
     use outdir <- cli.do(
-      cli.get_string(
-        "outdir",
-        default_outdir,
-        ["build"],
-        glint.get_flag(_, flag.outdir()),
-      ),
+      cli.get_string("outdir", default_outdir, ["build"], glint.get_flag(
+        _,
+        flag.outdir(),
+      )),
     )
     let _ = simplifile.create_directory_all(tempdir)
     let _ = simplifile.create_directory_all(outdir)

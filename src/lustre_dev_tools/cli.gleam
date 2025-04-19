@@ -143,24 +143,21 @@ pub fn log(message: String, then next: fn() -> Cli(a)) -> Cli(a) {
   let env = case env.muted {
     True -> env
     False ->
-      Env(
-        ..env,
-        spinner: case env.spinner {
-          Paused ->
-            Running(
-              spinner.new(message)
-                |> spinner.with_colour(ansi.magenta)
-                |> spinner.with_frames(spinner.snake_frames)
-                |> spinner.start,
-              message,
-            )
+      Env(..env, spinner: case env.spinner {
+        Paused ->
+          Running(
+            spinner.new(message)
+              |> spinner.with_colour(ansi.magenta)
+              |> spinner.with_frames(spinner.snake_frames)
+              |> spinner.start,
+            message,
+          )
 
-          Running(spinner, _) -> {
-            spinner.set_text(spinner, message)
-            Running(spinner, message)
-          }
-        },
-      )
+        Running(spinner, _) -> {
+          spinner.set_text(spinner, message)
+          Running(spinner, message)
+        }
+      })
   }
 
   next().run(env)
@@ -169,16 +166,13 @@ pub fn log(message: String, then next: fn() -> Cli(a)) -> Cli(a) {
 pub fn success(message: String, then next: fn() -> Cli(a)) -> Cli(a) {
   use env <- Cli
   let env =
-    Env(
-      ..env,
-      spinner: case env.spinner {
-        Paused -> Paused
-        Running(spinner, _) -> {
-          spinner.stop(spinner)
-          Paused
-        }
-      },
-    )
+    Env(..env, spinner: case env.spinner {
+      Paused -> Paused
+      Running(spinner, _) -> {
+        spinner.stop(spinner)
+        Paused
+      }
+    })
 
   case env.muted {
     True -> Nil
@@ -191,16 +185,13 @@ pub fn success(message: String, then next: fn() -> Cli(a)) -> Cli(a) {
 pub fn notify(message: String, then next: fn() -> Cli(a)) -> Cli(a) {
   use env <- Cli
   let env =
-    Env(
-      ..env,
-      spinner: case env.spinner {
-        Paused -> Paused
-        Running(spinner, _) -> {
-          spinner.stop(spinner)
-          Paused
-        }
-      },
-    )
+    Env(..env, spinner: case env.spinner {
+      Paused -> Paused
+      Running(spinner, _) -> {
+        spinner.stop(spinner)
+        Paused
+      }
+    })
 
   case env.muted {
     True -> Nil
