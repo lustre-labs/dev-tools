@@ -1,0 +1,27 @@
+---
+version: 1.2.7
+title: [simulate] Parent reset message
+file: ./test/snapshot/simulate_test.gleam
+test_name: simulate_message_test
+---
+
+Output:
+
+  <div>
+    <button>
+      -
+    </button>
+    <p>
+      10
+    </p>
+    <button data-test-id="incr">
+      +
+    </button>
+    <button data-test-id="reset">
+      Reset
+    </button>
+  </div>
+
+History:
+
+  message | ParentResetCount(10)

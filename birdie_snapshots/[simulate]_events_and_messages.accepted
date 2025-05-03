@@ -1,0 +1,30 @@
+---
+version: 1.2.7
+title: [simulate] Events and messages
+file: ./test/snapshot/simulate_test.gleam
+test_name: simulate_events_and_messages_test
+---
+
+Output:
+
+  <div>
+    <button>
+      -
+    </button>
+    <p>
+      10
+    </p>
+    <button data-test-id="incr">
+      +
+    </button>
+    <button data-test-id="reset">
+      Reset
+    </button>
+  </div>
+
+History:
+
+  event   | [data-test-id="incr"] "click" {}
+  event   | [data-test-id="incr"] "click" {}
+  event   | [data-test-id="reset"] "click" {}
+  message | ParentResetCount(10)

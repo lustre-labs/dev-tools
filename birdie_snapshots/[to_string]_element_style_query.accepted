@@ -1,0 +1,7 @@
+---
+version: 1.2.7
+title: [to_string] Element style query
+file: ./test/snapshot/query_to_string_test.gleam
+test_name: style_query_to_string_test
+---
+[style*="color:red"]

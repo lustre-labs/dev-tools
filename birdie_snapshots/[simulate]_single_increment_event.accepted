@@ -1,0 +1,27 @@
+---
+version: 1.2.7
+title: [simulate] Single increment event
+file: ./test/snapshot/simulate_test.gleam
+test_name: simulate_single_event_test
+---
+
+Output:
+
+  <div>
+    <button>
+      -
+    </button>
+    <p>
+      1
+    </p>
+    <button data-test-id="incr">
+      +
+    </button>
+    <button data-test-id="reset">
+      Reset
+    </button>
+  </div>
+
+History:
+
+  event   | [data-test-id="incr"] "click" {}
