@@ -59,7 +59,7 @@ pub fn simulate_events_and_messages_test() {
 
 fn to_snapshot(app) {
   let element_snapshot =
-    simulate.html(app)
+    simulate.view(app)
     |> element.to_readable_string
     |> string.replace("\n", "\n  ")
 
