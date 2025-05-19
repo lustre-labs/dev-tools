@@ -30,25 +30,26 @@ pub fn middleware(
 ) -> Response(mist.ResponseData) {
   case proxy {
     None -> k()
-    Some(Proxy(from, to)) -> {
-      use <- bool.lazy_guard(!string.starts_with(req.path, from), k)
-      let internal_error =
-        response.new(500)
-        |> response.set_body(mist.Bytes(bytes_tree.new()))
+    Some(Proxy(from, to)) ->
+      case string.split_once(req.path, on: from) {
+        Ok(#("", path)) -> {
+          let internal_error =
+            response.new(500)
+            |> response.set_body(mist.Bytes(bytes_tree.new()))
 
-      let assert Some(host) = to.host
-      let path =
-        req.path
-        |> string.replace(from, "")
-        |> filepath.join(to.path, _)
-      let assert Ok(req) = mist.read_body(req, 100 * 1024 * 1024)
+          let path = filepath.join(to.path, path)
+          let assert Some(host) = to.host
+          let assert Ok(req) = mist.read_body(req, 100 * 1024 * 1024)
 
-      Request(..req, host: host, port: to.port, path: path)
-      |> httpc.send_bits
-      |> result.map(response.map(_, bytes_tree.from_bit_array))
-      |> result.map(response.map(_, mist.Bytes))
-      |> result.unwrap(internal_error)
-    }
+          Request(..req, host:, port: to.port, path:)
+          |> httpc.send_bits
+          |> result.map(response.map(_, bytes_tree.from_bit_array))
+          |> result.map(response.map(_, mist.Bytes))
+          |> result.unwrap(internal_error)
+        }
+
+        _ -> k()
+      }
   }
 }
 
