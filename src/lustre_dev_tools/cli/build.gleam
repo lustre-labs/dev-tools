@@ -316,7 +316,7 @@ fn bundle_tailwind(
 }
 
 fn exec_tailwind(root: String, options: List(String)) -> Result(String, Error) {
-  cmd.exec("./build/.lustre/bin/tailwind", in: root, with: options)
+  cmd.exec("./build/.lustre/bin/tailwind", in: root, env: [], with: options)
   |> result.map_error(fn(pair) { BundleError(pair.1) })
 }
 

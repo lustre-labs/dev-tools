@@ -49,7 +49,9 @@ fn do_otp_version() -> String
 /// Compile the current project running the `gleam build` command.
 ///
 pub fn build() -> Result(Nil, Error) {
-  cmd.exec(run: "gleam", in: ".", with: ["build", "--target", "javascript"])
+  cmd.exec(run: "gleam", in: ".", env: [], with: [
+    "build", "--target", "javascript",
+  ])
   |> result.map_error(fn(err) { BuildError(pair.second(err)) })
   |> result.replace(Nil)
 }
@@ -60,7 +62,7 @@ pub fn interface() -> Result(Interface, Error) {
   let args = ["export", "package-interface", "--out", out]
 
   use _ <- result.try(
-    cmd.exec(run: "gleam", in: ".", with: args)
+    cmd.exec(run: "gleam", in: ".", env: [], with: args)
     |> result.map_error(fn(err) { BuildError(pair.second(err)) }),
   )
 
