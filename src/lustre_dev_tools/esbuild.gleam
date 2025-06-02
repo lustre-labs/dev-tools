@@ -259,7 +259,12 @@ fn set_file_permissions(file: String) -> Result(Nil, Error) {
 }
 
 fn exec_esbuild(root: String, options: List(String)) -> Result(String, Error) {
-  cmd.exec("./build/.lustre/bin/esbuild", in: root, with: options)
+  cmd.exec(
+    "./build/.lustre/bin/esbuild",
+    in: root,
+    env: [#("NODE_PATH", "./node_modules")],
+    with: options,
+  )
   |> result.map_error(fn(pair) { BundleError(pair.1) })
 }
 
