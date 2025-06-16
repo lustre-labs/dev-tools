@@ -120,12 +120,11 @@ pub fn do_app(
   use _ <- do(bundle(entry, tempdir, outfile, minify))
   use <- bool.guard(!detect_tailwind, cli.return(Nil))
 
-  use entry <- cli.template("entry.css")
   let outfile =
     filepath.strip_extension(outfile)
     |> string.append(".css")
 
-  use _ <- do(bundle_tailwind(entry, tempdir, outfile, minify))
+  use _ <- do(bundle_tailwind(outfile, minify))
 
   cli.return(Nil)
 }
@@ -207,12 +206,11 @@ returns a suitable Lustre `App`.
     use _ <- do(bundle(entry, tempdir, outfile, minify))
 
     // Tailwind bundling
-    use entry <- cli.template("entry.css")
     let outfile =
       filepath.strip_extension(outfile)
       |> string.append(".css")
 
-    use _ <- do(bundle_tailwind(entry, tempdir, outfile, minify))
+    use _ <- do(bundle_tailwind(outfile, minify))
 
     cli.return(Nil)
   }
@@ -271,38 +269,26 @@ fn bundle(
   cli.return(Nil)
 }
 
-fn bundle_tailwind(
-  entry: String,
-  tempdir: String,
-  outfile: String,
-  minify: Bool,
-) -> Cli(Nil) {
-  // We first check if there's a `tailwind.config.js` at the project's root.
+fn bundle_tailwind(outfile: String, minify: Bool) -> Cli(Nil) {
+  // We check if there's an `app.css` file containing @import "tailwindcss".
   // If not present we do nothing; otherwise we go on with bundling.
   let root = project.root()
-  let tailwind_config_file = filepath.join(root, "tailwind.config.js")
-  let has_tailwind_config =
-    simplifile.is_file(tailwind_config_file)
-    |> result.unwrap(False)
-  use <- bool.guard(when: !has_tailwind_config, return: cli.return(Nil))
+  let default_entryfile = filepath.join(root, "app.css")
+  let has_tailwind_import = case simplifile.read(default_entryfile) {
+    Ok(content) -> string.contains(content, "@import \"tailwindcss\"")
+    Error(_) -> False
+  }
+  use <- bool.guard(when: !has_tailwind_import, return: cli.return(Nil))
 
   use _ <- do(tailwind.setup(get_os(), get_cpu()))
 
   use <- cli.log("Bundling with Tailwind")
-  let default_entryfile = filepath.join(tempdir, "entry.css")
   use entryfile <- cli.do(
-    cli.get_string(
-      "tailwind-entry",
-      default_entryfile,
-      ["build"],
-      glint.get_flag(_, flag.tailwind_entry()),
-    ),
+    cli.get_string("tailwind-entry", default_entryfile, ["build"], glint.get_flag(
+      _,
+      flag.tailwind_entry(),
+    )),
   )
-
-  let assert Ok(_) = case entryfile == default_entryfile {
-    True -> simplifile.write(entryfile, entry)
-    False -> Ok(Nil)
-  }
 
   let flags = ["--input=" <> entryfile, "--output=" <> outfile]
   let options = case minify {
