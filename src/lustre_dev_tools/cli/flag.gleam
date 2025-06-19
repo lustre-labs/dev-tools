@@ -33,7 +33,7 @@ pub fn tailwind_os() -> glint.Flag(String) {
 
 pub fn tailwind_cpu() -> glint.Flag(String) {
   let description = "Override the automatic CPU architecture detection."
-  let allowed = ["armv7", "arm64", "x64", "x86_64", "aarch64"]
+  let allowed = ["arm64", "x64", "x86_64", "aarch64"]
 
   glint.string_flag("cpu")
   |> glint.flag_help(description)

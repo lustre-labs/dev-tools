@@ -41,7 +41,7 @@
 
 - Built-in **development server**.
 
-- Automatic detection and support for **TailwindCSS**.
+- Automatic detection and support for **TailwindCSS v4**.
 
 - **Bundle** and **minify** Lustre applications.
 
@@ -106,9 +106,10 @@ and options. Here's a brief overview of the commands provided by Lustre's dev to
     `start` commands are run.
 
   - `lustre/dev add tailwind` - Download a platform-appropriate version of the
-    Tailwind binary. Lustre will automatically use this to compile your styles if
-    it detects a `tailwind.config.js` in your project but will not download it
-    automatically. Be sure to add the following to your root level `index.html`
+    Tailwind v4 binary. Lustre will automatically use this to compile your styles if
+    it detects an `app.css` file containing `@import "tailwindcss"` in your project root,
+    but will not download the binary automatically. Be sure to add the following to your 
+    root level `index.html`
 
     `<link rel="stylesheet" type="text/css" href="/priv/static/my_app.css" />`
 

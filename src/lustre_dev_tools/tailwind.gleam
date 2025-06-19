@@ -2,7 +2,6 @@
 
 import filepath
 import gleam/bit_array
-import gleam/bool
 import gleam/crypto
 import gleam/dynamic.{type Dynamic}
 import gleam/result
@@ -21,7 +20,6 @@ import simplifile.{Execute, FilePermissions, Read, Write}
 
 pub fn setup(os: String, cpu: String) -> Cli(Nil) {
   use _ <- cli.do(download(os, cpu))
-  use _ <- cli.do(write_tailwind_config())
   use _ <- cli.do(display_next_steps())
 
   cli.return(Nil)
@@ -62,25 +60,8 @@ fn download(os: String, cpu: String) -> Cli(Nil) {
 fn display_next_steps() -> Cli(Nil) {
   use <- cli.notify(ansi.bold("\nNext Steps:\n"))
   use <- cli.notify(
-    "1. Be sure to update your root `index.html` file to include \n   `<link rel='stylesheet' type='text/css' href='./priv/static/your_app.css' />`",
+    "1. Create an app.css file with '@import \"tailwindcss\"' to enable Tailwind CSS.\n2. Be sure to update your root `index.html` file to include \n   `<link rel='stylesheet' type='text/css' href='./priv/static/your_app.css' />`",
   )
-  cli.return(Nil)
-}
-
-fn write_tailwind_config() -> Cli(Nil) {
-  let config_filename = "tailwind.config.js"
-  let config_outfile = filepath.join(project.root(), config_filename)
-  let config_already_exists =
-    simplifile.is_file(config_outfile)
-    |> result.unwrap(False)
-
-  // If there already is a configuration file, we make sure not to override it.
-  use <- bool.guard(when: config_already_exists, return: cli.return(Nil))
-  use <- cli.log("Writing `" <> config_filename <> "`")
-  use config <- cli.template("tailwind.config.js")
-  use _ <- cli.try(write_config(config_outfile, config))
-  use <- cli.success("Written `" <> config_outfile <> "`")
-
   cli.return(Nil)
 }
 
@@ -98,45 +79,35 @@ fn check_tailwind_exists(path) {
 ///
 fn get_download_url_and_hash(os, cpu) {
   let base =
-    "https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.1/tailwindcss-"
+    "https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.10/tailwindcss-"
 
   case os, cpu {
-    "linux", "armv7" ->
-      Ok(#(
-        base <> "linux-armv7",
-        "38E004B144004495CD148621ADB852C21D5D350E66308C8FF9E2FD90A15726F5",
-      ))
     "linux", "arm64" | "linux", "aarch64" ->
       Ok(#(
         base <> "linux-arm64",
-        "1178C3E8B44B9EB43F40E786EE25664C93D83F6D05B062C0D9CAF410D64D5587",
+        "67EB620BB404C2046D3C127DBF2D7F9921595065475E7D2D528E39C1BB33C9B6",
       ))
     "linux", "x64" | "linux", "x86_64" ->
       Ok(#(
         base <> "linux-x64",
-        "A6814CC8FB6E573DD637352093F3B8E927C5C8628B1FF87826652935AF1430B1",
+        "0A85A3E533F2E7983BDB91C08EA44F0EAB3BECC275E60B3BAADDF18F71D390BF",
       ))
 
-    "win32", "arm64" ->
-      Ok(#(
-        base <> "windows-arm64.exe",
-        "AC06BC274FAED7A0C9C0C7E9058D87A428B574BCF8FCE85330F576DE4568BB81",
-      ))
     "win32", "x64" | "win32", "x86_64" ->
       Ok(#(
         base <> "windows-x64.exe",
-        "EF2FE367DAA8204CB186796C1833FAEE81A5B20E4C80E533F7A3B3DCC7DB6C54",
+        "5539346428771D8974AC63B68D1F477866BECECF615B3A14F2F197A36BDAAC33",
       ))
 
     "darwin", "arm64" | "darwin", "aarch64" ->
       Ok(#(
         base <> "macos-arm64",
-        "40738E59ECEF06F955243154E7D1C6EAF11370037CBEEE4A32C3138387E2DA5D",
+        "F34A85A75B1F2DE2C7E4A9FBC4FB976E64A2780980E843DF87D9C13F555F4A4C",
       ))
     "darwin", "x64" | "darwin", "x86_64" ->
       Ok(#(
         base <> "macos-x64",
-        "594D01B032125199DB105C661FE23DE4C069006921B96F7FEE98EE4FBC15F800",
+        "47A130C5F639384456E0AC8A0D60B95D74906187314A4DBC37E7C1DDBEB713AE",
       ))
 
     _, _ -> Error(UnknownPlatform("tailwind", os, cpu))
@@ -178,11 +149,6 @@ fn set_file_permissions(file: String) -> Result(Nil, Error) {
 
   simplifile.set_permissions(file, permissions)
   |> result.map_error(CannotSetPermissions(_, file))
-}
-
-fn write_config(path: String, content: String) -> Result(Nil, Error) {
-  simplifile.write(to: path, contents: content)
-  |> result.map_error(CannotWriteFile(_, path))
 }
 
 // EXTERNALS -------------------------------------------------------------------
