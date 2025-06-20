@@ -60,7 +60,7 @@ fn download(os: String, cpu: String) -> Cli(Nil) {
 fn display_next_steps() -> Cli(Nil) {
   use <- cli.notify(ansi.bold("\nNext Steps:\n"))
   use <- cli.notify(
-    "1. Create an app.css file with '@import \"tailwindcss\"' to enable Tailwind CSS.\n2. Be sure to update your root `index.html` file to include \n   `<link rel='stylesheet' type='text/css' href='./priv/static/your_app.css' />`",
+    "1. Create a {app_name}.css file with '@import \"tailwindcss\"' to enable Tailwind CSS.\n2. Be sure to update your root `index.html` file to include \n   `<link rel='stylesheet' type='text/css' href='./priv/static/your_app.css' />`",
   )
   cli.return(Nil)
 }

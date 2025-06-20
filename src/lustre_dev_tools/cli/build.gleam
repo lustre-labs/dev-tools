@@ -270,12 +270,16 @@ fn bundle(
 }
 
 fn bundle_tailwind(outfile: String, minify: Bool) -> Cli(Nil) {
-  // We check if there's an `app.css` file containing @import "tailwindcss".
+  // We check if there's an `{app_name}.css` file containing "@import "tailwindcss".
   // If not present we do nothing; otherwise we go on with bundling.
   let root = project.root()
-  let default_entryfile = filepath.join(root, "app.css")
+  use project_name <- cli.do(cli.get_name())
+  let default_entryfile = filepath.join(root, project_name <> ".css")
+  // The matched string only matches "tailwindcss to enable scenarios
+  // where the user is not importing all tailwind default imports.
+  let tailwind_import_string = "@import \"tailwindcss"
   let has_tailwind_import = case simplifile.read(default_entryfile) {
-    Ok(content) -> string.contains(content, "@import \"tailwindcss\"")
+    Ok(content) -> string.contains(content, tailwind_import_string)
     Error(_) -> False
   }
   use <- bool.guard(when: !has_tailwind_import, return: cli.return(Nil))
@@ -284,10 +288,12 @@ fn bundle_tailwind(outfile: String, minify: Bool) -> Cli(Nil) {
 
   use <- cli.log("Bundling with Tailwind")
   use entryfile <- cli.do(
-    cli.get_string("tailwind-entry", default_entryfile, ["build"], glint.get_flag(
-      _,
-      flag.tailwind_entry(),
-    )),
+    cli.get_string(
+      "tailwind-entry",
+      default_entryfile,
+      ["build"],
+      glint.get_flag(_, flag.tailwind_entry()),
+    ),
   )
 
   let flags = ["--input=" <> entryfile, "--output=" <> outfile]
