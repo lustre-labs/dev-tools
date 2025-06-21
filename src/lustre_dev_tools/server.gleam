@@ -63,7 +63,7 @@ at https://github.com/lustre-labs/dev-tools/issues/new
     |> mist.new
     |> mist.port(port)
     |> mist.bind(bind)
-    |> mist.start_http
+    |> mist.start
     |> result.map_error(CannotStartDevServer(_, port)),
   )
 

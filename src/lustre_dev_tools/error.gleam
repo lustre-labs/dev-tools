@@ -2,13 +2,11 @@
 
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
-import gleam/erlang/process
 import gleam/int
 import gleam/list
 import gleam/otp/actor
 import gleam/package_interface.{type Type, Fn, Named, Tuple, Variable}
 import gleam/string
-import glisten
 import simplifile
 
 // TYPES -----------------------------------------------------------------------
@@ -19,7 +17,7 @@ pub type Error {
   CannotCreateDirectory(reason: simplifile.FileError, path: String)
   CannotReadFile(reason: simplifile.FileError, path: String)
   CannotSetPermissions(reason: simplifile.FileError, path: String)
-  CannotStartDevServer(reason: glisten.StartError, port: Int)
+  CannotStartDevServer(reason: actor.StartError, port: Int)
   CannotStartFileWatcher(reason: actor.StartError)
   CannotWriteFile(reason: simplifile.FileError, path: String)
   ComponentMissing(module: String)
@@ -169,9 +167,9 @@ you were trying to do when you ran into this issue.
   |> string.replace("{reason}", string.inspect(reason))
 }
 
-fn cannot_start_dev_server(reason: glisten.StartError, port: Int) -> String {
+fn cannot_start_dev_server(reason: actor.StartError, port: Int) -> String {
   case reason {
-    glisten.AcceptorFailed(process.Abnormal(message)) ->
+    actor.InitFailed(message) ->
       case string.contains(message, "Eaddrinuse") {
         True -> cannot_start_dev_server_port_in_use_message(port)
         False -> cannot_start_dev_server_default_message(reason)
@@ -180,7 +178,7 @@ fn cannot_start_dev_server(reason: glisten.StartError, port: Int) -> String {
   }
 }
 
-fn cannot_start_dev_server_default_message(reason: glisten.StartError) -> String {
+fn cannot_start_dev_server_default_message(reason: actor.StartError) -> String {
   let message =
     "
 I ran into an error while trying to start the development server. Here's the

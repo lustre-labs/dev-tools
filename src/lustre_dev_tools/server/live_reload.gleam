@@ -3,7 +3,7 @@
 import filepath
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode.{type Decoder}
-import gleam/erlang
+import gleam/erlang/application
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid, type Selector, type Subject}
 import gleam/http/request.{type Request}
@@ -69,7 +69,7 @@ pub fn start(
 }
 
 pub fn inject(html: String) -> String {
-  let assert Ok(priv) = erlang.priv_directory("lustre_dev_tools")
+  let assert Ok(priv) = application.priv_directory("lustre_dev_tools")
   let assert Ok(source) = simplifile.read(priv <> "/server/live-reload.js")
   let script = "<script>" <> source <> "</script>"
 
@@ -84,9 +84,7 @@ fn init_socket(
   _connection: mist.WebsocketConnection,
 ) -> #(SocketState, Option(Selector(SocketMsg))) {
   let self = process.new_subject()
-  let selector =
-    process.new_selector()
-    |> process.selecting(self, fn(msg) { msg })
+  let selector = process.new_selector() |> process.select(self)
   let state = #(self, watcher)
 
   process.send(watcher, Add(self))
@@ -96,11 +94,11 @@ fn init_socket(
 
 fn loop_socket(
   state: SocketState,
-  connection: mist.WebsocketConnection,
   msg: mist.WebsocketMessage(SocketMsg),
-) -> actor.Next(SocketMsg, SocketState) {
+  connection: mist.WebsocketConnection,
+) -> mist.Next(SocketState, SocketMsg) {
   case msg {
-    mist.Text(_) | mist.Binary(_) -> actor.continue(state)
+    mist.Text(_) | mist.Binary(_) -> mist.continue(state)
 
     mist.Custom(Reload) -> {
       let assert Ok(_) =
@@ -108,7 +106,8 @@ fn loop_socket(
           connection,
           json.object([#("$", json.string("reload"))]) |> json.to_string,
         )
-      actor.continue(state)
+
+      mist.continue(state)
     }
 
     mist.Custom(ShowError(error)) -> {
@@ -121,12 +120,13 @@ fn loop_socket(
           ])
             |> json.to_string,
         )
-      actor.continue(state)
+
+      mist.continue(state)
     }
 
     mist.Closed | mist.Shutdown -> {
       process.send(state.1, Remove(state.0))
-      actor.Stop(process.Normal)
+      mist.stop()
     }
   }
 }
@@ -142,17 +142,22 @@ fn start_watcher(
   root: String,
   flags: glint.Flags,
 ) -> Result(Subject(WatcherMsg), Error) {
-  actor.start_spec(
-    actor.Spec(fn() { init_watcher(root) }, 1000, fn(msg, state) {
-      loop_watcher(msg, state, entry, flags)
-    }),
-  )
+  actor.new_with_initialiser(1000, init_watcher(_, root))
+  |> actor.on_message(fn(state, msg) { loop_watcher(state, msg, entry, flags) })
+  |> actor.start
+  |> result.map(fn(start) { start.data })
   |> result.map_error(CannotStartFileWatcher)
 }
 
-fn init_watcher(root: String) -> actor.InitResult(WatcherState, WatcherMsg) {
+fn init_watcher(
+  self: Subject(WatcherMsg),
+  root: String,
+) -> Result(
+  actor.Initialised(WatcherState, WatcherMsg, Subject(WatcherMsg)),
+  String,
+) {
   let src = filepath.join(root, "src")
-  let id = atom.create_from_string(src)
+  let id = atom.create(src)
 
   case check_live_reloading() {
     Ok(_) -> Nil
@@ -173,11 +178,10 @@ fn init_watcher(root: String) -> actor.InitResult(WatcherState, WatcherMsg) {
 
   case fs_start_link(id, src) {
     Ok(_) -> {
-      let self = process.new_subject()
       let selector =
         process.new_selector()
-        |> process.selecting(self, fn(msg) { msg })
-        |> process.selecting_anything(fn(msg) {
+        |> process.select(self)
+        |> process.select_other(fn(msg) {
           case decode.run(msg, change_decoder()) {
             Ok(broadcast) -> broadcast
             Error(_) -> Unknown(msg)
@@ -186,21 +190,23 @@ fn init_watcher(root: String) -> actor.InitResult(WatcherState, WatcherMsg) {
       let state = set.new()
 
       fs_subscribe(id)
-      actor.Ready(state, selector)
+
+      actor.initialised(state)
+      |> actor.selecting(selector)
+      |> actor.returning(self)
+      |> Ok
     }
 
-    Error(err) -> {
-      actor.Failed("Failed to start watcher: " <> string.inspect(err))
-    }
+    Error(err) -> Error("Failed to start watcher: " <> string.inspect(err))
   }
 }
 
 fn loop_watcher(
-  msg: WatcherMsg,
   state: WatcherState,
+  msg: WatcherMsg,
   entry: String,
   flags: glint.Flags,
-) -> actor.Next(WatcherMsg, WatcherState) {
+) -> actor.Next(WatcherState, WatcherMsg) {
   case msg {
     Add(client) ->
       client
@@ -266,12 +272,15 @@ type Event {
 }
 
 fn is_interesting_event(event: Dynamic) -> Bool {
-  event == dynamic.from(Created)
-  || event == dynamic.from(Modified)
-  || event == dynamic.from(Deleted)
+  event == to_dynamic(Created)
+  || event == to_dynamic(Modified)
+  || event == to_dynamic(Deleted)
 }
 
 // EXTERNALS -------------------------------------------------------------------
+
+@external(erlang, "gleam@function", "identity")
+fn to_dynamic(value: a) -> Dynamic
 
 @external(erlang, "lustre_dev_tools_ffi", "fs_start_link")
 fn fs_start_link(id: Atom, path: String) -> Result(Pid, Dynamic)
