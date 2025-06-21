@@ -274,19 +274,7 @@ fn bundle_tailwind(outfile: String, minify: Bool) -> Cli(Nil) {
   // If not present we do nothing; otherwise we go on with bundling.
   let root = project.root()
   use project_name <- cli.do(cli.get_name())
-  let default_entryfile = filepath.join(root, project_name <> ".css")
-  // The matched string only matches "tailwindcss to enable scenarios
-  // where the user is not importing all tailwind default imports.
-  let tailwind_import_string = "@import \"tailwindcss"
-  let has_tailwind_import = case simplifile.read(default_entryfile) {
-    Ok(content) -> string.contains(content, tailwind_import_string)
-    Error(_) -> False
-  }
-  use <- bool.guard(when: !has_tailwind_import, return: cli.return(Nil))
-
-  use _ <- do(tailwind.setup(get_os(), get_cpu()))
-
-  use <- cli.log("Bundling with Tailwind")
+  let default_entryfile = filepath.join(root, "src/" <> project_name <> ".css")
   use entryfile <- cli.do(
     cli.get_string(
       "tailwind-entry",
@@ -295,6 +283,24 @@ fn bundle_tailwind(outfile: String, minify: Bool) -> Cli(Nil) {
       glint.get_flag(_, flag.tailwind_entry()),
     ),
   )
+  let has_legacy_tailwind_conig =
+    simplifile.is_file(filepath.join(root, "tailwind.config.js"))
+    |> result.unwrap(False)
+
+  // The matched string only matches "tailwindcss to enable scenarios
+  // where the user is not importing all tailwind default imports.
+  let tailwind_import_string = "@import \"tailwindcss"
+  let has_tailwind_import = case simplifile.read(entryfile) {
+    Ok(content) -> string.contains(content, tailwind_import_string)
+    Error(_) -> False
+  }
+
+  let tailwind_detected = has_tailwind_import || has_legacy_tailwind_conig
+  use <- bool.guard(when: !tailwind_detected, return: cli.return(Nil))
+
+  use _ <- do(tailwind.setup(get_os(), get_cpu()))
+
+  use <- cli.log("Bundling with Tailwind")
 
   let flags = ["--input=" <> entryfile, "--output=" <> outfile]
   let options = case minify {
