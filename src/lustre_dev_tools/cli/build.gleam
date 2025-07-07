@@ -224,25 +224,24 @@ returns a suitable Lustre `App`.
 // STEPS -----------------------------------------------------------------------
 
 fn get_module_interface(module_path: String) -> Result(Module, Error) {
-  project.interface()
-  |> result.then(fn(interface) {
-    dict.get(interface.modules, module_path)
-    |> result.replace_error(ModuleMissing(module_path))
-  })
+  use interface <- result.try(project.interface())
+
+  dict.get(interface.modules, module_path)
+  |> result.replace_error(ModuleMissing(module_path))
 }
 
 fn check_component_name(
   module_path: String,
   module: Module,
 ) -> Result(Nil, Error) {
-  dict.get(module.constants, "name")
-  |> result.replace_error(NameMissing(module_path))
-  |> result.then(fn(component_name) {
-    case is_string_type(component_name) {
-      True -> Ok(Nil)
-      False -> Error(NameIncorrectType(module_path, component_name))
-    }
-  })
+  case dict.get(module.constants, "name") {
+    Error(_) -> Error(NameMissing(module_path))
+    Ok(component_name) ->
+      case is_string_type(component_name) {
+        True -> Ok(Nil)
+        False -> Error(NameIncorrectType(module_path, component_name))
+      }
+  }
 }
 
 fn find_component(module_path: String, module: Module) -> Result(String, Error) {
