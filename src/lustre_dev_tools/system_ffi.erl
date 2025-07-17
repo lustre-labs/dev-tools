@@ -1,8 +1,8 @@
 -module(system_ffi).
 
--export([get_os/0, get_arch/0]).
+-export([detect_os/0, detect_arch/0, run/1]).
 
-get_os() ->
+detect_os() ->
     case os:type() of
         {win32, _} ->
             <<"win32">>;
@@ -14,7 +14,7 @@ get_os() ->
             atom_to_binary(Unknown, utf8)
     end.
 
-get_arch() ->
+detect_arch() ->
     case erlang:system_info(os_type) of
         {unix, _} ->
             [Arch, _] =
@@ -28,4 +28,19 @@ get_arch() ->
                 8 ->
                     <<"x64">>
             end
+    end.
+
+run(Cmd) ->
+    case catch os:cmd(
+                   unicode:characters_to_list(Cmd), #{exception_on_failure => true})
+    of
+        {'EXIT', {{command_failed, Output, _}, _}} ->
+            {error, unicode:characters_to_binary(Output)};
+        Output when is_binary(Output) ->
+            {ok, Output};
+        Output when is_list(Output) ->
+            {ok, unicode:characters_to_binary(Output)};
+        Output ->
+            io:format("Unexpected output: ~p~n", [Output]),
+            {error, <<"">>}
     end.
