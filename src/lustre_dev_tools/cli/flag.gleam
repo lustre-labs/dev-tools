@@ -79,6 +79,14 @@ pub fn detect_tailwind() -> glint.Flag(Bool) {
   |> glint.flag_help(description)
 }
 
+pub fn use_system_esbuild() -> glint.Flag(Bool) {
+  let description =
+    "Use the esbuild installed on the system instead of fetching it from the internet"
+
+  glint.bool_flag("use-system-esbuild")
+  |> glint.flag_help(description)
+}
+
 pub fn port() -> glint.Flag(Int) {
   let description =
     "Specify server port. If the port is taken the dev server will not start."

@@ -44,6 +44,7 @@ JavaScript module for you to host or distribute.
   use <- glint.command_help(description)
   use <- glint.unnamed_args(glint.EqArgs(0))
   use minify <- glint.flag(flag.minify())
+  use sys_esbuild <- glint.flag(flag.use_system_esbuild())
   use detect_tailwind <- glint.flag(flag.detect_tailwind())
   use _tailwind_entry <- glint.flag(flag.tailwind_entry())
   use entry <- glint.flag(flag.entry())
@@ -61,8 +62,14 @@ JavaScript module for you to host or distribute.
     ))
 
     use entry <- do(cli.get_string("entry", project_name, ["build"], entry))
+    use sys_esbuild <- do(cli.get_bool(
+      "use-system-esbuild",
+      False,
+      ["build"],
+      sys_esbuild,
+    ))
 
-    do_app(entry, minify, detect_tailwind)
+    do_app(entry, minify, detect_tailwind, sys_esbuild)
   }
 
   case cli.run(script, flags) {
@@ -75,6 +82,7 @@ pub fn do_app(
   entry_module: String,
   minify: Bool,
   detect_tailwind: Bool,
+  sys_esbuild: Bool,
 ) -> Cli(Nil) {
   use <- cli.log("Building your project")
 
@@ -117,7 +125,7 @@ pub fn do_app(
     |> filepath.join(outdir, _)
 
   let assert Ok(_) = simplifile.write(entryfile, entry)
-  use _ <- do(bundle(entry, tempdir, outfile, minify))
+  use _ <- do(bundle(entry, tempdir, outfile, minify, sys_esbuild))
   use <- bool.guard(!detect_tailwind, cli.return(Nil))
 
   let outfile =
@@ -146,12 +154,19 @@ returns a suitable Lustre `App`.
   use module_path <- glint.named_arg("module_path")
   use <- glint.unnamed_args(glint.EqArgs(0))
   use minify <- glint.flag(flag.minify())
+  use sys_esbuild <- glint.flag(flag.use_system_esbuild())
   use _outdir <- glint.flag(flag.outdir())
   use args, _, flags <- glint.command
   let module_path = module_path(args)
 
   let script = {
     use minify <- do(cli.get_bool("minifiy", False, ["build"], minify))
+    use sys_esbuild <- do(cli.get_bool(
+      "use-system-esbuild",
+      False,
+      ["build"],
+      sys_esbuild,
+    ))
 
     use <- cli.log("Building your project")
     use module <- try(get_module_interface(module_path))
@@ -203,7 +218,7 @@ returns a suitable Lustre `App`.
       |> result.map(filepath.join(outdir, _))
 
     let assert Ok(_) = simplifile.write(entryfile, entry)
-    use _ <- do(bundle(entry, tempdir, outfile, minify))
+    use _ <- do(bundle(entry, tempdir, outfile, minify, sys_esbuild))
 
     // Tailwind bundling
     let outfile =
@@ -261,10 +276,11 @@ fn bundle(
   tempdir: String,
   outfile: String,
   minify: Bool,
+  sys_esbuild: Bool,
 ) -> Cli(Nil) {
   let entryfile = filepath.join(tempdir, "entry.mjs")
   let assert Ok(_) = simplifile.write(entryfile, entry)
-  use _ <- do(esbuild.bundle(entryfile, outfile, minify))
+  use _ <- do(esbuild.bundle(entryfile, outfile, minify, sys_esbuild))
 
   cli.return(Nil)
 }

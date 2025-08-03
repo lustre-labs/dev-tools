@@ -1,7 +1,7 @@
 -module(lustre_dev_tools_ffi).
 
 -export([check_live_reloading/0, fs_start_link/2, get_cwd/0, get_cpu/0, get_esbuild/1,
-         get_tailwind/1, get_os/0, otp_version/0, unzip_esbuild/1, exec/4]).
+         get_tailwind/1, get_os/0, otp_version/0, unzip_esbuild/1, exec/4, find_executable/1]).
 
 otp_version() ->
     Version = erlang:system_info(otp_release),
@@ -87,6 +87,14 @@ unzip_esbuild(Zip) ->
             {error, Res};
         {error, Err} ->
             {error, Err}
+    end.
+
+find_executable(Command) ->
+    Command_ = binary_to_list(Command),
+
+    case os:find_executable(Command_) of
+        false -> {error, nil};
+        CommandPath -> {ok, list_to_binary(CommandPath)}
     end.
 
 exec(Command, Env, Args, Cwd) ->

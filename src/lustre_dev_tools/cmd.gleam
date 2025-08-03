@@ -6,6 +6,11 @@ import gleam/dynamic.{type Dynamic}
 
 ///
 ///
+@external(erlang, "lustre_dev_tools_ffi", "find_executable")
+pub fn find_executable(command: String) -> Result(String, Nil)
+
+///
+///
 @external(erlang, "lustre_dev_tools_ffi", "exec")
 pub fn exec(
   run command: String,

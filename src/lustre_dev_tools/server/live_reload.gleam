@@ -221,13 +221,19 @@ fn loop_watcher(
     Broadcast -> {
       let script = {
         use _ <- cli.do(cli.mute())
+        use sys_esbuild <- cli.do(
+          cli.get_bool("use-system-esbuild", False, ["build"], glint.get_flag(
+            _,
+            flag.use_system_esbuild(),
+          )),
+        )
         use detect_tailwind <- cli.do(
           cli.get_bool("detect_tailwind", True, ["build"], glint.get_flag(
             _,
             flag.detect_tailwind(),
           )),
         )
-        use _ <- cli.do(build.do_app(entry, False, detect_tailwind))
+        use _ <- cli.do(build.do_app(entry, False, detect_tailwind, sys_esbuild))
         use _ <- cli.do(cli.unmute())
 
         cli.return(Nil)

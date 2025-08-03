@@ -25,6 +25,7 @@ application and serve it on a local server.
   use <- glint.command_help(description)
   use <- glint.unnamed_args(glint.EqArgs(0))
   use port <- glint.flag(flag.port())
+  use sys_esbuild <- glint.flag(flag.use_system_esbuild())
   use bind <- glint.flag(flag.bind())
   use _proxy_from <- glint.flag(flag.proxy_from())
   use _proxy_to <- glint.flag(flag.proxy_to())
@@ -42,11 +43,16 @@ application and serve it on a local server.
       ["build"],
       detect_tailwind,
     ))
-
+    use sys_esbuild <- do(cli.get_bool(
+      "use-system-esbuild",
+      False,
+      ["build"],
+      sys_esbuild,
+    ))
     use entry <- do(cli.get_string("entry", project_name, ["build"], entry))
 
     use _ <- do(check_otp_version())
-    use _ <- do(build.do_app(entry, False, detect_tailwind))
+    use _ <- do(build.do_app(entry, False, detect_tailwind, sys_esbuild))
     use _ <- do(prepare_html())
     use _ <- do(server.start(entry, port, bind))
 

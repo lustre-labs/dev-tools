@@ -4,6 +4,7 @@ import filepath
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic.{type Dynamic}
+import gleam/io
 import gleam/result
 import gleam/set
 import lustre_dev_tools/cli.{type Cli}
@@ -51,7 +52,12 @@ pub fn download(os: String, cpu: String) -> Cli(Nil) {
   }
 }
 
-pub fn bundle(input_file: String, output_file: String, minify: Bool) -> Cli(Nil) {
+pub fn bundle(
+  input_file: String,
+  output_file: String,
+  minify: Bool,
+  sys_esbuild: Bool,
+) -> Cli(Nil) {
   use _ <- cli.do(download(get_os(), get_cpu()))
   use _ <- cli.try(project.build())
 
@@ -68,7 +74,10 @@ pub fn bundle(input_file: String, output_file: String, minify: Bool) -> Cli(Nil)
   }
 
   use <- cli.log("Bundling with esbuild")
-  use _ <- cli.try(exec_esbuild(root, options))
+  use _ <- cli.try(case sys_esbuild {
+    False -> exec_esbuild(root, options)
+    True -> exec_sys_esbuild(root, options)
+  })
 
   use <- cli.success("Bundle produced at `" <> output_file <> "`")
   cli.return(Nil)
@@ -256,6 +265,23 @@ fn set_file_permissions(file: String) -> Result(Nil, Error) {
 
   simplifile.set_permissions(file, permissions)
   |> result.map_error(CannotSetPermissions(_, file))
+}
+
+fn exec_sys_esbuild(
+  root: String,
+  options: List(String),
+) -> Result(String, Error) {
+  case cmd.find_executable("esbuild") {
+    Error(_) -> panic as "no system esbuild found"
+    Ok(path) ->
+      cmd.exec(
+        path,
+        in: root,
+        env: [#("NODE_PATH", "./node_modules")],
+        with: options,
+      )
+  }
+  |> result.map_error(fn(pair) { BundleError(pair.1) })
 }
 
 fn exec_esbuild(root: String, options: List(String)) -> Result(String, Error) {
