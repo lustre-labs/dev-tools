@@ -98,7 +98,7 @@ fn generate_config() -> Cli(Nil) {
         True -> cli.return(Nil)
 
         False -> {
-          let entry_css = "@import \"tailwindcss\"\n" <> entry_css
+          let entry_css = "@import \"tailwindcss\";\n" <> entry_css
           use <- cli.log("Adding Tailwind integration to " <> entry_css_path)
           use _ <- cli.try(
             simplifile.write(entry_css_path, entry_css)
@@ -113,7 +113,7 @@ fn generate_config() -> Cli(Nil) {
     Error(_) -> {
       use <- cli.log("Generating Tailwind config")
       use _ <- cli.try(
-        simplifile.write(entry_css_path, "@import \"tailwindcss\"\n")
+        simplifile.write(entry_css_path, "@import \"tailwindcss\";\n")
         |> result.map_error(CannotWriteFile(_, entry_css_path)),
       )
       use <- cli.success("Tailwind succeessfully configured!")
