@@ -1,5 +1,6 @@
 // IMPORTS ---------------------------------------------------------------------
 
+import lustre_dev_tools/project
 import gleam/io
 import glint.{type Command}
 import lustre_dev_tools/cli.{do}
@@ -53,14 +54,9 @@ in your project but will not download it automatically.
     "
   use <- glint.command_help(description)
   use <- glint.unnamed_args(glint.EqArgs(0))
-  use os <- glint.flag(flag.tailwind_os())
-  use cpu <- glint.flag(flag.tailwind_cpu())
   use _, _, flags <- glint.command()
   let script = {
-    use os <- do(cli.get_string("os", get_os(), ["add"], os))
-    use cpu <- do(cli.get_string("cpu", get_cpu(), ["add"], cpu))
-
-    tailwind.setup(os, cpu)
+    tailwind.get_entry_file_and_then(project.root(), tailwind.init_tailwind_css)
   }
 
   case cli.run(script, flags) {

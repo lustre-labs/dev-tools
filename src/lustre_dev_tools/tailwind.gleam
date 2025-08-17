@@ -2,15 +2,19 @@
 
 import filepath
 import gleam/bit_array
+import gleam/bool
 import gleam/crypto
 import gleam/dynamic.{type Dynamic}
 import gleam/result
 import gleam/set
 import gleam/string
 import gleam_community/ansi
+import glint
 import lustre_dev_tools/cli.{type Cli}
+import lustre_dev_tools/cli/flag
+import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{
-  type Error, CannotSetPermissions, CannotWriteFile, NetworkError,
+  type Error, BundleError, CannotSetPermissions, CannotWriteFile, NetworkError,
   UnknownPlatform,
 }
 import lustre_dev_tools/project
@@ -19,15 +23,137 @@ import simplifile.{Execute, FilePermissions, Read, Write}
 
 // COMMANDS --------------------------------------------------------------------
 
-pub fn setup(os: String, cpu: String) -> Cli(Nil) {
-  use _ <- cli.do(download(os, cpu))
-  use _ <- cli.do(generate_config())
-  use _ <- cli.do(detect_legacy_config())
+pub fn get_entry_file_and_then(root, next_fun) {
+  use project_name <- cli.do(cli.get_name())
+  let default_entryfile = filepath.join(root, "src/" <> project_name <> ".css")
+  use entryfile <- cli.do(
+    cli.get_string(
+      "tailwind-entry",
+      default_entryfile,
+      ["build"],
+      glint.get_flag(_, flag.tailwind_entry()),
+    ))
+
+  next_fun(entryfile)
+}
+
+pub fn maybe_bundle(
+  outfile: String,
+  bundle_tailwind_flag: Bool,
+  minify: Bool,
+) -> Cli(Nil) {
+  use <- bool.guard(when: !bundle_tailwind_flag, return: cli.return(Nil))
+
+  use has_legacy_config_file <- cli.do(detect_legacy_config())
+
+  let root = project.root()
+  use entryfile <- get_entry_file_and_then(root)
+
+  let has_css_import =
+    simplifile.read(entryfile)
+    |> result.map(has_tailwind_imported)
+    |> result.unwrap(False)
+
+  // This will if a line contains @import*tailwindcss*;
+  // where the user is not importing all tailwind default imports.
+  case has_legacy_config_file, has_css_import {
+    True, False -> {
+      use _ <- cli.do(init_tailwind_css(entryfile))
+      use _ <- cli.do(bundle(outfile, root, entryfile, minify))
+      cli.return(Nil)
+    }
+    _any, True -> {
+      use _ <- cli.do(bundle(outfile, root, entryfile, minify))
+      cli.return(Nil)
+    }
+    False, False -> {
+      cli.return(Nil)
+    }
+  }
+}
+
+pub fn init_tailwind_css(entryfile: String) -> Cli(Nil) {
+  case simplifile.read(entryfile) {
+    Ok(entry_css) -> {
+      let entry_css = "@import \"tailwindcss\";\n" <> entry_css
+      use <- cli.log("Adding Tailwind integration to " <> entryfile)
+      use _ <- cli.try(
+        simplifile.write(entryfile, entry_css)
+        |> result.map_error(CannotWriteFile(_, entryfile)),
+      )
+      use <- cli.success(entryfile <> " updated!")
+
+      cli.return(Nil)
+    }
+    Error(_) -> {
+      use <- cli.log("Generating Tailwind config")
+      use _ <- cli.try(
+        simplifile.write(entryfile, "@import \"tailwindcss\";\n")
+        |> result.map_error(CannotWriteFile(_, entryfile)),
+      )
+      use <- cli.success("Tailwind succeessfully configured!")
+      use _ <- cli.do(display_next_steps())
+
+      cli.return(Nil)
+    }
+  }
+}
+
+fn bundle(
+  outfile: String,
+  root: String,
+  entryfile: String,
+  minify: Bool,
+) -> Cli(Nil) {
+  use _ <- cli.do(download())
+
+  use <- cli.log("Bundling with Tailwind")
+
+  let flags = ["--input=" <> entryfile, "--output=" <> outfile]
+  let options = case minify {
+    True -> ["--minify", ..flags]
+    False -> flags
+  }
+  use _ <- cli.try(exec_tailwind(root, options))
+  use <- cli.success("Bundle produced at `" <> outfile <> "`")
 
   cli.return(Nil)
 }
 
-fn download(os: String, cpu: String) -> Cli(Nil) {
+fn exec_tailwind(root: String, options: List(String)) -> Result(String, Error) {
+  cmd.exec("./build/.lustre/bin/tailwind", in: root, env: [], with: options)
+  |> result.map_error(fn(pair) { BundleError(pair.1) })
+}
+
+fn has_tailwind_imported(file_str: String) {
+  file_str |> string.to_graphemes |> has_tailwind_imported_rec("")
+}
+
+fn has_tailwind_imported_rec(graphemes: List(String), current_line: String) {
+  let check_if_imported = fn(first, second, rest) {
+    case first == "@import" && string.contains(second, "tailwindcss") {
+      True -> True
+      False -> has_tailwind_imported_rec(rest, "")
+    }
+  }
+
+  case graphemes {
+    [grapheme, ..rest] if grapheme == ";" -> {
+      case string.split(current_line, " ") {
+        [first, second, ..] -> check_if_imported(first, second, rest)
+        _else -> has_tailwind_imported_rec(rest, "")
+      }
+    }
+    [grapheme, ..rest] ->
+      has_tailwind_imported_rec(rest, string.append(current_line, grapheme))
+    [] -> False
+  }
+}
+
+fn download() -> Cli(Nil) {
+  let os = get_os()
+  let cpu = get_cpu()
+
   use <- cli.log("Downloading Tailwind")
 
   let root = project.root()
@@ -84,43 +210,6 @@ You can supress this message by removing `tailwind.config.js` from your project.
       cli.return(True)
     }
     Ok(False) | Error(_) -> cli.return(False)
-  }
-}
-
-fn generate_config() -> Cli(Nil) {
-  let root = project.root()
-  use config <- cli.try(project.config())
-  let entry_css_path = filepath.join(root, "src/" <> config.name <> ".css")
-
-  case simplifile.read(entry_css_path) {
-    Ok(entry_css) ->
-      case string.contains(entry_css, "@import \"tailwindcss") {
-        True -> cli.return(Nil)
-
-        False -> {
-          let entry_css = "@import \"tailwindcss\";\n" <> entry_css
-          use <- cli.log("Adding Tailwind integration to " <> entry_css_path)
-          use _ <- cli.try(
-            simplifile.write(entry_css_path, entry_css)
-            |> result.map_error(CannotWriteFile(_, entry_css_path)),
-          )
-          use <- cli.success(entry_css_path <> " updated!")
-
-          cli.return(Nil)
-        }
-      }
-
-    Error(_) -> {
-      use <- cli.log("Generating Tailwind config")
-      use _ <- cli.try(
-        simplifile.write(entry_css_path, "@import \"tailwindcss\";\n")
-        |> result.map_error(CannotWriteFile(_, entry_css_path)),
-      )
-      use <- cli.success("Tailwind succeessfully configured!")
-      use _ <- cli.do(display_next_steps())
-
-      cli.return(Nil)
-    }
   }
 }
 
@@ -242,3 +331,9 @@ fn set_file_permissions(file: String) -> Result(Nil, Error) {
 
 @external(erlang, "lustre_dev_tools_ffi", "get_esbuild")
 fn do_get_tailwind(url: String) -> Result(BitArray, Dynamic)
+
+@external(erlang, "lustre_dev_tools_ffi", "get_os")
+fn get_os() -> String
+
+@external(erlang, "lustre_dev_tools_ffi", "get_cpu")
+fn get_cpu() -> String
