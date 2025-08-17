@@ -1,7 +1,6 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import filepath
-import gleam/bool
 import gleam/dict
 import gleam/io
 import gleam/list
@@ -11,10 +10,8 @@ import gleam/string
 import glint.{type Command}
 import lustre_dev_tools/cli.{type Cli, do, try}
 import lustre_dev_tools/cli/flag
-import lustre_dev_tools/cmd
 import lustre_dev_tools/error.{
-  type Error, BundleError, ComponentMissing, ModuleMissing, NameIncorrectType,
-  NameMissing,
+  type Error, ComponentMissing, ModuleMissing, NameIncorrectType, NameMissing,
 }
 import lustre_dev_tools/esbuild
 import lustre_dev_tools/project.{type Module}
@@ -29,7 +26,6 @@ integration with other build tools.
 "
 
 // COMMANDS --------------------------------------------------------------------
-
 pub fn app() -> Command(Nil) {
   let description =
     "
@@ -118,13 +114,12 @@ pub fn do_app(
 
   let assert Ok(_) = simplifile.write(entryfile, entry)
   use _ <- do(bundle(entry, tempdir, outfile, minify))
-  use <- bool.guard(!detect_tailwind, cli.return(Nil))
 
   let outfile =
     filepath.strip_extension(outfile)
     |> string.append(".css")
 
-  use _ <- do(bundle_tailwind(outfile, minify))
+  use _ <- do(tailwind.maybe_bundle(outfile, detect_tailwind, minify))
 
   cli.return(Nil)
 }
@@ -210,7 +205,7 @@ returns a suitable Lustre `App`.
       filepath.strip_extension(outfile)
       |> string.append(".css")
 
-    use _ <- do(bundle_tailwind(outfile, minify))
+    use _ <- do(tailwind.maybe_bundle(outfile, True, minify))
 
     cli.return(Nil)
   }
@@ -267,55 +262,6 @@ fn bundle(
   use _ <- do(esbuild.bundle(entryfile, outfile, minify))
 
   cli.return(Nil)
-}
-
-fn bundle_tailwind(outfile: String, minify: Bool) -> Cli(Nil) {
-  // We check if there's an `{app_name}.css` file containing "@import "tailwindcss".
-  // If not present we do nothing; otherwise we go on with bundling.
-  let root = project.root()
-  use project_name <- cli.do(cli.get_name())
-  let default_entryfile = filepath.join(root, "src/" <> project_name <> ".css")
-  use entryfile <- cli.do(
-    cli.get_string(
-      "tailwind-entry",
-      default_entryfile,
-      ["build"],
-      glint.get_flag(_, flag.tailwind_entry()),
-    ),
-  )
-  let has_legacy_tailwind_conig =
-    simplifile.is_file(filepath.join(root, "tailwind.config.js"))
-    |> result.unwrap(False)
-
-  // The matched string only matches "tailwindcss to enable scenarios
-  // where the user is not importing all tailwind default imports.
-  let tailwind_import_string = "@import \"tailwindcss"
-  let has_tailwind_import = case simplifile.read(entryfile) {
-    Ok(content) -> string.contains(content, tailwind_import_string)
-    Error(_) -> False
-  }
-
-  let tailwind_detected = has_tailwind_import || has_legacy_tailwind_conig
-  use <- bool.guard(when: !tailwind_detected, return: cli.return(Nil))
-
-  use _ <- do(tailwind.setup(get_os(), get_cpu()))
-
-  use <- cli.log("Bundling with Tailwind")
-
-  let flags = ["--input=" <> entryfile, "--output=" <> outfile]
-  let options = case minify {
-    True -> ["--minify", ..flags]
-    False -> flags
-  }
-  use _ <- try(exec_tailwind(root, options))
-  use <- cli.success("Bundle produced at `" <> outfile <> "`")
-
-  cli.return(Nil)
-}
-
-fn exec_tailwind(root: String, options: List(String)) -> Result(String, Error) {
-  cmd.exec("./build/.lustre/bin/tailwind", in: root, env: [], with: options)
-  |> result.map_error(fn(pair) { BundleError(pair.1) })
 }
 
 // UTILS -----------------------------------------------------------------------
@@ -421,11 +367,3 @@ fn is_reserved_keyword(name: String) -> Bool {
     _ -> False
   }
 }
-
-// EXTERNALS -------------------------------------------------------------------
-
-@external(erlang, "lustre_dev_tools_ffi", "get_os")
-fn get_os() -> String
-
-@external(erlang, "lustre_dev_tools_ffi", "get_cpu")
-fn get_cpu() -> String
