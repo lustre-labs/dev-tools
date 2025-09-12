@@ -7,7 +7,7 @@ repository = { type = "github", user = "lustre-labs", repo = "dev-tools" }
 licences = ["MIT"]
 
 links = [
-    { title = "Sponsor", href = "https://github.com/sponsors/hayleigh-dot-dev" },
+  { title = "Sponsor", href = "https://github.com/sponsors/hayleigh-dot-dev" },
 ]
 
 internal_modules = ["lustre_dev_tools", "lustre_dev_tools/*"]
@@ -32,7 +32,7 @@ mist = ">= 5.0.0  and < 6.0.0"
 repeatedly = ">= 2.1.2 and < 3.0.0"
 simplifile = ">= 2.2.0 and < 3.0.0"
 term_size = ">= 1.0.1 and < 2.0.0"
-tom = ">= 1.0.1 and < 2.0.0"
+tom = ">= 2.0.0 and < 3.0.0"
 gleam_json = ">= 1.0.0 and < 4.0.0"
 wisp = ">= 1.5.0 and < 2.0.0"
 
