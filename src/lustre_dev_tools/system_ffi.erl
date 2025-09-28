@@ -1,6 +1,6 @@
 -module(system_ffi).
 
--export([detect_os/0, detect_arch/0, run/1]).
+-export([detect_os/0, detect_arch/0, is_alpine/0, run/1, find/1, exit/1]).
 
 detect_os() ->
     case os:type() of
@@ -30,6 +30,9 @@ detect_arch() ->
             end
     end.
 
+is_alpine() ->
+    filelib:is_file("/etc/alpine-release").
+
 run(Cmd) ->
     case catch os:cmd(
                    unicode:characters_to_list(Cmd), #{exception_on_failure => true})
@@ -43,4 +46,17 @@ run(Cmd) ->
         Output ->
             io:format("Unexpected output: ~p~n", [Output]),
             {error, <<"">>}
+    end.
+
+exit(Status) ->
+    erlang:halt(Status).
+
+find(Cmd) ->
+    case os:find_executable(
+             unicode:characters_to_list(Cmd))
+    of
+        false ->
+            {error, nil};
+        Path when is_list(Path) ->
+            {ok, unicode:characters_to_binary(Path)}
     end.

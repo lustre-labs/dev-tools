@@ -2,7 +2,7 @@ import * as Process from "node:process";
 import * as Path from "node:path";
 import * as Fs from "node:fs";
 
-// Directories to watch will be paths relative to the root of the Gleam project,
+// Directories to build will be paths relative to the root of the Gleam project,
 // but that won't necessarily be the current working directory. This walks up from
 // the current working directory to find the root of the Gleam project by looking
 // for a `gleam.toml` file.

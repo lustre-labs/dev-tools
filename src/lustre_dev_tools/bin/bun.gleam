@@ -15,21 +15,23 @@ import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
+import lustre_dev_tools/cli
 import lustre_dev_tools/error.{type Error}
 import lustre_dev_tools/port
 import lustre_dev_tools/project.{type Project}
 import lustre_dev_tools/system
 import simplifile
+import tom
 
 //
 
 ///
 ///
-pub fn download(config: Project) -> Result(Nil, Error) {
+pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
   // 1. First detect what release we need to download based on the user's system
   //    information. If this fails it's because Bun doesn't support the user's
   //    system.
-  use name <- result.try(detect())
+  use name <- result.try(detect_platform())
 
   // 2. Grab the appropriate release from GitHub using Erlang's HTTP client.
   let req =
@@ -48,6 +50,8 @@ pub fn download(config: Project) -> Result(Nil, Error) {
       query: option.None,
     )
 
+  cli.log("Downloading Bun v" <> version, quiet)
+
   use res <- result.try(
     httpc.configure()
     // GitHub will redirect us to a CDN for the download, so we need to make sure
@@ -56,6 +60,8 @@ pub fn download(config: Project) -> Result(Nil, Error) {
     |> httpc.dispatch_bits(req)
     |> result.map_error(error.CouldNotDownloadBunBinary),
   )
+
+  cli.log("Verifying download hash", quiet)
 
   // 3. Before we do anything else, we need to verify the SHA-256 hash of the
   //    downloaded archive. This is to ensure that the archive hasn't been
@@ -66,7 +72,7 @@ pub fn download(config: Project) -> Result(Nil, Error) {
   //    loading the binary into our program's memory: we just get back the path
   //    to the Bun binary itself.
   use path <- result.try(
-    extract(res.body, to: config.bin)
+    extract(res.body, to: project.bin)
     |> result.replace_error(error.CouldNotExtractBunArchive(
       os: system.detect_os(),
       arch: system.detect_arch(),
@@ -86,25 +92,19 @@ pub fn download(config: Project) -> Result(Nil, Error) {
   //    version we support.
   use _ <- result.try(verify_version(path))
 
+  cli.success("Bun v" <> version <> " is ready to go!", quiet)
+
   Ok(Nil)
 }
 
 ///
 ///
 pub fn watch(
-  config: Project,
+  project: Project,
   directories: List(String),
   on_change: fn(String, String) -> Nil,
 ) -> Result(Subject(port.Message), Error) {
-  use name <- result.try(detect())
-  let path = filepath.join(config.bin, name <> "/bun")
-
-  // 1. Detect if we're already downloaded Bun because of an earlier command. If
-  //    not, we automatically download it now.
-  use _ <- result.try(case simplifile.is_file(path) {
-    Ok(True) -> Ok(Nil)
-    Ok(False) | Error(_) -> download(config)
-  })
+  use path <- result.try(guard(project, False))
 
   let assert Ok(priv) = application.priv_directory("lustre_dev_tools")
   let watcher = filepath.join(priv, "bun-watcher.js")
@@ -147,12 +147,13 @@ pub fn watch(
 ///
 ///
 pub fn build(
-  config: Project,
-  entries: List(String),
-  outdir: String,
-  minify: Bool,
+  project: Project,
+  entries entries: List(String),
+  outdir outdir: String,
+  minify minify: Bool,
+  quiet quiet: Bool,
 ) -> Result(Nil, Error) {
-  use path <- result.try(guard(config))
+  use path <- result.try(guard(project, quiet))
   let minify = bool.guard(minify, "--minify", fn() { "" })
   let split = bool.guard(list.length(entries) > 1, "--splitting", fn() { "" })
   let flags = [minify, split, "--outdir " <> outdir]
@@ -165,50 +166,7 @@ pub fn build(
       <> " "
       <> string.join(flags, " "),
     )
-    |> echo
-    |> result.replace_error(error.Todo),
-  )
-
-  Ok(Nil)
-}
-
-///
-///
-pub fn install(config: Project, package: String) -> Result(Nil, Error) {
-  use path <- result.try(guard(config))
-  use _ <- result.try(
-    system.run(path <> " add " <> package <> " --cwd " <> config.build)
-    |> result.replace_error(error.Todo),
-  )
-
-  Ok(Nil)
-}
-
-///
-///
-pub fn run(
-  config: Project,
-  script: String,
-  args: List(String),
-) -> Result(Nil, Error) {
-  use path <- result.try(guard(config))
-
-  use _ <- result.try(
-    system.run(
-      echo {
-        path
-        <> " run "
-        <> " "
-        <> " --cwd "
-        <> config.build
-        <> " --bun "
-        <> script
-        <> " "
-        <> string.join(args, " ")
-      },
-    )
-    |> echo
-    |> result.replace_error(error.Todo),
+    |> result.map_error(error.FailedToBuildProject),
   )
 
   Ok(Nil)
@@ -218,24 +176,51 @@ pub fn run(
 
 ///
 ///
-fn guard(project: Project) -> Result(String, Error) {
-  use name <- result.try(detect())
-  let path = filepath.join(project.bin, name <> "/bun")
+fn guard(project: Project, quiet: Bool) -> Result(String, Error) {
+  case tom.get_string(project.options, ["bin", "bun"]) {
+    Ok("system") ->
+      system.find("bun")
+      |> result.replace_error(error.CouldNotLocateBunBinary(path: "$PATH/bun"))
+      |> result.map(fn(path) {
+        cli.log("Using system Bun installation", quiet)
+        path
+      })
 
-  // Detect if we're already downloaded Bun because of an earlier command. If not,
-  // we automatically download it now.
-  use _ <- result.try(case simplifile.is_file(path) {
-    Ok(True) -> Ok(Nil)
-    Ok(False) | Error(_) -> download(project)
-  })
+    Ok(path) ->
+      case simplifile.is_file(path) {
+        Ok(True) -> {
+          cli.log("Using local Bun installation", quiet)
+          Ok(path)
+        }
 
-  Ok(path)
+        Ok(False) | Error(_) -> Error(error.CouldNotLocateBunBinary(path:))
+      }
+
+    Error(_) -> {
+      use name <- result.try(detect_platform())
+      let path = filepath.join(project.bin, name <> "/bun")
+
+      // Detect if we're already downloaded Bun because of an earlier command.
+      // If not, we automatically download it now.
+      use _ <- result.try(case simplifile.is_file(path) {
+        Ok(True) ->
+          case verify_version(path) {
+            Ok(_) -> Ok(Nil)
+            Error(_) -> download(project, quiet)
+          }
+
+        Ok(False) | Error(_) -> download(project, quiet)
+      })
+
+      Ok(path)
+    }
+  }
 }
 
 /// Detect the user's operating system and CPU architecture, and then resolve the
 /// name of the Bun archive we need to download.
 ///
-fn detect() -> Result(String, Error) {
+fn detect_platform() -> Result(String, Error) {
   let os = system.detect_os()
   let arch = system.detect_arch()
 
@@ -263,8 +248,51 @@ fn verify_integrity(archive: BitArray, name: String) -> Result(Nil, Error) {
 /// system's OS and CPU architecture. This will get us something like
 /// `"bun-linux-x64-baseline"` or `"bun-darwin-aarch64"`.
 ///
-@external(erlang, "bun_ffi", "resolve")
-fn resolve(os: String, arch: String) -> Result(String, Nil)
+fn resolve(os: String, arch: String) -> Result(String, Nil) {
+  let is_alpine = system.is_alpine()
+  let baseline = requires_baseline(os)
+
+  case os, arch {
+    "darwin", "aarch64" -> Ok("bun-darwin-aarch64")
+    "darwin", "x64" -> Ok("bun-darwin-x64")
+    "linux", "arm64" if is_alpine -> Ok("bun-linux-aarch64-musl")
+    "linux", "arm64" -> Ok("bun-linux-aarch64")
+    "linux", "aarch64" if is_alpine -> Ok("bun-linux-aarch64-musl")
+    "linux", "aarch64" -> Ok("bun-linux-aarch64")
+    "linux", "x64" ->
+      case baseline, is_alpine {
+        True, True -> Ok("bun-linux-x64-musl-baseline")
+        True, False -> Ok("bun-linux-x64-baseline")
+        False, True -> Ok("bun-linux-x64-musl")
+        False, False -> Ok("bun-linux-x64")
+      }
+    "windows", "x64" if baseline -> Ok("bun-windows-x64-baseline")
+    "windows", "x64" -> Ok("bun-windows-x64")
+    _, _ -> Error(Nil)
+  }
+}
+
+fn requires_baseline(os: String) -> Bool {
+  case os {
+    "linux" ->
+      case system.run("cat /proc/cpuinfo | grep avx2") {
+        Ok(output) -> output != ""
+        Error(_) -> False
+      }
+
+    "windows" -> {
+      let command =
+        "powershell -Command \"(Add-Type -MemberDefinition '[DllImport(\\\"kernel32.dll\\\")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);' -Name 'Kernel32' -Namespace 'Win32' -PassThru)::IsProcessorFeaturePresent(40)\""
+
+      case system.run(command) {
+        Ok(output) -> string.trim(output) != "True"
+        Error(_) -> False
+      }
+    }
+
+    _ -> False
+  }
+}
 
 /// Extracts the downloaded Bun archive to the specified path. This interacts
 /// with the file system directly and the result returned is the path to the
@@ -293,16 +321,16 @@ fn verify_version(path: String) -> Result(Nil, Error) {
 
 // CONSTANTS -------------------------------------------------------------------
 
-const version = "1.2.17"
+const version = "1.2.22"
 
 const hashes = [
   #(
     "bun-darwin-aarch64",
-    "9f55fd213f2f768d02eb5b9885aaa44b1e1307a680c18622b57095302a931af9",
+    "eb8c7e09cbea572414a0a367848e1acbf05294a946a594405a014b1fb3b3fc76",
   ),
   #(
     "bun-darwin-x64",
-    "038023b8dbdccc93383398a0c1be2ca82716649479cfae708b533ca7a9c5d083",
+    "a7484721a7ead45887c812e760b124047e663173cf2a3ba7c5aa1992cb22cd3e",
   ),
   #(
     "bun-linux-aarch64-musl",
@@ -310,30 +338,30 @@ const hashes = [
   ),
   #(
     "bun-linux-aarch64",
-    "a0b996f48c977beb4e87b09a471ded7e63ee5c2fb4b72790c7ab4badbc147d6b",
+    "88c54cd66169aeb5ff31bc0c9d74a8017c7e6965597472ff49ecc355acb3a884",
   ),
   #(
     "bun-linux-x64-baseline",
-    "6ea1861db6a6cd44d1c8b4bafb22006f4ae49f6a2d077623bf3f456ada026d67",
+    "f753e8d9668078ab0f598ee26a9ac5acbbb822e057459dd50c191b86524d98e8",
   ),
   #(
     "bun-linux-x64-musl-baseline",
-    "db1264273691208b536253241cb7528a393f30139c60129947f60b0fa085bbfa",
+    "4048e872b16fb3a296e89268769d3e41152f477b6f203eff58c672f69ed9f570",
   ),
   #(
     "bun-linux-x64-musl",
-    "216778c93df72a06d214cf2e3890f99f8d18b09364f009ef54c4be000943b15d",
+    "dde5bd79f0e130cb9bf17f55ba1825e98a77f71ef78c575d8ca2ccae5431f47e",
   ),
   #(
     "bun-linux-x64",
-    "6054207074653b4dbc2320d5a61e664e4b6f42379efc18d6181bffcc07a43193",
+    "4c446af1a01d7b40e1e11baebc352f9b2bfd12887e51b97dd3b59879cee2743a",
   ),
   #(
     "bun-windows-x64-baseline",
-    "803e6a7d8bed9063ef7833de036aca0d1a23e5d25cd7a8cf628cba50a3199f18",
+    "c44de73dc21c7140a8e15883c28abed60612196faaec9a60c275534280a49f59",
   ),
   #(
     "bun-windows-x64",
-    "869a9401e119306459a4992e4b3655484c2541c93f0ae470fc8500a82d84fd4b",
+    "3a28c685b47a159c5707d150accb5b4903c30f1e7b4dd01bb311d4112bdeb452",
   ),
 ]

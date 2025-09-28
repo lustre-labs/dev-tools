@@ -1,24 +1,35 @@
 import gleam/httpc
+import gleam/otp/actor
 import gleam/string
 import lustre_dev_tools/system
 import simplifile
 
 pub type Error {
   CouldNotDownloadBunBinary(reason: httpc.HttpError)
+  CouldNotDownloadTailwindBinary(reason: httpc.HttpError)
   CouldNotExtractBunArchive(os: String, arch: String, version: String)
   CouldNotInitialiseDevTools(reason: simplifile.FileError)
   CouldNotLocateBunBinary(path: String)
+  CouldNotLocateTailwindBinary(path: String)
   CouldNotReadFile(path: String, reason: simplifile.FileError)
   CouldNotSetFilePermissions(path: String, reason: simplifile.FileError)
+  CouldNotStartDevServer(reason: actor.StartError)
   CouldNotStartFileWatcher(os: String, arch: String, version: String)
   CouldNotVerifyBunHash(expected: String, actual: String)
+  CouldNotVerifyTailwindHash(expected: String, actual: String)
   CouldNotWriteFile(path: String, reason: simplifile.FileError)
   ExternalCommandFailed(command: String, reason: String)
-  MissingRequiredFlag(name: String)
+  FailedToBuildProject(reason: String)
+  MissingRequiredFlag(name: List(String))
+  MustBeProjectRoot(path: String)
+  ProxyInvalidTo
+  ProxyMissingFrom
+  ProxyMissingTo
   UnknownBuildTool(name: String)
   UnknownIntegration(name: String)
   UnsupportedBunVersion(path: String, expected: String, actual: String)
   UnsupportedPlatform(os: String, arch: String)
+  UnsupportedTailwindVersion(path: String, expected: String, actual: String)
   //
   Todo
 }
@@ -27,6 +38,7 @@ pub fn explain(error: Error) -> String {
   case error {
     Todo -> "this error is not implemented yet"
 
+    // -------------------------------------------------------------------------
     CouldNotDownloadBunBinary(reason:) ->
       "
 I ran into a problem while trying to download the Bun binary. Here's the error I
@@ -40,11 +52,34 @@ at
 
   https://github.com/lustre-labs/dev-tools/issues/new
 
-Hint: you can provide a path to a local Bun binary by passing the `--bun-path`
-flag or setting the `tools.lustre.bun_path` field in your `gleam.toml`.
+Hint: you can provide a path to a local Bun binary by passing the `--bin-bun`
+flag or setting the `tools.lustre.bin.bun` field in your `gleam.toml`. Use the
+string `\"system\"` to use the Bun binary accessible in your system path.
       "
       |> string.replace("${reason}", string.inspect(reason))
 
+    // -------------------------------------------------------------------------
+    CouldNotDownloadTailwindBinary(reason:) ->
+      "
+I ran into a problem while trying to download the Tailwind binary. Here's the
+error I got from the HTTP client:
+
+  ${reason}
+
+Make sure you're connected to the internet and that no firewall or proxy is
+blocking connections to GitHub. If you think this is a bug, please open an issue
+at
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+
+Hint: you can provide a path to a local Tailwind binary by passing the
+`--bin-tailwind` flag or setting the `tools.lustre.bin.tailwind` field in your
+`gleam.toml`. Use the string `\"system\"` to use the Tailwind binary accessible
+in your system path.
+        "
+      |> string.replace("${reason}", string.inspect(reason))
+
+    // -------------------------------------------------------------------------
     CouldNotExtractBunArchive(os:, arch:, version:) ->
       "
 I ran into an unexpected problem while trying to extract the Bun archive. This
@@ -66,6 +101,7 @@ flag or setting the `tools.lustre.bun_path` field in your `gleam.toml`.
       |> string.replace("${arch}", arch)
       |> string.replace("${version}", version)
 
+    // -------------------------------------------------------------------------
     CouldNotLocateBunBinary(path:) ->
       "
 I ran into a problem while trying to run the Bun binary at the following path:
@@ -80,6 +116,23 @@ is a bug, please open an issue at:
       "
       |> string.replace("${path}", path)
 
+    // -------------------------------------------------------------------------
+    CouldNotLocateTailwindBinary(path:) ->
+      "
+I ran into a problem while trying to run the Tailwind binary at the following
+path:
+
+  ${path}
+
+If you are trying to use a local binary, make sure the path is correct and that
+relative paths are relative to the current working directory. If you think this
+is a bug, please open an issue at:
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+        "
+      |> string.replace("${path}", path)
+
+    // -------------------------------------------------------------------------
     CouldNotInitialiseDevTools(reason:) ->
       "
 I ran into a problem while setting up. I need to create some directories and
@@ -95,6 +148,7 @@ this is a bug, please open an issue at:
       "
       |> string.replace("${reason}", string.inspect(reason))
 
+    // -------------------------------------------------------------------------
     CouldNotReadFile(path:, reason:) ->
       "
 I ran into a problem while trying to read a file at the following path:
@@ -113,6 +167,7 @@ this is a bug, please open an issue at:
       |> string.replace("${path}", path)
       |> string.replace("${reason}", string.inspect(reason))
 
+    // -------------------------------------------------------------------------
     CouldNotSetFilePermissions(path:, reason:) ->
       "
 I ran into a problem while trying to set the file permissions for the Bun binary
@@ -132,6 +187,7 @@ https://github.com/lustre-labs/dev-tools/issues/new
       |> string.replace("${path}", path)
       |> string.replace("${reason}", string.inspect(reason))
 
+    // -------------------------------------------------------------------------
     CouldNotStartFileWatcher(os:, arch:, version:) ->
       "
 I ran into a problem while trying to start the file watcher. This might be due
@@ -150,6 +206,7 @@ With the following information:
       |> string.replace("${arch}", arch)
       |> string.replace("${version}", version)
 
+    // -------------------------------------------------------------------------
     CouldNotVerifyBunHash(expected:, actual:) ->
       "
 I ran into a problem while trying to verify the integrity of the Bun archive I
@@ -167,11 +224,38 @@ If you think this is a bug, please open an issue at:
 https://github.com/lustre-labs/dev-tools/issues/new
 
 Hint: you can provide a path to a local Bun binary by passing the `--bun-path`
-flag or setting the `tools.lustre.bun_path` field in your `gleam.toml`.
+flag or setting the `tools.lustre.bun_path` field in your `gleam.toml`. Use the
+string `\"system\"` to use the Bun binary accessible in your system path.
       "
       |> string.replace("${expected}", expected)
       |> string.replace("${actual}", actual)
 
+    // -------------------------------------------------------------------------
+    CouldNotVerifyTailwindHash(expected:, actual:) ->
+      "
+I ran into a problem while trying to verify the integrity of the Tailwind binary
+I just downloaded. The expected hash was:
+
+  ${expected}
+
+But the actual hash was:
+
+  ${actual}
+
+This can happen if you have a proxy or firewall that interferes with the download.
+If you think this is a bug, please open an issue at:
+
+https://github.com/lustre-labs/dev-tools/issues/new
+
+Hint: you can provide a path to a local Tailwind binary by passing the
+`--bin-tailwind` flag or setting the `tools.lustre.bin.tailwind` field in your
+`gleam.toml`. Use the string `\"system\"` to use the Tailwind binary accessible
+in your system path.
+        "
+      |> string.replace("${expected}", expected)
+      |> string.replace("${actual}", actual)
+
+    // -------------------------------------------------------------------------
     CouldNotWriteFile(path:, reason:) ->
       "
 I ran into a problem while trying to write a file at the following path:
@@ -190,6 +274,7 @@ this is a bug, please open an issue at:
       |> string.replace("${path}", path)
       |> string.replace("${reason}", string.inspect(reason))
 
+    // -------------------------------------------------------------------------
     ExternalCommandFailed(command:, reason:) ->
       "
 I ran into a problem while trying to run the following command:
@@ -215,17 +300,71 @@ With the following information:
       |> string.replace("${os}", system.detect_os())
       |> string.replace("${arch}", system.detect_arch())
 
+    // -------------------------------------------------------------------------
+    FailedToBuildProject(reason:) ->
+      "
+I ran into a problem while trying to build your application. Here's the error I
+got while building:
+
+  ${reason}
+
+Make sure your Gleam code compiles without errors and any entry points point to
+Gleam modules. If you think this is a bug, please open an issue at:
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+      "
+      |> string.replace("${reason}", reason)
+
+    // -------------------------------------------------------------------------
     MissingRequiredFlag(name:) ->
       "
 I'm missing at least one required flag to run this command. Please make sure you
 provide the `--${name}` flag when running the command or configure your `gleam.toml`
-to include the `tools.lustre.${name}` field. If you think this is a bug, please
+to include the `tools.lustre.${path}` field. If you think this is a bug, please
 open an issue at:
 
   https://github.com/lustre-labs/dev-tools/issues/new
       "
-      |> string.replace("${name}", name)
+      |> string.replace("${name}", string.join(name, "-"))
+      |> string.replace("${path}", string.join(name, "."))
 
+    // -------------------------------------------------------------------------
+    MustBeProjectRoot(path:) ->
+      "
+I need to be run from the root directory of a Gleam project. I looked for a
+`gleam.toml` and found one at:
+
+  ${path}
+
+Please run me from the directory that contains that file!
+      "
+      |> string.replace("${path}", path)
+
+    // -------------------------------------------------------------------------
+    ProxyInvalidTo ->
+      "
+I ran into a problem trying to set up the proxy you provided. The `to` URL
+looks invalid. Please make sure you provide a valid URL for the `to` field.
+      "
+
+    // -------------------------------------------------------------------------
+    ProxyMissingFrom ->
+      "
+I ran into a problem trying to set up the proxy you provided. The `from` field
+is missing. Please make sure you provide a value for the `from` field like
+`\"/api\"`.
+      "
+
+    // -------------------------------------------------------------------------
+    ProxyMissingTo ->
+      "
+I ran into a problem trying to set up the proxy you provided. The `to` field
+is missing. Please make sure you provide a value for the `to` field like
+`\"http://localhost:3000\"`. This should be the full URL of the server you want
+to proxy requests to.
+      "
+
+    // -------------------------------------------------------------------------
     UnknownBuildTool(name:) ->
       "
 I ran into a problem trying to eject your project from Lustre Dev Tools. I don't
@@ -239,6 +378,7 @@ If you think this is a bug, please open an issue at:
       "
       |> string.replace("${name}", name)
 
+    // -------------------------------------------------------------------------
     UnknownIntegration(name:) ->
       "
 I don't know how to add the integration `${name}`. Currently I have integrations
@@ -249,6 +389,7 @@ support in the future, please open an issue at:
       "
       |> string.replace("${name}", name)
 
+    // -------------------------------------------------------------------------
     UnsupportedBunVersion(path:, expected:, actual:) ->
       "
 I ran into a problem while trying to verify the version of the Bun binary at:
@@ -271,6 +412,31 @@ version I expect!
       |> string.replace("${actual}", actual)
       |> string.trim
 
+    // -------------------------------------------------------------------------
+    UnsupportedTailwindVersion(path:, expected:, actual:) ->
+      "
+I ran into a problem while trying to verify the version of the Tailwind binary
+at:
+
+  ${path}
+
+The expected version was:
+
+  ${expected}
+
+But the actual version was:
+
+  ${actual}
+
+If you are supplying a path to a local Bun binary, make sure it matches the
+version I expect!
+        "
+      |> string.replace("${path}", path)
+      |> string.replace("${expected}", expected)
+      |> string.replace("${actual}", actual)
+      |> string.trim
+
+    // -------------------------------------------------------------------------
     UnsupportedPlatform(os:, arch:) ->
       "
 Unfortunately, I don't support the platform you're running on. Currently, I
@@ -290,5 +456,21 @@ alternatives for building your Lustre applications.
       "
       |> string.replace("${os}", os)
       |> string.replace("${arch}", arch)
+
+    // -------------------------------------------------------------------------
+    CouldNotStartDevServer(reason:) ->
+      "
+I ran into a problem while trying to start the development server. Here's what I
+got:
+
+  ${reason}
+
+Make sure the port you're trying to use is not already in use by another program.
+If you think this is a bug, please open an issue at:
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+
+      "
+      |> string.replace("${reason}", string.inspect(reason))
   }
 }

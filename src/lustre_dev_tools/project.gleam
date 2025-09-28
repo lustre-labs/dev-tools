@@ -3,9 +3,10 @@
 import filepath
 import gleam/dict.{type Dict}
 import gleam/result
+import gleam/string
 import lustre_dev_tools/error.{type Error}
 import simplifile
-import tom.{type GetError, type Toml}
+import tom.{type Toml}
 
 // TYPES -----------------------------------------------------------------------
 
@@ -19,12 +20,10 @@ pub type Project {
     // Directories
     root: String,
     src: String,
+    dev: String,
+    assets: String,
     bin: String,
     build: String,
-    // Methods
-    get_bool: fn(String) -> Result(Bool, GetError),
-    get_string: fn(String) -> Result(String, GetError),
-    get_int: fn(String) -> Result(Int, GetError),
   )
 }
 
@@ -34,6 +33,11 @@ pub type Project {
 ///
 pub fn initialise() -> Result(Project, Error) {
   let project = config()
+
+  use _ <- result.try(case project.root {
+    "./" -> Ok(Nil)
+    "./" <> path | path -> Error(error.MustBeProjectRoot(path:))
+  })
 
   use _ <- result.try(
     simplifile.create_directory_all(project.bin)
@@ -45,17 +49,24 @@ pub fn initialise() -> Result(Project, Error) {
     |> result.map_error(error.CouldNotInitialiseDevTools),
   )
 
-  let gitignore = filepath.join(project.root, ".gitignore")
+  let gitignore_path = filepath.join(project.root, ".gitignore")
 
-  case simplifile.is_file(gitignore) {
-    Ok(True) ->
-      simplifile.append(gitignore, "\n.lustre\n")
-      |> result.map_error(error.CouldNotInitialiseDevTools)
-      |> result.replace(project)
+  use _ <- result.try(case simplifile.read(gitignore_path) {
+    Ok(gitignore) ->
+      case string.contains(gitignore, ".lustre") {
+        True -> Ok(Nil)
+        False ->
+          simplifile.append(gitignore_path, {
+            "\n#Added automatically by Lustre Dev Tools\n/.lustre\n/priv/static\n"
+          })
+          |> result.map_error(error.CouldNotInitialiseDevTools)
+          |> result.replace(Nil)
+      }
 
-    Ok(False) -> Ok(project)
-    Error(reason) -> Error(error.CouldNotInitialiseDevTools(reason:))
-  }
+    Error(_) -> Ok(Nil)
+  })
+
+  Ok(project)
 }
 
 ///
@@ -64,6 +75,8 @@ pub fn config() -> Project {
   let root = find_root("./")
   let bin = filepath.join(root, ".lustre/bin")
   let src = filepath.join(root, "src")
+  let dev = filepath.join(root, "dev")
+  let assets = filepath.join(root, "assets")
   let build = filepath.join(root, ".lustre/build")
 
   // These are safe to assert because we are guaranteed to be inside a Gleam
@@ -79,17 +92,7 @@ pub fn config() -> Project {
     tom.get_table(config, ["tools", "lustre"])
     |> result.unwrap(dict.new())
 
-  Project(
-    name:,
-    root:,
-    src:,
-    bin:,
-    build:,
-    options:,
-    get_bool: fn(name) { tom.get_bool(options, [name]) },
-    get_string: fn(name) { tom.get_string(options, [name]) },
-    get_int: fn(name) { tom.get_int(options, [name]) },
-  )
+  Project(name:, root:, src:, dev:, assets:, bin:, build:, options:)
 }
 
 // QUERIES ---------------------------------------------------------------------
@@ -98,5 +101,12 @@ fn find_root(path: String) -> String {
   case simplifile.is_file(filepath.join(path, "gleam.toml")) {
     Ok(True) -> path
     Ok(False) | Error(_) -> find_root(filepath.join(path, "../"))
+  }
+}
+
+pub fn exists(project: Project, module: String) -> Bool {
+  case simplifile.is_file(filepath.join(project.src, module <> ".gleam")) {
+    Ok(True) -> True
+    Ok(False) | Error(_) -> False
   }
 }

@@ -2,10 +2,10 @@
 
 import argv
 import filepath
-import gleam/bool
+import gleam/erlang/process
 import gleam/io
 import gleam/list
-import gleam/regexp
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import glint.{type Command}
@@ -13,9 +13,14 @@ import justin
 import lustre_dev_tools/bin/bun
 import lustre_dev_tools/bin/gleam
 import lustre_dev_tools/bin/tailwind
+import lustre_dev_tools/build/html
 import lustre_dev_tools/cli
+import lustre_dev_tools/dev/proxy.{type Proxy}
+import lustre_dev_tools/dev/server
+import lustre_dev_tools/dev/watcher
 import lustre_dev_tools/error.{type Error}
 import lustre_dev_tools/project.{type Project}
+import lustre_dev_tools/system
 import simplifile
 
 // MAIN ------------------------------------------------------------------------
@@ -27,10 +32,13 @@ pub fn main() {
     let args = argv.load().arguments
     let cli =
       glint.new()
+      |> glint.as_module
+      |> glint.with_name("lustre/dev")
       |> glint.pretty_help(glint.default_pretty_help())
+      //
       |> glint.add(at: ["add"], do: add(project))
       |> glint.add(at: ["build"], do: build(project))
-      // |> glint.add(at: ["eject"], do: eject(project))
+      // |> glint.add(at: ["eject"], do: todo)
       // |> glint.add(at: ["gen"], do: todo)
       // |> glint.add(at: ["mcp"], do: todo)
       |> glint.add(at: ["start"], do: start(project))
@@ -46,11 +54,14 @@ pub fn main() {
 
   case result {
     Ok(_) -> Nil
-    Error(reason) -> io.println_error(error.explain(reason))
+    Error(reason) -> {
+      io.println_error(error.explain(reason))
+      system.exit(1)
+    }
   }
 }
 
-// COMMANDS --------------------------------------------------------------------
+// COMMANDS: ADD ---------------------------------------------------------------
 
 type AddOptions {
   AddOptions(integration: String)
@@ -62,19 +73,26 @@ fn add(project: Project) -> Command(Result(Nil, Error)) {
   let options = AddOptions(integration: get_integration(args))
 
   case options.integration {
-    "bun" -> bun.download(project)
-    "tailwind" | "tailwindcss" | "tw" -> tailwind.download(project)
+    "bun" -> bun.download(project, quiet: False)
+    "tailwind" | "tailwindcss" | "tw" ->
+      tailwind.download(project, quiet: False)
     name -> Error(error.UnknownIntegration(name:))
   }
 }
 
+// COMMANDS: BUILD -------------------------------------------------------------
+
 type BuildOptions {
-  BuildOptions(minify: Bool, outdir: String, entries: List(String))
+  BuildOptions(
+    minify: Bool,
+    outdir: String,
+    entries: List(String),
+    skip_html: Bool,
+  )
 }
 
 fn build(project: Project) -> Command(Result(Nil, Error)) {
-  use <- glint.unnamed_args(glint.MinArgs(0))
-  use get_minify <- cli.flag("minify", cli.bool(project), {
+  use minify <- cli.bool("minify", ["build", "minify"], project, {
     "
 Produce a production-ready minified build of the project. This will rename
 variables, remove white space, and perform other optimisations to reduce the
@@ -82,34 +100,57 @@ size of the JavaScript output.
     "
   })
 
-  use get_outdir <- cli.flag("outdir", cli.string(project), {
+  use outdir <- cli.string("outdir", ["build", "outdir"], project, {
     "
+Configure where the build JavaScript bundle will be written to: by default this
+is `priv/static` within the project root. Common alternatives include `docs/` for
+GitHub Pages sites, `public/`, for hosting with services like Vercel, or the
+`priv/static` directory of another Gleam or Elixir project.
     "
   })
 
+  use skip_html <- cli.bool("no-html", ["build", "no-html"], project, {
+    "
+  Skip automatic generation of an HTML file for this project. You might want to
+  do this if you have a custom HTML file you want to use instead. HTML generation
+  is always skipped if there are multiple entry modules.
+    "
+  })
+
+  use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
+  // If the user did not provide any explicit entry modules, we'll take the
+  // app's main module as the entry.
+  let entries = case entries {
+    [] -> [project.name]
+    _ -> entries
+  }
+
   let options =
     BuildOptions(
-      minify: get_minify(flags) |> result.unwrap(False),
+      minify: minify(flags) |> result.unwrap(False),
       outdir: filepath.join(
         project.root,
-        get_outdir(flags) |> result.unwrap("priv/static"),
+        outdir(flags) |> result.unwrap("priv/static"),
       ),
-      // If the user did not provide any explicit entry modules, we'll take the
-      // app's main module as the entry.
-      entries: case entries {
-        [] -> [project.name]
-        _ -> entries
+      entries:,
+      skip_html: case skip_html(flags), entries {
+        Ok(True), _ -> True
+        Ok(False), [_, _, ..] -> True
+        Ok(False), _ | Error(_), _ -> False
       },
     )
 
-  use _ <- result.try(gleam.build(project))
+  // 1.
   use _ <- result.try(
     simplifile.create_directory_all(options.outdir)
     |> result.map_error(error.CouldNotWriteFile(options.outdir, _)),
   )
 
-  use entries <- result.try({
+  // 2.
+  use _ <- result.try(gleam.build(project))
+
+  use bun_entries <- result.try({
     use entry <- list.try_map(options.entries)
     let module =
       "import { main } from '../../build/dev/javascript/${name}/${entry}.mjs'; main();"
@@ -129,61 +170,170 @@ size of the JavaScript output.
 
   use _ <- result.try(bun.build(
     project,
-    entries,
-    options.outdir,
-    options.minify,
+    entries: bun_entries,
+    outdir: options.outdir,
+    minify: options.minify,
+    quiet: False,
   ))
 
-  use should_run_tailwind <- result.try(tailwind.detect(project))
-  use <- bool.guard(should_run_tailwind != tailwind.HasTailwindEntry, Ok(Nil))
-  use _ <- result.try(tailwind.build(
-    project,
-    filepath.join(project.src, project.name <> ".css"),
-    filepath.join(options.outdir, project.name <> ".css"),
-    options.minify,
-  ))
+  // 3.
+  let tailwind_entry = case options.entries {
+    [entry] -> entry
+    [] | [_, ..] -> project.name
+  }
+
+  use tailwind_entry <- result.try(
+    case tailwind.detect(project, tailwind_entry) {
+      Ok(tailwind.HasTailwindEntry) -> {
+        use _ <- result.try(tailwind.build(
+          project,
+          tailwind_entry,
+          options.outdir,
+          options.minify,
+          quiet: False,
+        ))
+
+        Ok(Some(tailwind_entry))
+      }
+
+      Ok(tailwind.HasViableEntry)
+      | Ok(tailwind.Nothing)
+      | Ok(tailwind.HasLegacyConfig) -> Ok(None)
+
+      Error(e) -> Error(e)
+    },
+  )
+
+  // 4.
+  use _ <- result.try(case options.entries, options.skip_html {
+    _, True | [_, _, ..], _ -> Ok(Nil)
+
+    [], False ->
+      html.generate(project, project.name, tailwind_entry)
+      |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
+      |> result.map_error(error.CouldNotWriteFile(
+        filepath.join(options.outdir, "index.html"),
+        _,
+      ))
+
+    [entry], False ->
+      html.generate(project, entry, tailwind_entry)
+      |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
+      |> result.map_error(error.CouldNotWriteFile(
+        filepath.join(options.outdir, "index.html"),
+        _,
+      ))
+  })
 
   Ok(Nil)
 }
 
-type EjectOptions {
-  EjectOptions(build_tool: String)
-}
+// COMMANDS: START -------------------------------------------------------------
 
-fn eject(project: Project) -> Command(Result(Nil, Error)) {
-  use get_build_tool <- glint.named_arg("build-tool")
-  use args, _, _ <- glint.command
-  let options = EjectOptions(build_tool: get_build_tool(args))
-
-  // 1. Generate a top-level `index.html` and any other internal files we have
-  //    that now need to be exposed
-
-  // 2. Eject the project's internal `package.json`, add `node_modules` to the
-  //    user's `.gitignore` if it exists.
-
-  // 3. Remove the internal `.lustre` directory, remove `.lustre` from the user's
-  //    `.gitignore` if it exists.
-
-  // 4. Remove `lustre_dev_tools` as a dev dependency from the user's Gleam
-  //    project.
-
-  case options.build_tool {
-    "bun" -> {
-      todo
-    }
-
-    "vite" -> {
-      // 5. Generate a `vite.config.js` file in the root of the project.
-
-      todo
-    }
-
-    name -> Error(error.UnknownBuildTool(name:))
-  }
+type StartOptions {
+  StartOptions(
+    watch: List(String),
+    proxy: Proxy,
+    entry: String,
+    tailwind_entry: Option(String),
+    host: String,
+    port: Int,
+  )
 }
 
 fn start(project: Project) -> Command(Result(Nil, Error)) {
-  use _, _, _ <- glint.command
+  use watch <- cli.string_list("watch", ["dev", "watch"], project, {
+    "
+Configure additional directories to watch for changes. The `src/` and `assets/`
+directories are always watched and do not need to be specified here.
+    "
+  })
 
-  Error(error.Todo)
+  use host <- cli.string("host", ["dev", "host"], project, {
+    "
+Configure the host address the development server will listen on: by default this
+is `localhost`. You can set this to `0.0.0.0` to allow access from other devices
+on yoru local network. This can be useful for testing with real mobile devices.
+    "
+  })
+
+  use port <- cli.int("port", ["dev", "port"], project, {
+    "
+Configure the port the development server will listen on: by default this is
+`1234`. If this port is already in use the server will fail to start.
+    "
+  })
+
+  use proxy_from <- cli.string("", ["dev", "proxy", "from"], project, "")
+  use proxy_to <- cli.string("", ["dev", "proxy", "to"], project, "")
+
+  use <- glint.unnamed_args(glint.MinArgs(0))
+  use _, entries, flags <- glint.command
+
+  use proxy <- result.try(proxy.new(
+    proxy_from(flags) |> result.unwrap(""),
+    proxy_to(flags) |> result.unwrap(""),
+  ))
+
+  let entry = case entries {
+    [] -> project.name
+    [entry, ..] -> entry
+  }
+
+  use tailwind_entry <- result.try(case tailwind.detect(project, entry) {
+    Ok(tailwind.HasTailwindEntry) -> Ok(Some(entry))
+    Ok(tailwind.HasViableEntry)
+    | Ok(tailwind.Nothing)
+    | Ok(tailwind.HasLegacyConfig) -> Ok(None)
+    Error(e) -> Error(e)
+  })
+
+  let options =
+    StartOptions(
+      watch: watch(flags)
+        |> result.unwrap([])
+        |> list.filter(fn(dir) {
+          case simplifile.is_directory(dir) {
+            Ok(True) -> True
+            Ok(False) | Error(_) -> False
+          }
+        })
+        |> list.append([project.src, project.assets]),
+      proxy:,
+      entry:,
+      tailwind_entry:,
+      host: host(flags) |> result.unwrap("localhost"),
+      port: port(flags) |> result.unwrap(1234),
+    )
+
+  use _ <- result.try(gleam.build(project))
+  use _ <- result.try(case options.tailwind_entry {
+    Some(tailwind_entry) ->
+      tailwind.build(
+        project,
+        tailwind_entry,
+        filepath.join(project.root, "build/dev/javascript"),
+        False,
+        quiet: True,
+      )
+    None -> Ok(Nil)
+  })
+
+  // Start the file watcher and set up a process registry so connected dev server
+  // clients can be notified when files change. This should use Bun and the file
+  // watcher script in `priv/bun-watcher.js` but if that fails to start it can
+  // fall back to file system polling.
+  let watcher = watcher.start(project, options.watch, options.tailwind_entry)
+
+  use _ <- result.try(server.start(
+    project,
+    watcher,
+    options.proxy,
+    options.entry,
+    options.tailwind_entry,
+    options.host,
+    options.port,
+  ))
+
+  Ok(process.sleep_forever())
 }

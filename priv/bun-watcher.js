@@ -18,8 +18,8 @@ const watchers = new Map();
 const options = { recursive: true, persistent: true };
 const onChange =
   (dir) =>
-  (_, filename = ".") => {
-    console.log(JSON.stringify({ $: "change", in: dir, name: filename }));
+  (type, filename = dir) => {
+    console.log(JSON.stringify({ $: type, in: dir, name: filename }));
   };
 
 //
@@ -37,10 +37,14 @@ stdin.on("line", (line) => {
     case "start": {
       if (watchers.has(data.path)) return;
 
-      return watchers.set(
-        data.path,
-        Fs.watch(Path.join(root, data.path), options, onChange(data.path)),
-      );
+      try {
+        watchers.set(
+          data.path,
+          Fs.watch(Path.join(root, data.path), options, onChange(data.path)),
+        );
+      } finally {
+        return;
+      }
     }
 
     case "stop": {
@@ -67,9 +71,19 @@ stdin.on("close", () => {
 });
 
 process.on("SIGINT", () => {
+  for (const [key, watcher] of watchers) {
+    watcher.close();
+    watchers.delete(key);
+  }
+
   stdin.close();
 });
 
 process.on("SIGTERM", () => {
+  for (const [key, watcher] of watchers) {
+    watcher.close();
+    watchers.delete(key);
+  }
+
   stdin.close();
 });
