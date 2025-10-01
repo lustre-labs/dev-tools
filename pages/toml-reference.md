@@ -50,13 +50,21 @@ These options affect how Lustre builds your project when you run
 
   Default: `false`.
 
-- **`no-html = true | false`**: whether or not to skip generating a HTML entry file
+- **`no_html = true | false`**: whether or not to skip generating a HTML entry file
   for the output bundle. If set to `true`, Lustre will only generate JavaScript
   and CSS bundles and you will need to write or generate your own HTML document
   separately.
 
   If multiple entry points are specified, this option is ignored and a HTML file
   will never be generated.
+
+  Default: `false`
+
+- **`no_tailwind = true | false`**: whether or not to skip the automatic detection
+  and building of Tailwind CSS styles. If set to `true`, Lustre will not attempt
+  to download or run the Tailwind CLI even if Tailwind CSS is detected in your
+  project. You might want to set this to `true` to manage the CSS build process
+  yourself.
 
   Default: `false`
 
@@ -156,8 +164,8 @@ application or serves during development.
   object in the array can either represent an external stylesheet with an `href`
   attribute or an inline stylesheet with a `content` attribute.
 
-  Lustre will always generate the link tag for the the built Tailwind CSS bundle
-  after any stylesheets specified here.
+  Lustre will always generate the link tag for any built Tailwind CSS styles after
+  any stylesheets specified here.
 
   Default: `[]`.
 
