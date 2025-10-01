@@ -158,6 +158,8 @@ pub fn build(
   let split = bool.guard(list.length(entries) > 1, "--splitting", fn() { "" })
   let flags = [minify, split, "--outdir " <> outdir]
 
+  cli.log("Creating JavaScript bundle", quiet)
+
   use _ <- result.try(
     system.run(
       path
@@ -168,6 +170,8 @@ pub fn build(
     )
     |> result.map_error(error.FailedToBuildProject),
   )
+
+  cli.success("Bundle successfully built.", quiet)
 
   Ok(Nil)
 }

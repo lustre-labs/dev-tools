@@ -1,7 +1,6 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import gleam/dict.{type Dict}
-import gleam/function
 import gleam/io
 import gleam/list
 import gleam/result
@@ -115,34 +114,53 @@ fn flag(
   description: String,
   continue: fn(fn(glint.Flags) -> Result(a, Error)) -> glint.Command(b),
 ) -> glint.Command(b) {
-  let flag = fn(next) {
-    use from_flags <- glint.flag(
-      read_flag(name) |> glint.flag_help(description |> string.trim),
-    )
-
-    use flags <- continue
-    let result = case from_flags(flags) {
-      Ok(value) -> Ok(value)
-      Error(_) -> Error(error.MissingRequiredFlag(name: path))
-    }
-
-    next(result)
-  }
-
-  let option = fn() {
-    case read_toml(project.options, path) {
-      Ok(value) -> Ok(value)
-      Error(_) -> Error(error.MissingRequiredFlag(name: path))
-    }
-  }
-
   case name, path {
     "", [] ->
+      panic as "Invalid flag config. Please open an issue at https://github.com/lustre-labs/dev-tools/issues/new"
+
+    // There is no CLI flag for this option, so we must read it from the config
+    // file.
+    "", _ ->
       continue(fn(_) {
-        panic as "Invalid flag config. Please open an issue at https://github.com/lustre-labs/dev-tools/issues/new"
+        case read_toml(project.options, path) {
+          Ok(value) -> Ok(value)
+          Error(_) -> Error(error.MissingRequiredFlag(name: path))
+        }
       })
-    "", _ -> continue(fn(_) { option() })
-    _, [] -> flag(function.identity)
-    _, _ -> flag(fn(_) { option() })
+
+    // There is no config option for this flag, so we must only read it from
+    // the CLI args.
+    _, [] -> {
+      use from_flags <- glint.flag(
+        read_flag(name) |> glint.flag_help(description |> string.trim),
+      )
+
+      use flags <- continue
+
+      case from_flags(flags) {
+        Ok(value) -> Ok(value)
+        Error(_) -> Error(error.MissingRequiredFlag(name: ["--" <> name]))
+      }
+    }
+
+    // This option could be read from both the config file and the CLI args.
+    // Precedence is given to flags passed via the CLI, but the config file is
+    // read as a fallback if the flag is not present.
+    _, _ -> {
+      use from_flags <- glint.flag(
+        read_flag(name) |> glint.flag_help(description |> string.trim),
+      )
+
+      use flags <- continue
+
+      case from_flags(flags) {
+        Ok(value) -> Ok(value)
+        Error(_) ->
+          case read_toml(project.options, path) {
+            Ok(value) -> Ok(value)
+            Error(_) -> Error(error.MissingRequiredFlag(name: path))
+          }
+      }
+    }
   }
 }

@@ -64,15 +64,46 @@ pub fn main() {
 // COMMANDS: ADD ---------------------------------------------------------------
 
 type AddOptions {
-  AddOptions(integration: String)
+  AddOptions(integrations: List(String))
 }
 
 fn add(project: Project) -> Command(Result(Nil, Error)) {
-  use get_integration <- glint.named_arg("integration")
-  use args, _, _ <- glint.command
-  let options = AddOptions(integration: get_integration(args))
+  use <- glint.command_help({
+    "
+Add various binary dependencies to your project. Lustre uses various external
+tools to provide core functionality such as bundling JavaScript with Bun or
+building styles with Tailwind. This command can be used to download these
+integrations from GitHub for dev tools to use.
 
-  case options.integration {
+
+Supported arguments are:
+
+
+- `bun`: Bun is a fast JavaScript runtime and bundler. It is used to bundle
+your Gleam code into a single JavaScript file that can be run in the browser.
+
+
+- `tailwind`, `tailwindcss`, or `tw`: Tailwind is a utility-first CSS framework
+supported automatically by these dev tools. This command will download the
+Tailwind CLI tool.
+
+
+Lustre will detect which integrations your project needs based on your code and
+configuration, and will automatically download necessary tools when you run any
+of the other commands. However ou may still want to run this command manually to
+ensure that your project has all the necessary tools installed before you go
+offline, for example.
+    "
+  })
+
+  use get_integration <- glint.named_arg("integration")
+  use <- glint.unnamed_args(glint.MinArgs(0))
+  use arg, args, _ <- glint.command
+
+  let options = AddOptions(integrations: [get_integration(arg), ..args])
+  use integration <- list.try_each(options.integrations)
+
+  case integration {
     "bun" -> bun.download(project, quiet: False)
     "tailwind" | "tailwindcss" | "tw" ->
       tailwind.download(project, quiet: False)
@@ -88,17 +119,81 @@ type BuildOptions {
     outdir: String,
     entries: List(String),
     skip_html: Bool,
+    skip_tailwind: Bool,
   )
 }
 
 fn build(project: Project) -> Command(Result(Nil, Error)) {
+  use <- glint.command_help({
+    "
+Build your Gleam project and produce a JavaScript bundle ready to be served and
+run in a Web browser. This command accepts zero or more entry modules as arguments.
+
+
+- If no entry modules are provided, the module matching the name of your app as
+defined in your `gleam.toml` will be used as the entry and the `main` function
+in that module will be called when the JavaScript bundle is run. An `index.html`
+file will also be generated and contain a script tag to load the produced
+bundle.
+
+
+- If one argument is provided, it should be the name of a module in your project
+like `your_app` or `your_app/some_module`. The `main` function in that module
+will be called when the JavaScript bundle is run. An `index.html` file will also
+be generated and contain a script tag to load the produced bundle.
+
+
+- If multiple arguments are provided, each should be the name of a module in your
+project. Multiple JavaScript bundles will be produced, one for each entry module,
+and an additional bundle containing all code shared between every entry module.
+In this case no `index.html` file will be generated automatically, and must be
+provided manually if needed.
+
+
+The produced JavaScript bundle(s) will be minified and written to your project's
+`priv/static` directory by default. Some optimisations such as dead-code elimination
+may also be performed.
+    "
+  })
+
   use minify <- cli.bool("minify", ["build", "minify"], project, {
     "
 Produce a production-ready minified build of the project. This will rename
 variables, remove white space, and perform other optimisations to reduce the
 size of the JavaScript output.
+
+
+This option can also be provided in your `gleam.toml` configuration under the
+key `tools.lustre.build.minify`.
     "
   })
+
+  use skip_html <- cli.bool("no-html", ["build", "no_html"], project, {
+    "
+Skip automatic generation of an HTML file for this project. You might want to
+do this if you have a custom HTML file you want to use instead. HTML generation
+is always skipped if there are multiple entry modules.
+
+
+This option can also be provided in your `gleam.toml` configuration under the
+key `tools.lustre.build.no_html`.
+    "
+  })
+
+  use skip_tailwind <- cli.bool(
+    "no-tailwind",
+    ["build", "no_tailwind"],
+    project,
+    "
+Skip automatic detection of Tailwind CSS in this project. This means even if a
+valid Tailwind entry point is detected, Lustre will not attempt to download or
+run the Tailwind CLI tool during the build process. You might want to do this if
+you have a custom CSS build process you want to use instead.
+
+This option can also be provided in your `gleam.toml` configuration under the
+key `tools.lustre.build.no_tailwind`.
+    ",
+  )
 
   use outdir <- cli.string("outdir", ["build", "outdir"], project, {
     "
@@ -106,14 +201,10 @@ Configure where the build JavaScript bundle will be written to: by default this
 is `priv/static` within the project root. Common alternatives include `docs/` for
 GitHub Pages sites, `public/`, for hosting with services like Vercel, or the
 `priv/static` directory of another Gleam or Elixir project.
-    "
-  })
 
-  use skip_html <- cli.bool("no-html", ["build", "no-html"], project, {
-    "
-  Skip automatic generation of an HTML file for this project. You might want to
-  do this if you have a custom HTML file you want to use instead. HTML generation
-  is always skipped if there are multiple entry modules.
+
+This option can also be provided in your `gleam.toml` configuration under the
+key `tools.lustre.build.outdir`.
     "
   })
 
@@ -139,6 +230,7 @@ GitHub Pages sites, `public/`, for hosting with services like Vercel, or the
         Ok(False), [_, _, ..] -> True
         Ok(False), _ | Error(_), _ -> False
       },
+      skip_tailwind: skip_tailwind(flags) |> result.unwrap(False),
     )
 
   // 1.
@@ -184,6 +276,8 @@ GitHub Pages sites, `public/`, for hosting with services like Vercel, or the
 
   use tailwind_entry <- result.try(
     case tailwind.detect(project, tailwind_entry) {
+      Ok(tailwind.HasTailwindEntry) if options.skip_tailwind -> Ok(None)
+
       Ok(tailwind.HasTailwindEntry) -> {
         use _ <- result.try(tailwind.build(
           project,
@@ -208,22 +302,42 @@ GitHub Pages sites, `public/`, for hosting with services like Vercel, or the
   use _ <- result.try(case options.entries, options.skip_html {
     _, True | [_, _, ..], _ -> Ok(Nil)
 
-    [], False ->
-      html.generate(project, project.name, tailwind_entry)
-      |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
-      |> result.map_error(error.CouldNotWriteFile(
-        filepath.join(options.outdir, "index.html"),
-        _,
-      ))
+    [], False -> {
+      cli.log("Building index.html", False)
 
-    [entry], False ->
-      html.generate(project, entry, tailwind_entry)
-      |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
-      |> result.map_error(error.CouldNotWriteFile(
-        filepath.join(options.outdir, "index.html"),
-        _,
-      ))
+      use _ <- result.try(
+        html.generate(project, project.name, tailwind_entry)
+        |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
+        |> result.map_error(error.CouldNotWriteFile(
+          filepath.join(options.outdir, "index.html"),
+          _,
+        )),
+      )
+
+      cli.success("HTML generated.", False)
+
+      Ok(Nil)
+    }
+
+    [entry], False -> {
+      cli.log("Building index.html", False)
+
+      use _ <- result.try(
+        html.generate(project, entry, tailwind_entry)
+        |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
+        |> result.map_error(error.CouldNotWriteFile(
+          filepath.join(options.outdir, "index.html"),
+          _,
+        )),
+      )
+
+      cli.success("HTML generated.", False)
+
+      Ok(Nil)
+    }
   })
+
+  cli.success("Build complete!", False)
 
   Ok(Nil)
 }
@@ -242,10 +356,11 @@ type StartOptions {
 }
 
 fn start(project: Project) -> Command(Result(Nil, Error)) {
-  use watch <- cli.string_list("watch", ["dev", "watch"], project, {
+  use <- glint.command_help({
     "
-Configure additional directories to watch for changes. The `src/` and `assets/`
-directories are always watched and do not need to be specified here.
+Start a development server to run your Lustre app locally. This will watch your
+source files for changes and automatically rebuild and reload the app in your
+browser.
     "
   })
 
@@ -266,6 +381,13 @@ Configure the port the development server will listen on: by default this is
 
   use proxy_from <- cli.string("", ["dev", "proxy", "from"], project, "")
   use proxy_to <- cli.string("", ["dev", "proxy", "to"], project, "")
+
+  use watch <- cli.string_list("watch", ["dev", "watch"], project, {
+    "
+Configure additional directories to watch for changes. The `src/` and `assets/`
+directories are always watched and do not need to be specified here.
+    "
+  })
 
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command

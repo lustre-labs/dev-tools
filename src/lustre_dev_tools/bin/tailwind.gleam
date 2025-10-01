@@ -216,10 +216,14 @@ pub fn build(
     minify,
   ]
 
+  cli.log("Building Tailwind stylesheet", quiet)
+
   use _ <- result.try(
     system.run(path <> " " <> string.join(flags, " "))
     |> result.map_error(error.FailedToBuildProject),
   )
+
+  cli.success("Stylesheet successfully built.", quiet)
 
   Ok(Nil)
 }
