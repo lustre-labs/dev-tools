@@ -3,6 +3,7 @@
 import argv
 import filepath
 import gleam/erlang/process
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -436,7 +437,7 @@ directories are always watched and do not need to be specified here.
         tailwind_entry,
         filepath.join(project.root, "build/dev/javascript"),
         False,
-        quiet: True,
+        quiet: False,
       )
     None -> Ok(Nil)
   })
@@ -456,6 +457,14 @@ directories are always watched and do not need to be specified here.
     options.host,
     options.port,
   ))
+
+  cli.success(
+    "Dev server running on http://"
+      <> options.host
+      <> ":"
+      <> int.to_string(options.port),
+    False,
+  )
 
   Ok(process.sleep_forever())
 }
