@@ -6,8 +6,8 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
 import gleam/option
-import lustre_dev_tools/bin/gleam
 import lustre_dev_tools/dev/watcher.{type Watcher}
+import lustre_dev_tools/error
 import lustre_dev_tools/project.{type Project}
 import mist.{type Connection, type ResponseData}
 
@@ -35,7 +35,7 @@ pub fn start(
   )
 
   case message {
-    mist.Custom(#(dir, path)) if dir == project.assets -> {
+    mist.Custom(watcher.Change(in: dir, path:)) if dir == project.assets -> {
       let _ =
         json.object([
           #("type", json.string("asset-update")),
@@ -47,7 +47,7 @@ pub fn start(
       mist.continue(watcher)
     }
 
-    mist.Custom(#(_, path)) ->
+    mist.Custom(watcher.Change(path:, ..)) ->
       case filepath.extension(path) {
         Ok("css") -> {
           let _ =
@@ -62,7 +62,6 @@ pub fn start(
         }
 
         _ -> {
-          let _ = gleam.build(project)
           let _ =
             json.object([
               #("type", json.string("reload")),
@@ -73,6 +72,20 @@ pub fn start(
           mist.continue(watcher)
         }
       }
+
+    mist.Custom(watcher.BuildError(reason:)) -> {
+      let message = error.explain(reason)
+
+      let _ =
+        json.object([
+          #("type", json.string("error")),
+          #("message", json.string(message)),
+        ])
+        |> json.to_string
+        |> mist.send_text_frame(connection, _)
+
+      mist.continue(watcher)
+    }
 
     mist.Binary(_) | mist.Text(_) -> mist.continue(watcher)
 

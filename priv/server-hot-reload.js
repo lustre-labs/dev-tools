@@ -38,6 +38,16 @@ function connect() {
           }
         }
 
+        removeError();
+
+        return;
+      }
+
+      case "error": {
+        const message = data.message;
+
+        showError(message);
+
         return;
       }
     }
@@ -61,4 +71,114 @@ if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", connect);
 } else {
   connect();
+}
+
+function showError(message) {
+  // Create and show error dialog
+  const dialog = document.createElement("dialog");
+
+  dialog.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 80vw;
+    max-height: 80vh;
+    width: max-content;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    background: #1a1a1a;
+    color: #fff;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    z-index: 10000;
+  `;
+
+  const header = document.createElement("div");
+
+  header.style.cssText = `
+    background: #dc2626;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px 8px 0 0;
+  `;
+
+  header.innerHTML = `
+    <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Build Error</h3>
+    <button onclick="this.closest('dialog').close()" style="
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">×</button>
+  `;
+
+  const content = document.createElement("div");
+
+  content.style.cssText = `
+    padding: 20px;
+    overflow: auto;
+    max-height: 60vh;
+  `;
+
+  const pre = document.createElement("pre");
+
+  pre.style.cssText = `
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #f3f4f6;
+  `;
+
+  pre.textContent = message;
+
+  content.appendChild(pre);
+  dialog.appendChild(header);
+  dialog.appendChild(content);
+
+  // Remove existing error dialog if present
+  removeError();
+
+  dialog.setAttribute("data-lustre-error", "true");
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  // Close on backdrop click
+  dialog.addEventListener("click", (e) => {
+    if (e.target === dialog) {
+      dialog.remove();
+    }
+  });
+
+  // Close on escape key
+  dialog.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      dialog.remove();
+    }
+  });
+
+  // Remove dialog when closed
+  dialog.addEventListener("close", () => {
+    dialog.remove();
+  });
+}
+
+function removeError() {
+  const existingDialog = document.querySelector("dialog[data-lustre-error]");
+
+  if (existingDialog) {
+    existingDialog.remove();
+  }
 }

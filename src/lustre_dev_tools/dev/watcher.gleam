@@ -5,19 +5,26 @@ import gleam/erlang/process.{type Pid, type Subject}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{Started}
+import gleam/result
 import gleam/string
 import group_registry.{type GroupRegistry}
 import lustre_dev_tools/bin/bun
 import lustre_dev_tools/bin/gleam
 import lustre_dev_tools/bin/tailwind
 import lustre_dev_tools/cli
+import lustre_dev_tools/error
 import lustre_dev_tools/project.{type Project}
 import polly
 
 // TYPES -----------------------------------------------------------------------
 
 pub type Watcher =
-  GroupRegistry(#(String, String))
+  GroupRegistry(Event)
+
+pub type Event {
+  Change(in: String, path: String)
+  BuildError(reason: error.Error)
+}
 
 //
 
@@ -49,21 +56,30 @@ fn start_bun_watcher(
   registry: Watcher,
 ) -> Result(_, _) {
   use dir, path <- bun.watch(project, watch)
-  let _ = gleam.build(project)
-  let _ = case tailwind_entry {
-    Some(entry) ->
-      tailwind.build(
-        project,
-        entry,
-        filepath.join(project.root, "build/dev/javascript"),
-        False,
-        quiet: True,
-      )
-    None -> Ok(Nil)
+  let result = {
+    use _ <- result.try(gleam.build(project))
+    use _ <- result.try(case tailwind_entry {
+      Some(entry) ->
+        tailwind.build(
+          project,
+          entry,
+          filepath.join(project.root, "build/dev/javascript"),
+          False,
+          quiet: True,
+        )
+      None -> Ok(Nil)
+    })
+
+    Ok(Nil)
+  }
+
+  let event = case result {
+    Ok(_) -> Change(in: dir, path:)
+    Error(reason) -> BuildError(reason:)
   }
 
   group_registry.members(registry, "watch")
-  |> list.each(process.send(_, #(dir, path)))
+  |> list.each(process.send(_, event))
 }
 
 fn start_polly_watcher(
@@ -79,25 +95,35 @@ fn start_polly_watcher(
     |> list.fold(rest, _, polly.add_dir)
 
   use event <- polly.watch(polly)
-  let _ = gleam.build(project)
-  let _ = case tailwind_entry {
-    Some(entry) ->
-      tailwind.build(
-        project,
-        entry,
-        filepath.join(project.root, "build/dev/javascript"),
-        False,
-        quiet: True,
-      )
-    None -> Ok(Nil)
-  }
-
-  let assert Ok(dir) = list.find(watch, string.starts_with(event.path, _))
 
   case event {
-    polly.Changed(path:) | polly.Created(path:) | polly.Deleted(path:) ->
+    polly.Changed(path:) | polly.Created(path:) | polly.Deleted(path:) -> {
+      let assert Ok(dir) = list.find(watch, string.starts_with(event.path, _))
+      let result = {
+        use _ <- result.try(gleam.build(project))
+        use _ <- result.try(case tailwind_entry {
+          Some(entry) ->
+            tailwind.build(
+              project,
+              entry,
+              filepath.join(project.root, "build/dev/javascript"),
+              False,
+              quiet: True,
+            )
+          None -> Ok(Nil)
+        })
+
+        Ok(Nil)
+      }
+
+      let event = case result {
+        Ok(_) -> Change(in: dir, path:)
+        Error(reason) -> BuildError(reason:)
+      }
+
       group_registry.members(registry, "watch")
-      |> list.each(process.send(_, #(dir, path)))
+      |> list.each(process.send(_, event))
+    }
 
     polly.Error(..) -> Nil
   }
@@ -105,7 +131,7 @@ fn start_polly_watcher(
 
 //
 
-pub fn subscribe(registry: Watcher, client: Pid) -> Subject(#(String, String)) {
+pub fn subscribe(registry: Watcher, client: Pid) -> Subject(Event) {
   group_registry.join(registry, "watch", client)
 }
 
