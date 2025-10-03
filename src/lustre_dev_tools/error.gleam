@@ -26,18 +26,15 @@ pub type Error {
   ProxyMissingFrom
   ProxyMissingTo
   UnknownBuildTool(name: String)
+  UnknownGleamModule(name: String)
   UnknownIntegration(name: String)
   UnsupportedBunVersion(path: String, expected: String, actual: String)
   UnsupportedPlatform(os: String, arch: String)
   UnsupportedTailwindVersion(path: String, expected: String, actual: String)
-  //
-  Todo
 }
 
 pub fn explain(error: Error) -> String {
   case error {
-    Todo -> "this error is not implemented yet"
-
     // -------------------------------------------------------------------------
     CouldNotDownloadBunBinary(reason:) ->
       "
@@ -47,14 +44,11 @@ got from the HTTP client:
   ${reason}
 
 Make sure you're connected to the internet and that no firewall or proxy is
-blocking connections to GitHub. If you think this is a bug, please open an issue
-at
+blocking connections to GitHub.
 
-  https://github.com/lustre-labs/dev-tools/issues/new
-
-Hint: you can provide a path to a local Bun binary by passing the `--bin-bun`
-flag or setting the `tools.lustre.bin.bun` field in your `gleam.toml`. Use the
-string `\"system\"` to use the Bun binary accessible in your system path.
+Hint: you can provide a path to a local Bun binary by setting the
+`tools.lustre.bin.bun` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Bun binary accessible in your system path.
       "
       |> string.replace("${reason}", string.inspect(reason))
 
@@ -67,15 +61,11 @@ error I got from the HTTP client:
   ${reason}
 
 Make sure you're connected to the internet and that no firewall or proxy is
-blocking connections to GitHub. If you think this is a bug, please open an issue
-at
+blocking connections to GitHub.
 
-  https://github.com/lustre-labs/dev-tools/issues/new
-
-Hint: you can provide a path to a local Tailwind binary by passing the
-`--bin-tailwind` flag or setting the `tools.lustre.bin.tailwind` field in your
-`gleam.toml`. Use the string `\"system\"` to use the Tailwind binary accessible
-in your system path.
+Hint: you can provide a path to a local Tailwind binary by setting the
+`tools.lustre.bin.tailwind` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Tailwind binary accessible in your system path.
         "
       |> string.replace("${reason}", string.inspect(reason))
 
@@ -94,8 +84,9 @@ With the following information:
   - arch: ${arch}
   - version: ${version}
 
-Hint: you can provide a path to a local Bun binary by passing the `--bun-path`
-flag or setting the `tools.lustre.bun_path` field in your `gleam.toml`.
+Hint: you can provide a path to a local Tailwind binary by setting the
+`tools.lustre.bin.bun` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Tailwind binary accessible in your system path.
       "
       |> string.replace("${os}", os)
       |> string.replace("${arch}", arch)
@@ -109,10 +100,7 @@ I ran into a problem while trying to run the Bun binary at the following path:
   ${path}
 
 If you are trying to use a local binary, make sure the path is correct and that
-relative paths are relative to the current working directory. If you think this
-is a bug, please open an issue at:
-
-  https://github.com/lustre-labs/dev-tools/issues/new
+relative paths are relative to the project's root directory.
       "
       |> string.replace("${path}", path)
 
@@ -125,11 +113,8 @@ path:
   ${path}
 
 If you are trying to use a local binary, make sure the path is correct and that
-relative paths are relative to the current working directory. If you think this
-is a bug, please open an issue at:
-
-  https://github.com/lustre-labs/dev-tools/issues/new
-        "
+relative paths are relative to the current working directory.
+      "
       |> string.replace("${path}", path)
 
     // -------------------------------------------------------------------------
@@ -141,10 +126,7 @@ file system:
 
   ${reason}
 
-Make sure you have permissions to write to the current directory. If you think
-this is a bug, please open an issue at:
-
-  https://github.com/lustre-labs/dev-tools/issues/new
+Make sure you have permissions to write to the current directory.
       "
       |> string.replace("${reason}", string.inspect(reason))
 
@@ -159,10 +141,7 @@ Here's the error I got from the file system:
 
   ${reason}
 
-Make sure the file exists and that you have permissions to read it. If you think
-this is a bug, please open an issue at:
-
-  https://github.com/lustre-labs/dev-tools/issues/new
+Make sure the file exists and that you have permissions to read it.
       "
       |> string.replace("${path}", path)
       |> string.replace("${reason}", string.inspect(reason))
@@ -170,7 +149,7 @@ this is a bug, please open an issue at:
     // -------------------------------------------------------------------------
     CouldNotSetFilePermissions(path:, reason:) ->
       "
-I ran into a problem while trying to set the file permissions for the Bun binary
+I ran into a problem while trying to set the file permissions for an integration
 at:
 
   ${path}
@@ -179,10 +158,11 @@ Here's the error I got from the file system:
 
   ${reason}
 
-Make sure you have the necessary permissions to write to this file. If you think
-this is a bug, please open an issue at:
+Make sure you have the necessary permissions to write to this file.
 
-https://github.com/lustre-labs/dev-tools/issues/new
+Hint: you can provide a path to local binaries for Lustre to use instead by
+adding the `tools.lustre.bin` table to your `gleam.toml`. Consult the TOML
+reference on HexDocs for more information.
       "
       |> string.replace("${path}", path)
       |> string.replace("${reason}", string.inspect(reason))
@@ -223,9 +203,9 @@ If you think this is a bug, please open an issue at:
 
 https://github.com/lustre-labs/dev-tools/issues/new
 
-Hint: you can provide a path to a local Bun binary by passing the `--bun-path`
-flag or setting the `tools.lustre.bun_path` field in your `gleam.toml`. Use the
-string `\"system\"` to use the Bun binary accessible in your system path.
+Hint: you can provide a path to a local Bun binary by setting the
+`tools.lustre.bin.bun` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Bun binary accessible in your system path.
       "
       |> string.replace("${expected}", expected)
       |> string.replace("${actual}", actual)
@@ -247,10 +227,9 @@ If you think this is a bug, please open an issue at:
 
 https://github.com/lustre-labs/dev-tools/issues/new
 
-Hint: you can provide a path to a local Tailwind binary by passing the
-`--bin-tailwind` flag or setting the `tools.lustre.bin.tailwind` field in your
-`gleam.toml`. Use the string `\"system\"` to use the Tailwind binary accessible
-in your system path.
+Hint: you can provide a path to a local Tailwind binary by setting the
+`tools.lustre.bin.tailwind` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Tailwind binary accessible in your system path.
         "
       |> string.replace("${expected}", expected)
       |> string.replace("${actual}", actual)
@@ -266,10 +245,7 @@ Here's the error I got from the file system:
 
   ${reason}
 
-Make sure you have permissions to write files in this directory. If you think
-this is a bug, please open an issue at:
-
-  https://github.com/lustre-labs/dev-tools/issues/new
+Make sure you have permissions to write files in this directory.
       "
       |> string.replace("${path}", path)
       |> string.replace("${reason}", string.inspect(reason))
@@ -309,9 +285,7 @@ got while building:
   ${reason}
 
 Make sure your Gleam code compiles without errors and any entry points point to
-Gleam modules. If you think this is a bug, please open an issue at:
-
-  https://github.com/lustre-labs/dev-tools/issues/new
+Gleam modules.
       "
       |> string.replace("${reason}", reason)
 
@@ -320,10 +294,7 @@ Gleam modules. If you think this is a bug, please open an issue at:
       "
 I'm missing at least one required flag to run this command. Please make sure you
 provide the `--${name}` flag when running the command or configure your `gleam.toml`
-to include the `tools.lustre.${path}` field. If you think this is a bug, please
-open an issue at:
-
-  https://github.com/lustre-labs/dev-tools/issues/new
+to include the `tools.lustre.${path}` field.
       "
       |> string.replace("${name}", string.join(name, "-"))
       |> string.replace("${path}", string.join(name, "."))
@@ -375,6 +346,19 @@ If you need to use a different build tool, please configure the project yourself
 If you think this is a bug, please open an issue at:
 
   https://github.com/lustre-labs/dev-tools/issues/new
+      "
+      |> string.replace("${name}", name)
+
+    // -------------------------------------------------------------------------
+    UnknownGleamModule(name:) ->
+      "
+I ran into a problem while trying to build your application. I couldn't find the
+entry module you provided:
+
+  ${name}
+
+Make sure the module exists in your project and the name is correct. Gleam module
+names are the full path from the `src` directory like `wibble/wobble/woo`.
       "
       |> string.replace("${name}", name)
 
@@ -466,10 +450,6 @@ got:
   ${reason}
 
 Make sure the port you're trying to use is not already in use by another program.
-If you think this is a bug, please open an issue at:
-
-  https://github.com/lustre-labs/dev-tools/issues/new
-
       "
       |> string.replace("${reason}", string.inspect(reason))
   }

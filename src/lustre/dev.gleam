@@ -1,3 +1,66 @@
+//// # Available commands
+////
+//// Below is a list of the available commands when running `gleam run -m lustre/dev`.
+//// Each command has its own CLI help text to document which flags are supported
+//// and a separate [TOML reference](https://hexdocs.pm/lustre_dev_tools/toml-reference.html)
+//// documents additional configuration options that can be set in your `gleam.toml`.
+////
+//// ## `add <..integrations>`
+////
+//// Add various binary dependencies to your project. Lustre uses various external
+//// tools to provide core functionality such as bundling JavaScript with Bun or
+//// building styles with Tailwind. This command can be used to download these
+//// integrations from GitHub for dev tools to use.
+////
+//// Supported arguments are:
+////
+//// - `bun`: Bun is a fast JavaScript runtime and bundler. It is used to bundle
+//// your Gleam code into a single JavaScript file that can be run in the browser.
+////
+//// - `tailwind`, `tailwindcss`, or `tw`: Tailwind is a utility-first CSS framework
+//// supported automatically by these dev tools. This command will download the
+//// Tailwind CLI tool.
+////
+//// Lustre will detect which integrations your project needs based on your code
+//// and configuration, and will automatically download necessary tools when you
+//// run any of the other commands. However ou may still want to run this command
+//// manually to ensure that your project has all the necessary tools installed
+//// before you go offline, for example.
+////
+//// ## `build <..entries>`
+////
+//// Build your Gleam project and produce a JavaScript bundle ready to be served
+//// and run in a Web browser. This command accepts zero or more entry modules as
+//// arguments.
+////
+//// - If no entry modules are provided, the module matching the name of your app
+//// as defined in your `gleam.toml` will be used as the entry and the `main`
+//// function in that module will be called when the JavaScript bundle is run.
+//// An `index.html` file will also be generated and contain a script tag to load
+//// the produced bundle.
+////
+//// - If one argument is provided, it should be the name of a module in your
+//// project like `your_app` or `your_app/some_module`. The `main` function in
+//// that module will be called when the JavaScript bundle is run. An `index.html`
+//// file will also be generated and contain a script tag to load the produced
+//// bundle.
+////
+//// - If multiple arguments are provided, each should be the name of a module in
+//// your project. Multiple JavaScript bundles will be produced, one for each entry
+//// module, and an additional bundle containing all code shared between every
+//// entry module. In this case no `index.html` file will be generated automatically,
+//// and must be provided manually if needed.
+////
+//// The produced JavaScript bundle(s) will be minified and written to your project's
+//// `priv/static` directory by default. Some optimisations such as dead-code
+//// elimination may also be performed.
+////
+//// ## `start`
+////
+//// Start a development server to run your Lustre app locally. This will watch
+//// your source files for changes and automatically rebuild and reload the app
+//// in your browser.
+
 // IMPORTS ---------------------------------------------------------------------
 
 import argv
@@ -43,7 +106,6 @@ pub fn main() {
       // |> glint.add(at: ["gen"], do: todo)
       // |> glint.add(at: ["mcp"], do: todo)
       |> glint.add(at: ["start"], do: start(project))
-      |> glint.add(at: [], do: start(project))
 
     case glint.execute(cli, args) {
       Ok(glint.Help(help)) -> Ok(io.println(help))
@@ -75,25 +137,6 @@ Add various binary dependencies to your project. Lustre uses various external
 tools to provide core functionality such as bundling JavaScript with Bun or
 building styles with Tailwind. This command can be used to download these
 integrations from GitHub for dev tools to use.
-
-
-Supported arguments are:
-
-
-- `bun`: Bun is a fast JavaScript runtime and bundler. It is used to bundle
-your Gleam code into a single JavaScript file that can be run in the browser.
-
-
-- `tailwind`, `tailwindcss`, or `tw`: Tailwind is a utility-first CSS framework
-supported automatically by these dev tools. This command will download the
-Tailwind CLI tool.
-
-
-Lustre will detect which integrations your project needs based on your code and
-configuration, and will automatically download necessary tools when you run any
-of the other commands. However ou may still want to run this command manually to
-ensure that your project has all the necessary tools installed before you go
-offline, for example.
     "
   })
 
@@ -128,32 +171,9 @@ fn build(project: Project) -> Command(Result(Nil, Error)) {
   use <- glint.command_help({
     "
 Build your Gleam project and produce a JavaScript bundle ready to be served and
-run in a Web browser. This command accepts zero or more entry modules as arguments.
-
-
-- If no entry modules are provided, the module matching the name of your app as
-defined in your `gleam.toml` will be used as the entry and the `main` function
-in that module will be called when the JavaScript bundle is run. An `index.html`
-file will also be generated and contain a script tag to load the produced
-bundle.
-
-
-- If one argument is provided, it should be the name of a module in your project
-like `your_app` or `your_app/some_module`. The `main` function in that module
-will be called when the JavaScript bundle is run. An `index.html` file will also
-be generated and contain a script tag to load the produced bundle.
-
-
-- If multiple arguments are provided, each should be the name of a module in your
-project. Multiple JavaScript bundles will be produced, one for each entry module,
-and an additional bundle containing all code shared between every entry module.
-In this case no `index.html` file will be generated automatically, and must be
-provided manually if needed.
-
-
-The produced JavaScript bundle(s) will be minified and written to your project's
-`priv/static` directory by default. Some optimisations such as dead-code elimination
-may also be performed.
+run in a Web browser. The produced JavaScript bundle(s) will be minified and written
+to your project's `priv/static` directory by default. Some optimisations such as
+dead-code elimination may also be performed.
     "
   })
 
@@ -213,10 +233,16 @@ key `tools.lustre.build.outdir`.
   use _, entries, flags <- glint.command
   // If the user did not provide any explicit entry modules, we'll take the
   // app's main module as the entry.
-  let entries = case entries {
-    [] -> [project.name]
-    _ -> entries
-  }
+  use entries <- result.try(case entries {
+    [] -> Ok([project.name])
+    _ ->
+      list.try_map(entries, fn(entry) {
+        case project.exists(project, entry) {
+          True -> Ok(entry)
+          False -> Error(error.UnknownGleamModule(name: entry))
+        }
+      })
+  })
 
   let options =
     BuildOptions(
