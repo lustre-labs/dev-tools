@@ -1,11 +1,12 @@
 // IMPORTS ---------------------------------------------------------------------
 
+import booklet.{type Booklet}
 import filepath
 import gleam/erlang/process
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
-import gleam/option
+import gleam/option.{type Option, None, Some}
 import lustre_dev_tools/dev/watcher.{type Watcher}
 import lustre_dev_tools/error
 import lustre_dev_tools/project.{type Project}
@@ -16,16 +17,34 @@ import mist.{type Connection, type ResponseData}
 pub fn start(
   request: Request(Connection),
   project: Project,
+  error: Booklet(Option(error.Error)),
   watcher: Watcher,
 ) -> Response(ResponseData) {
-  use watcher, message, connection <- mist.websocket(
+  use _, message, connection <- mist.websocket(
     request,
-    on_init: fn(_) {
+    on_init: fn(connection) {
       let self = process.self()
       let subject = watcher.subscribe(watcher, self)
       let selector = process.new_selector() |> process.select(subject)
 
-      #(Nil, option.Some(selector))
+      case booklet.get(error) {
+        Some(reason) -> {
+          let message = error.explain(reason)
+          let _ =
+            json.object([
+              #("type", json.string("error")),
+              #("message", json.string(message)),
+            ])
+            |> json.to_string
+            |> mist.send_text_frame(connection, _)
+
+          Nil
+        }
+
+        None -> Nil
+      }
+
+      #(Nil, Some(selector))
     },
     on_close: fn(_) {
       let self = process.self()
@@ -44,7 +63,7 @@ pub fn start(
         |> json.to_string
         |> mist.send_text_frame(connection, _)
 
-      mist.continue(watcher)
+      mist.continue(Nil)
     }
 
     mist.Custom(watcher.Change(path:, ..)) ->
@@ -58,7 +77,7 @@ pub fn start(
             |> json.to_string
             |> mist.send_text_frame(connection, _)
 
-          mist.continue(watcher)
+          mist.continue(Nil)
         }
 
         _ -> {
@@ -69,7 +88,7 @@ pub fn start(
             |> json.to_string
             |> mist.send_text_frame(connection, _)
 
-          mist.continue(watcher)
+          mist.continue(Nil)
         }
       }
 
@@ -84,10 +103,10 @@ pub fn start(
         |> json.to_string
         |> mist.send_text_frame(connection, _)
 
-      mist.continue(watcher)
+      mist.continue(Nil)
     }
 
-    mist.Binary(_) | mist.Text(_) -> mist.continue(watcher)
+    mist.Binary(_) | mist.Text(_) -> mist.continue(Nil)
 
     mist.Closed | mist.Shutdown -> mist.stop()
   }

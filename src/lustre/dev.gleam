@@ -1,9 +1,9 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import argv
+import booklet
 import filepath
 import gleam/erlang/process
-import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -442,14 +442,18 @@ directories are always watched and do not need to be specified here.
     None -> Ok(Nil)
   })
 
+  let error = booklet.new(None)
+
   // Start the file watcher and set up a process registry so connected dev server
   // clients can be notified when files change. This should use Bun and the file
   // watcher script in `priv/bun-watcher.js` but if that fails to start it can
   // fall back to file system polling.
-  let watcher = watcher.start(project, options.watch, options.tailwind_entry)
+  let watcher =
+    watcher.start(project, error, options.watch, options.tailwind_entry)
 
   use _ <- result.try(server.start(
     project,
+    error,
     watcher,
     options.proxy,
     options.entry,
@@ -457,14 +461,6 @@ directories are always watched and do not need to be specified here.
     options.host,
     options.port,
   ))
-
-  cli.success(
-    "Dev server running on http://"
-      <> options.host
-      <> ":"
-      <> int.to_string(options.port),
-    False,
-  )
 
   Ok(process.sleep_forever())
 }

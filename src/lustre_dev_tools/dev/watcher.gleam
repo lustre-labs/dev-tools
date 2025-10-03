@@ -1,5 +1,6 @@
 // IMPORTS ---------------------------------------------------------------------
 
+import booklet.{type Booklet}
 import filepath
 import gleam/erlang/process.{type Pid, type Subject}
 import gleam/list
@@ -30,16 +31,19 @@ pub type Event {
 
 pub fn start(
   project: Project,
+  error: Booklet(Option(error.Error)),
   watch: List(String),
   tailwind_entry: Option(String),
 ) -> Watcher {
   let name = process.new_name("registry")
   let assert Ok(Started(data: registry, ..)) = group_registry.start(name)
 
-  case start_bun_watcher(project, watch, tailwind_entry, registry) {
+  case start_bun_watcher(project, error, watch, tailwind_entry, registry) {
     Ok(_) -> registry
     Error(_) ->
-      case start_polly_watcher(project, watch, tailwind_entry, registry) {
+      case
+        start_polly_watcher(project, error, watch, tailwind_entry, registry)
+      {
         Ok(_) -> registry
         Error(_) -> {
           cli.log("Failed to start file watcher", False)
@@ -51,6 +55,7 @@ pub fn start(
 
 fn start_bun_watcher(
   project: Project,
+  error: Booklet(Option(error.Error)),
   watch: List(String),
   tailwind_entry: Option(String),
   registry: Watcher,
@@ -74,8 +79,15 @@ fn start_bun_watcher(
   }
 
   let event = case result {
-    Ok(_) -> Change(in: dir, path:)
-    Error(reason) -> BuildError(reason:)
+    Ok(_) -> {
+      booklet.set(error, None)
+      Change(in: dir, path:)
+    }
+
+    Error(reason) -> {
+      booklet.set(error, Some(reason))
+      BuildError(reason:)
+    }
   }
 
   group_registry.members(registry, "watch")
@@ -84,6 +96,7 @@ fn start_bun_watcher(
 
 fn start_polly_watcher(
   project: Project,
+  error: Booklet(Option(error.Error)),
   watch: List(String),
   tailwind_entry: Option(String),
   registry: Watcher,
@@ -117,8 +130,15 @@ fn start_polly_watcher(
       }
 
       let event = case result {
-        Ok(_) -> Change(in: dir, path:)
-        Error(reason) -> BuildError(reason:)
+        Ok(_) -> {
+          booklet.set(error, None)
+          Change(in: dir, path:)
+        }
+
+        Error(reason) -> {
+          booklet.set(error, Some(reason))
+          BuildError(reason:)
+        }
       }
 
       group_registry.members(registry, "watch")

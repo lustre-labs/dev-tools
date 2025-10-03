@@ -3,14 +3,17 @@
 
 // IMPORTS ---------------------------------------------------------------------
 
+import booklet.{type Booklet}
 import filepath
 import gleam/erlang/application
 import gleam/http/request
+import gleam/int
 import gleam/option.{type Option}
 import gleam/otp/actor.{type Started}
 import gleam/otp/static_supervisor.{type Supervisor}
 import gleam/result
 import lustre_dev_tools/build/html
+import lustre_dev_tools/cli
 import lustre_dev_tools/dev/live_reload
 import lustre_dev_tools/dev/proxy.{type Proxy}
 import lustre_dev_tools/dev/watcher.{type Watcher}
@@ -38,6 +41,7 @@ type Context {
 ///
 pub fn start(
   project: Project,
+  error: Booklet(Option(Error)),
   watcher: Watcher,
   proxy: Proxy,
   entry: String,
@@ -49,7 +53,7 @@ pub fn start(
   let context = Context(project:, entry:, tailwind_entry:, priv:, proxy:)
   let handler = fn(request) {
     case request.path_segments(request) {
-      [".lustre", "ws"] -> live_reload.start(request, project, watcher)
+      [".lustre", "ws"] -> live_reload.start(request, project, error, watcher)
       _ -> wisp_mist.handler(handle_wisp_request(_, context), "")(request)
     }
   }
@@ -57,6 +61,12 @@ pub fn start(
   mist.new(handler)
   |> mist.port(port)
   |> mist.bind(host)
+  |> mist.after_start(fn(_, _, _) {
+    cli.success(
+      "Dev server running on http://" <> host <> ":" <> int.to_string(port),
+      False,
+    )
+  })
   |> mist.start
   |> result.map_error(error.CouldNotStartDevServer)
 }
