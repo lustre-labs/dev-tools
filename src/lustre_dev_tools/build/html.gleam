@@ -18,6 +18,7 @@ pub fn generate(
   project: Project,
   entry: String,
   tailwind_entry: Option(String),
+  minify: Bool,
 ) -> String {
   let name = filepath.base_name(entry)
   let html =
@@ -56,7 +57,16 @@ pub fn generate(
       body(project),
     ])
 
-  element.to_document_string(html)
+  // Lustre doesn't have a "to_readable_document_string" because typically the
+  // built HTML document is only ever going to be served and not edited manually.
+  //
+  // Because we provide an explicit `--minify` it might be confusing to folks
+  // if their HTML gets minified anyway though, so we call `to_readable_string`
+  // and manually add the doctype.
+  case minify {
+    True -> element.to_document_string(html)
+    False -> "<!doctype html>\n" <> element.to_readable_string(html)
+  }
 }
 
 ///

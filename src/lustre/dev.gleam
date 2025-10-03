@@ -307,7 +307,7 @@ key `tools.lustre.build.outdir`.
       cli.log("Building index.html", False)
 
       use _ <- result.try(
-        html.generate(project, project.name, tailwind_entry)
+        html.generate(project, project.name, tailwind_entry, options.minify)
         |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
         |> result.map_error(error.CouldNotWriteFile(
           filepath.join(options.outdir, "index.html"),
@@ -324,7 +324,7 @@ key `tools.lustre.build.outdir`.
       cli.log("Building index.html", False)
 
       use _ <- result.try(
-        html.generate(project, entry, tailwind_entry)
+        html.generate(project, entry, tailwind_entry, options.minify)
         |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
         |> result.map_error(error.CouldNotWriteFile(
           filepath.join(options.outdir, "index.html"),
