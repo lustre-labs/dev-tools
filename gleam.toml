@@ -12,6 +12,7 @@ links = [
 
 [documentation]
 pages = [
+    { title = "Static assets", path = "assets.html", source = "./pages/assets.md" },
     { title = "TOML reference", path = "toml-reference.html", source = "./pages/toml-reference.md" }
 ]
 
