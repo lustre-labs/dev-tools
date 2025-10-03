@@ -3,6 +3,7 @@
 
 packages = [
   { name = "argv", version = "1.0.2", build_tools = ["gleam"], requirements = [], otp_app = "argv", source = "hex", outer_checksum = "BA1FF0929525DEBA1CE67256E5ADF77A7CDDFE729E3E3F57A5BDCAA031DED09D" },
+  { name = "booklet", version = "1.0.2", build_tools = ["gleam"], requirements = [], otp_app = "booklet", source = "hex", outer_checksum = "279247A5FD6388B34058A6109E99D7E7C7A4CA3EC8A13912536A05E98BC2D275" },
   { name = "directories", version = "1.2.0", build_tools = ["gleam"], requirements = ["envoy", "gleam_stdlib", "platform", "simplifile"], otp_app = "directories", source = "hex", outer_checksum = "D13090CFCDF6759B87217E8DDD73A75903A700148A82C1D33799F333E249BF9E" },
   { name = "envoy", version = "1.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "envoy", source = "hex", outer_checksum = "95FD059345AA982E89A0B6E2A3BF1CF43E17A7048DCD85B5B65D3B9E4E39D359" },
   { name = "exception", version = "2.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "exception", source = "hex", outer_checksum = "329D269D5C2A314F7364BD2711372B6F2C58FA6F39981572E5CA68624D291F8C" },
@@ -40,6 +41,7 @@ packages = [
 
 [requirements]
 argv = { version = ">= 1.0.0 and < 2.0.0" }
+booklet = { version = ">= 1.0.2 and < 2.0.0" }
 filepath = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_community_ansi = { version = ">= 1.4.3 and < 2.0.0" }
 gleam_crypto = { version = ">= 1.5.1 and < 2.0.0" }
