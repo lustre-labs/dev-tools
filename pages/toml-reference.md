@@ -1,20 +1,31 @@
 # TOML reference
 
 Lustre's dev tools follow Gleam's tools convention and can be configured in your
-project's `gleam.toml` file under the `tools.lustre` table.
+project's `gleam.toml` file under the `tools.lustre` table. A typical configuration
+might look something like this:
 
 ```toml
 [tools.lustre.bin]
-...
+# Use the system-installed `bun` binary instead of downloading one automatically.
+bun = "system"
 
 [tools.lustre.build]
-...
+minify = true
+# Build the application into our server's `priv/static` directory so it can be
+# deployed together with the backend.
+outdir = "../server/priv/static"
 
 [tools.lustre.dev]
-...
+host = "0.0.0.0"
+# Configure an API proxy to forward requests to our backend during development.
+# This lets us avoid CORS issues while the frontend and backend are running on
+# different ports.
+proxy = { from = "/api", to = "http://localhost:3000/api" }
 
 [tools.lustre.html]
-...
+# Include Bootstrap in our project for simple styling.
+stylesheets = [{ href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" }]
+scripts = [{ src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" }]
 ```
 
 > **Note**: that any flags passed to the command line will always take precedence
