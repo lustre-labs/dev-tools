@@ -159,7 +159,7 @@ application or serves during development.
   Default: `[]`.
 
 - **`scripts = ({ src: string, type?: string } | { content: string, type?: string })[]`**:
-  an array of `<script>` tags to include at the end of the `<body>` in the
+  an array of `<script>` tags to include at the end of the `<head>` in the
   generated HTML document. Each object in the array can either represent an
   external script with a `src` attribute or an inline script with a `content`
   attribute. The optional `type` attribute can be used to specify the script
