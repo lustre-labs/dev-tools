@@ -92,6 +92,8 @@ pub fn start(
         }
       }
 
+    mist.Custom(watcher.Styles) -> mist.continue(Nil)
+
     mist.Custom(watcher.BuildError(reason:)) -> {
       let message = error.explain(reason)
 

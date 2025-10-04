@@ -26,6 +26,7 @@ pub fn start(
   cmd program: String,
   with args: List(String),
   on_data handle_data: fn(Dynamic) -> Nil,
+  on_unknown handle_unknown: fn() -> Nil,
 ) -> Result(Subject(Message), StartError) {
   actor.new_with_initialiser(1000, fn(self) {
     let port = do_start(program, args)
@@ -53,7 +54,7 @@ pub fn start(
       Data(data) -> {
         case json.parse(data, decode.dynamic) {
           Ok(data) -> handle_data(data)
-          Error(_) -> Nil
+          Error(_) -> handle_unknown()
         }
 
         actor.continue(port)
@@ -62,7 +63,10 @@ pub fn start(
       Exit(0) -> actor.stop()
       Exit(_) -> actor.stop_abnormal("Port exited with code non-zero code")
 
-      Unknown -> actor.continue(port)
+      Unknown -> {
+        handle_unknown()
+        actor.continue(port)
+      }
     }
   })
   |> actor.start

@@ -14,7 +14,7 @@ pub type Error {
   CouldNotReadFile(path: String, reason: simplifile.FileError)
   CouldNotSetFilePermissions(path: String, reason: simplifile.FileError)
   CouldNotStartDevServer(reason: actor.StartError)
-  CouldNotStartFileWatcher(os: String, arch: String, version: String)
+  CouldNotStartFileWatcher(os: String, arch: String)
   CouldNotVerifyBunHash(expected: String, actual: String)
   CouldNotVerifyTailwindHash(expected: String, actual: String)
   CouldNotWriteFile(path: String, reason: simplifile.FileError)
@@ -168,7 +168,7 @@ reference on HexDocs for more information.
       |> string.replace("${reason}", string.inspect(reason))
 
     // -------------------------------------------------------------------------
-    CouldNotStartFileWatcher(os:, arch:, version:) ->
+    CouldNotStartFileWatcher(os:, arch:) ->
       "
 I ran into a problem while trying to start the file watcher. This might be due
 to an incompatibility with your platform or a bug in the watcher code. Please
@@ -180,11 +180,9 @@ With the following information:
 
   - os: ${os}
   - arch: ${arch}
-  - version: ${version}
       "
       |> string.replace("${os}", os)
       |> string.replace("${arch}", arch)
-      |> string.replace("${version}", version)
 
     // -------------------------------------------------------------------------
     CouldNotVerifyBunHash(expected:, actual:) ->
@@ -260,16 +258,6 @@ I ran into a problem while trying to run the following command:
 Here's the error I got from the command:
 
   ${reason}
-
-Please open an issue at:
-
-  https://github.com/lustre-labs/dev-tools/issues/new
-
-With the following information:
-
-  - command: ${command}
-  - os: ${os}
-  - arch: ${arch}
       "
       |> string.replace("${command}", command)
       |> string.replace("${reason}", reason)

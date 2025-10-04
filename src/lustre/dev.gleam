@@ -500,8 +500,12 @@ directories are always watched and do not need to be specified here.
   // clients can be notified when files change. This should use Bun and the file
   // watcher script in `priv/bun-watcher.js` but if that fails to start it can
   // fall back to file system polling.
-  let watcher =
-    watcher.start(project, error, options.watch, options.tailwind_entry)
+  use watcher <- result.try(watcher.start(
+    project,
+    error,
+    options.watch,
+    options.tailwind_entry,
+  ))
 
   use _ <- result.try(server.start(
     project,

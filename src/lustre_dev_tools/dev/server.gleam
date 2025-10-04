@@ -63,7 +63,7 @@ pub fn start(
   |> mist.bind(host)
   |> mist.after_start(fn(_, _, _) {
     cli.success(
-      "Dev server running on http://" <> host <> ":" <> int.to_string(port),
+      "Server started on http://" <> host <> ":" <> int.to_string(port),
       False,
     )
   })

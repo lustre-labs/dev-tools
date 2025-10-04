@@ -111,23 +111,27 @@ pub fn watch(
 
   // 2. Start an Erlang port to run the Bun binary with our file watching script.
   use port <- result.try(
-    port.start(cmd: path, with: [watcher], on_data: fn(event) {
-      let decoder = {
-        use root <- decode.field("in", decode.string)
-        use file <- decode.field("name", decode.string)
+    port.start(
+      cmd: path,
+      with: [watcher],
+      on_data: fn(event) {
+        let decoder = {
+          use root <- decode.field("in", decode.string)
+          use file <- decode.field("name", decode.string)
 
-        decode.success(#(root, file))
-      }
+          decode.success(#(root, file))
+        }
 
-      case decode.run(event, decoder) {
-        Ok(#(root, file)) -> on_change(root, file)
-        Error(_) -> Nil
-      }
-    })
+        case decode.run(event, decoder) {
+          Ok(#(root, file)) -> on_change(root, file)
+          Error(_) -> Nil
+        }
+      },
+      on_unknown: fn() { Nil },
+    )
     |> result.replace_error(error.CouldNotStartFileWatcher(
       os: system.detect_os(),
       arch: system.detect_arch(),
-      version: version,
     )),
   )
 

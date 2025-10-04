@@ -14,6 +14,7 @@ import gleam/result
 import gleam/string
 import lustre_dev_tools/cli
 import lustre_dev_tools/error.{type Error}
+import lustre_dev_tools/port
 import lustre_dev_tools/project.{type Project}
 import lustre_dev_tools/system
 import simplifile
@@ -224,6 +225,46 @@ pub fn build(
   )
 
   cli.success("Stylesheet successfully built.", quiet)
+
+  Ok(Nil)
+}
+
+pub fn watch(
+  project project: Project,
+  input in: String,
+  outdir out: String,
+  quiet quiet: Bool,
+  on_change handle_change: fn() -> Nil,
+) -> Result(Nil, Error) {
+  use path <- result.try(guard(project, quiet:))
+  let name = filepath.base_name(in)
+  let output = filepath.join(project.root, out) |> filepath.join(name)
+  let flags = [
+    "-i",
+    filepath.join(project.src, in <> ".css"),
+    "-o",
+    output <> ".css",
+    "-w",
+  ]
+
+  use _ <- result.try(
+    port.start(
+      cmd: path,
+      with: flags,
+      on_data: fn(_) { Nil },
+      // Our port abstraction is really meant for port programs we control and
+      // can send JSON in/out. Of course tailwind is not one of these so all the
+      // "messages" it sends will be handled in the `on_unknown` callback.
+      //
+      // Fortunately (?) Tailwind's output only really tells is it rebuilt and
+      // nothing else so there's no data we'd need to parse out anyway.
+      on_unknown: handle_change,
+    )
+    |> result.replace_error(error.CouldNotStartFileWatcher(
+      os: system.detect_os(),
+      arch: system.detect_arch(),
+    )),
+  )
 
   Ok(Nil)
 }
