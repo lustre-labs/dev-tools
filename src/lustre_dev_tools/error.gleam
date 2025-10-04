@@ -1,661 +1,456 @@
-// IMPORTS ---------------------------------------------------------------------
-
-import gleam/bit_array
-import gleam/dynamic.{type Dynamic}
-import gleam/int
-import gleam/list
+import gleam/httpc
 import gleam/otp/actor
-import gleam/package_interface.{type Type, Fn, Named, Tuple, Variable}
 import gleam/string
+import lustre_dev_tools/system
 import simplifile
 
-// TYPES -----------------------------------------------------------------------
-
 pub type Error {
-  BuildError(reason: String)
-  BundleError(reason: String)
-  CannotCreateDirectory(reason: simplifile.FileError, path: String)
-  CannotReadFile(reason: simplifile.FileError, path: String)
-  CannotSetPermissions(reason: simplifile.FileError, path: String)
-  CannotStartDevServer(reason: actor.StartError, port: Int)
-  CannotStartFileWatcher(reason: actor.StartError)
-  CannotWriteFile(reason: simplifile.FileError, path: String)
-  ComponentMissing(module: String)
-  IncompleteProxy(missing: List(String))
-  InternalError(message: String)
-  InvalidProxyTarget(to: String)
-  MainBadAppType(module: String, flags: Type, model: Type, msg: Type)
-  MainMissing(module: String)
-  MainTakesAnArgument(module: String, got: Type)
-  ModuleMissing(module: String)
-  NameIncorrectType(module: String, got: Type)
-  NameMissing(module: String)
-  NetworkError(Dynamic)
-  TemplateMissing(name: String, reason: simplifile.FileError)
-  UnknownFileError(simplifile.FileError)
-  UnknownPlatform(binary: String, os: String, cpu: String)
-  OtpTooOld(version: Int)
-  UnzipError(Dynamic)
-  InvalidEsbuildBinary
-  InvalidTailwindBinary
+  CouldNotDownloadBunBinary(reason: httpc.HttpError)
+  CouldNotDownloadTailwindBinary(reason: httpc.HttpError)
+  CouldNotExtractBunArchive(os: String, arch: String, version: String)
+  CouldNotInitialiseDevTools(reason: simplifile.FileError)
+  CouldNotLocateBunBinary(path: String)
+  CouldNotLocateTailwindBinary(path: String)
+  CouldNotReadFile(path: String, reason: simplifile.FileError)
+  CouldNotSetFilePermissions(path: String, reason: simplifile.FileError)
+  CouldNotStartDevServer(reason: actor.StartError)
+  CouldNotStartFileWatcher(os: String, arch: String, version: String)
+  CouldNotVerifyBunHash(expected: String, actual: String)
+  CouldNotVerifyTailwindHash(expected: String, actual: String)
+  CouldNotWriteFile(path: String, reason: simplifile.FileError)
+  ExternalCommandFailed(command: String, reason: String)
+  FailedToBuildProject(reason: String)
+  MissingRequiredFlag(name: List(String))
+  MustBeProjectRoot(path: String)
+  ProxyInvalidTo
+  ProxyMissingFrom
+  ProxyMissingTo
+  UnknownBuildTool(name: String)
+  UnknownGleamModule(name: String)
+  UnknownIntegration(name: String)
+  UnsupportedBunVersion(path: String, expected: String, actual: String)
+  UnsupportedPlatform(os: String, arch: String)
+  UnsupportedTailwindVersion(path: String, expected: String, actual: String)
 }
-
-// CONVERSIONS -----------------------------------------------------------------
 
 pub fn explain(error: Error) -> String {
   case error {
-    BuildError(reason) -> build_error(reason)
-    BundleError(reason) -> bundle_error(reason)
-    CannotCreateDirectory(reason, path) -> cannot_create_directory(reason, path)
-    CannotReadFile(reason, path) -> cannot_read_file(reason, path)
-    CannotSetPermissions(reason, path) -> cannot_set_permissions(reason, path)
-    CannotStartDevServer(reason, port) -> cannot_start_dev_server(reason, port)
-    CannotStartFileWatcher(reason) -> cannot_start_file_watcher(reason)
-    CannotWriteFile(reason, path) -> cannot_write_file(reason, path)
-    ComponentMissing(module) -> component_missing(module)
-    IncompleteProxy(missing) -> incomplete_proxy(missing)
-    InternalError(message) -> internal_error(message)
-    InvalidProxyTarget(to) -> invalid_proxy_target(to)
-    MainBadAppType(module, flags, model, msg) ->
-      main_bad_app_type(module, flags, model, msg)
-    MainMissing(module) -> main_missing(module)
-    MainTakesAnArgument(module, got) -> main_takes_an_argument(module, got)
-    ModuleMissing(module) -> module_missing(module)
-    NameIncorrectType(module, got) -> name_incorrect_type(module, got)
-    NameMissing(module) -> name_missing(module)
-    NetworkError(error) -> network_error(error)
-    TemplateMissing(name, reason) -> template_missing(name, reason)
-    UnknownFileError(error) -> unknown_file_error(error)
-    UnknownPlatform(binary, os, cpu) -> unknown_platform(binary, os, cpu)
-    OtpTooOld(version) -> otp_too_old(version)
-    UnzipError(error) -> unzip_error(error)
-    InvalidEsbuildBinary -> invalid_esbuild_binary()
-    InvalidTailwindBinary -> invalid_tailwind_binary()
-  }
-}
-
-fn build_error(reason: String) -> String {
-  let message =
-    "
-It looks like your project has some compilation errors that need to be addressed
-before I can do anything. Here's the error message I got:
-
-{reason}
-"
-
-  message
-  |> string.replace("{reason}", reason)
-}
-
-fn bundle_error(reason: String) -> String {
-  let message =
-    "
-I ran into an unexpected issue while trying to bundle your project with esbuild.
-Here's the error message I got:
-
-    {reason}
-
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{reason}", reason)
-}
-
-fn cannot_create_directory(reason: simplifile.FileError, path: String) -> String {
-  let message =
-    "
-I ran into an error while trying to create the following directory:
-
-    {path}
-
-Here's the error message I got:
-
-    {reason}
-
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{path}", path)
-  |> string.replace("{reason}", string.inspect(reason))
-}
-
-fn cannot_read_file(reason: simplifile.FileError, path: String) -> String {
-  let message =
-    "
-I ran into an error while trying to read the following file:
-
-    {path}
-
-Here's the error message I got:
-
-    {reason}
-
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{path}", path)
-  |> string.replace("{reason}", string.inspect(reason))
-}
-
-fn cannot_set_permissions(reason: simplifile.FileError, path: String) -> String {
-  let message =
-    "
-I ran into an error while trying to set the permissions on the following file:
-
-    {path}
-
-Here's the error message I got:
-
-    {reason}
-
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{path}", path)
-  |> string.replace("{reason}", string.inspect(reason))
-}
-
-fn cannot_start_dev_server(reason: actor.StartError, port: Int) -> String {
-  case reason {
-    actor.InitFailed(message) ->
-      case string.contains(message, "Eaddrinuse") {
-        True -> cannot_start_dev_server_port_in_use_message(port)
-        False -> cannot_start_dev_server_default_message(reason)
-      }
-    _ -> cannot_start_dev_server_default_message(reason)
-  }
-}
-
-fn cannot_start_dev_server_default_message(reason: actor.StartError) -> String {
-  let message =
-    "
-I ran into an error while trying to start the development server. Here's the
-error message I got:
-
-    {reason}
-
-Please open an issue at https://github.com/lustre-labs/dev-tools/issues/new with
-some details about what you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{reason}", string.inspect(reason))
-}
-
-fn cannot_start_dev_server_port_in_use_message(port: Int) -> String {
-  let message =
-    "
-I ran into an error while trying to start the development server:
-port {port} is already in use.
-You can change the port to start the dev server on using the `--port` flag.
-"
-
-  message
-  |> string.replace("{port}", int.to_string(port))
-}
-
-fn cannot_start_file_watcher(reason: actor.StartError) -> String {
-  let message =
-    "
-I ran into an error while trying to start the file watcher used for live reloading.
-Here's the error message I got:
-
-    {reason}
-
-Please open an issue at https://github.com/lustre-labs/dev-tools/issues/new with
-some details about what you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{reason}", string.inspect(reason))
-}
-
-fn cannot_write_file(reason: simplifile.FileError, path: String) -> String {
-  let message =
-    "
-I ran into an error while trying to write the following file:
-
-    {path}
-
-Here's the error message I got:
-
-    {reason}
-
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{path}", path)
-  |> string.replace("{reason}", string.inspect(reason))
-}
-
-fn component_missing(module: String) -> String {
-  let message =
-    "
-I couldn't find a valid component definition in the following module:
-
-    {module}
-
-To bundle a component, the module should have a public function that returns a
-Lustre `App`. Try adding a function like this:
-
-    pub const name: String = \"my-component\"
-
-    pub fn component() -> App(Nil, Model, Msg) {
-      lustre.component(init, update, view, on_attribute_change())
-    }
-"
-
-  message
-  |> string.replace("{module}", module)
-}
-
-fn incomplete_proxy(missing: List(String)) -> String {
-  let message =
-    "
-I'm missing some information needed to proxy requests from the development server.
-The following keys are missing:
-
-    {missing}
-
-You can provide the missing information either as flags when starting the
-development server, or by adding a `proxy` key to the `lustre-dev` section of
-your `gleam.toml`.
-
-To pass the information as flags, you should start the development server like
-this:
-
-    gleam run -m lustre/dev start --proxy-from=/api --proxy-to=http://localhost:4000/api
-
-To add the information to your `gleam.toml`, make sure it looks something like
-this:
-
-    [lustre-dev.start]
-    proxy = { from = \"/api\", to = \"http://localhost:4000/api\" }
-"
-
-  message
-  |> string.replace("{missing}", string.join(missing, ", "))
-}
-
-fn internal_error(info: String) -> String {
-  let message =
-    "
-Oops, it looks like I ran into an unexpected error while trying to do something.
-Please open an issue at https://github.com/lustre-labs/dev-tools/issues/new with
-the following message:
-
-    {info}
-"
-
-  message
-  |> string.replace("{info}", info)
-}
-
-pub fn invalid_proxy_target(to: String) -> String {
-  let message =
-    "
-I ran into an issue reading your proxy configuration. The URI you provided as the
-target for the proxy is invalid:
-
-    {to}
-
-Please make sure the URI is valid and try again. If you think this is a bug,
-please open an issue at https://github.com/lustre-labs/dev-tools/issues/new
-"
-
-  message
-  |> string.replace("{to}", to)
-}
-
-fn main_bad_app_type(
-  module: String,
-  flags: Type,
-  model: Type,
-  msg: Type,
-) -> String {
-  let message =
-    "
-I don't know how to serve the Lustre app returned from the `main` function in the
-following module:
-
-    {module}
-
-I worked out your app type to be:
-
-    App({flags}, {model}, {msg})
-
-I need your app's flags type to either be `Nil` or a type variable like `a`. Your
-`main` function should look something like this:
-
-    pub fn main() -> App(Nil, {model}, {msg}) {
-      lustre.application(init, update, view)
-    }
-
-I don't know how to produce flags of type `{flags}`! If this is intentional and
-you want to provide your own flags, try modifying your `main` function to look
-like this:
-
-    pub fn main() -> Nil {
-      let app = lustre.application(init, update, view)
-      let flags = todo // provide your flags here
-      let assert Ok() = lustre.run(app, \"#app\", flags)
-
-      Nil
-    }
-"
-
-  message
-  |> string.replace("{module}", module)
-  |> string.replace("{flags}", pretty_type(flags))
-  |> string.replace("{model}", pretty_type(model))
-  |> string.replace("{msg}", pretty_type(msg))
-}
-
-fn main_missing(module: String) -> String {
-  let message =
-    "
-I couldn't find a `main` function in the following module:
-
-    {module}
-
-Is the module path correct? Your app's `main` function is the entry point we use
-to build and start your app. It should look something like this:
-
-    pub fn main() -> App(Nil, Model, Msg) {
-      lustre.application(init, update, view)
-    }
-"
-
-  message
-  |> string.replace("{module}", module)
-}
-
-fn main_takes_an_argument(module: String, got: Type) -> String {
-  let message =
-    "
-I ran into a problem trying to serve your Lustre app in the following module:
-
-    {module}
-
-I worked out the type of your `main` function to be:
-
-    {got}
-
-The `main` function should not take any arguments because I don't know how to
-provide them! Your `main` function should look something like this:
-
-    pub fn main() -> App(Nil, Model, Msg) {
-      lustre.application(init, update, view)
-    }
-"
-
-  message
-  |> string.replace("{module}", module)
-  |> string.replace("{got}", pretty_type(got))
-}
-
-fn module_missing(module: String) -> String {
-  let message =
-    "
-I couldn't find the following module:
-
-    {module}
-
-Make sure the module path is correct and also the module is not included in the
-`internal_modules` list in your `gleam.toml`.
-
-The Gleam compiler currently has a bug with it's package-interface export that
-will affect lustre_dev_tools. You can find more information about that bug here:
-
-    https://github.com/gleam-lang/gleam/issues/2898
-
-If you know the above module exists, try running `gleam clean` and then run the
-dev tools again. If you think this is a bug, please open an issue on GitHub with
-some details about what you were trying to do when you ran into this issue:
-
-    https://github.com/lustre-labs/dev-tools/issues/new
-"
-
-  message
-  |> string.replace("{module}", module)
-}
-
-fn name_incorrect_type(module: String, got: Type) -> String {
-  let message =
-    "
-I ran into a problem trying to bundle the component in the following module:
-
-    {module}
-
-The type of the `name` constant isn't what I expected. I worked out the type to
-be:
-
-    {got}
-
-The `name` constant should be a string. Make sure it's defined like this:
-
-    pub const name: String = \"my-component\"
-
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{module}", module)
-  |> string.replace("{got}", pretty_type(got))
-}
-
-fn name_missing(module: String) -> String {
-  let message =
-    "
-I couldn't find a valid component definition in the following module:
-
-    {module}
-
-To bundle a component, the module should have a public function that returns a
-Lustre `App`. Try adding a function like this:
-
-    pub const name: String = \"my-component\"
-
-    pub fn component() -> App(Nil, Model, Msg) {
-      lustre.component(init, update, view, on_attribute_change())
-    }
-"
-
-  message
-  |> string.replace("{module}", module)
-}
-
-fn network_error(error: Dynamic) -> String {
-  let message =
-    "
-I ran into an unexpected network error while trying to do something. Here's the
-error message I got:
-
-    {error}
-
-Please check your internet connection and try again. If you think this is a bug,
-please open an issue at https://github.com/lustre-labs/dev-tools/issues/new with
-some details about what you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{error}", string.inspect(error))
-}
-
-fn template_missing(name: String, reason: simplifile.FileError) -> String {
-  let message =
-    "
-I ran into an unexpected error trying to read an internal template file. This
-should never happen! The template file I was looking for is:
-
-    {name}
-
-The error message I got was:
-
-    {reason}
-
-Please open an issue at https://github.com/lustre-labs/dev-tools/issues/new with
-the above information and some details about what you were trying to do when you
-ran into this issue.
-}
-"
-
-  message
-  |> string.replace("{name}", name)
-  |> string.replace("{reason}", string.inspect(reason))
-}
-
-fn unknown_file_error(error: simplifile.FileError) -> String {
-  let message =
-    "
-I ran into an unexpected file system error while trying to do something. Here's
-the error message I got:
-
-    {error}
-
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
-
-  message
-  |> string.replace("{error}", string.inspect(error))
-}
-
-fn unknown_platform(binary: String, os: String, cpu: String) -> String {
-  let path = "./build/.lustre/bin/" <> binary
-  let message =
-    "
-I ran into a problem trying to download the {binary} binary. I couldn't find a
-compatible binary for the following platform:
-
-    OS: {os}
-    CPU: {cpu}
-
-You may be able to build the binary from source and place it at the following
+    // -------------------------------------------------------------------------
+    CouldNotDownloadBunBinary(reason:) ->
+      "
+I ran into a problem while trying to download the Bun binary. Here's the error I
+got from the HTTP client:
+
+  ${reason}
+
+Make sure you're connected to the internet and that no firewall or proxy is
+blocking connections to GitHub.
+
+Hint: you can provide a path to a local Bun binary by setting the
+`tools.lustre.bin.bun` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Bun binary accessible in your system path.
+      "
+      |> string.replace("${reason}", string.inspect(reason))
+
+    // -------------------------------------------------------------------------
+    CouldNotDownloadTailwindBinary(reason:) ->
+      "
+I ran into a problem while trying to download the Tailwind binary. Here's the
+error I got from the HTTP client:
+
+  ${reason}
+
+Make sure you're connected to the internet and that no firewall or proxy is
+blocking connections to GitHub.
+
+Hint: you can provide a path to a local Tailwind binary by setting the
+`tools.lustre.bin.tailwind` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Tailwind binary accessible in your system path.
+        "
+      |> string.replace("${reason}", string.inspect(reason))
+
+    // -------------------------------------------------------------------------
+    CouldNotExtractBunArchive(os:, arch:, version:) ->
+      "
+I ran into an unexpected problem while trying to extract the Bun archive. This
+might happen if the archive is corrupted or has changed format. Please open an
+issue at:
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+
+With the following information:
+
+  - os: ${os}
+  - arch: ${arch}
+  - version: ${version}
+
+Hint: you can provide a path to a local Tailwind binary by setting the
+`tools.lustre.bin.bun` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Tailwind binary accessible in your system path.
+      "
+      |> string.replace("${os}", os)
+      |> string.replace("${arch}", arch)
+      |> string.replace("${version}", version)
+
+    // -------------------------------------------------------------------------
+    CouldNotLocateBunBinary(path:) ->
+      "
+I ran into a problem while trying to run the Bun binary at the following path:
+
+  ${path}
+
+If you are trying to use a local binary, make sure the path is correct and that
+relative paths are relative to the project's root directory.
+      "
+      |> string.replace("${path}", path)
+
+    // -------------------------------------------------------------------------
+    CouldNotLocateTailwindBinary(path:) ->
+      "
+I ran into a problem while trying to run the Tailwind binary at the following
 path:
 
-    {path}
+  ${path}
 
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
+If you are trying to use a local binary, make sure the path is correct and that
+relative paths are relative to the current working directory.
+      "
+      |> string.replace("${path}", path)
 
-  message
-  |> string.replace("{binary}", binary)
-  |> string.replace("{os}", os)
-  |> string.replace("{cpu}", cpu)
-  |> string.replace("{path}", path)
-}
+    // -------------------------------------------------------------------------
+    CouldNotInitialiseDevTools(reason:) ->
+      "
+I ran into a problem while setting up. I need to create some directories and
+modify your `.gitignore` if you have one. Here's the error I got from the
+file system:
 
-fn otp_too_old(version: Int) -> String {
-  let message =
-    "
-It looks like you're running an OTP version that is not supported by the dev
-tools: {version}.
+  ${reason}
 
-You should upgrade to OTP 26 or newer to run this command:
-https://gleam.run/getting-started/installing/#installing-erlang
-"
+Make sure you have permissions to write to the current directory.
+      "
+      |> string.replace("${reason}", string.inspect(reason))
 
-  message
-  |> string.replace("{version}", int.to_string(version))
-}
+    // -------------------------------------------------------------------------
+    CouldNotReadFile(path:, reason:) ->
+      "
+I ran into a problem while trying to read a file at the following path:
 
-fn unzip_error(error: Dynamic) -> String {
-  let message =
-    "
-I ran into an unexpected error while trying to unzip a file. Here's the error
-message I got:
+  ${path}
 
-    {error}
+Here's the error I got from the file system:
 
-If you think this is a bug, please open an issue at
-https://github.com/lustre-labs/dev-tools/issues/new with some details about what
-you were trying to do when you ran into this issue.
-"
+  ${reason}
 
-  message
-  |> string.replace("{error}", string.inspect(error))
-}
+Make sure the file exists and that you have permissions to read it.
+      "
+      |> string.replace("${path}", path)
+      |> string.replace("${reason}", string.inspect(reason))
 
-fn invalid_esbuild_binary() -> String {
-  "
-It looks like the downloaded Esbuild tarball has a different hash from what I
-expected.
-"
-}
+    // -------------------------------------------------------------------------
+    CouldNotSetFilePermissions(path:, reason:) ->
+      "
+I ran into a problem while trying to set the file permissions for an integration
+at:
 
-fn invalid_tailwind_binary() -> String {
-  "
-It looks like the downloaded Tailwind binary has a different hash from what I
-expected.
-"
-}
+  ${path}
 
-// UTILS -----------------------------------------------------------------------
+Here's the error I got from the file system:
 
-fn pretty_type(t: Type) -> String {
-  case t {
-    Tuple(elements) -> {
-      let message = "#({elements})"
-      let elements = list.map(elements, pretty_type)
+  ${reason}
 
-      message
-      |> string.replace("{elements}", string.join(elements, ", "))
-    }
+Make sure you have the necessary permissions to write to this file.
 
-    Fn(params, return) -> {
-      let message = "fn({params}) -> {return}"
-      let params = list.map(params, pretty_type)
-      let return = pretty_type(return)
+Hint: you can provide a path to local binaries for Lustre to use instead by
+adding the `tools.lustre.bin` table to your `gleam.toml`. Consult the TOML
+reference on HexDocs for more information.
+      "
+      |> string.replace("${path}", path)
+      |> string.replace("${reason}", string.inspect(reason))
 
-      message
-      |> string.replace("{params}", string.join(params, ", "))
-      |> string.replace("{return}", return)
-    }
+    // -------------------------------------------------------------------------
+    CouldNotStartFileWatcher(os:, arch:, version:) ->
+      "
+I ran into a problem while trying to start the file watcher. This might be due
+to an incompatibility with your platform or a bug in the watcher code. Please
+open an issue at:
 
-    Named(name, _package, _module, []) -> name
-    Named(name, _package, _module, params) -> {
-      let message = "{name}({params})"
-      let params = list.map(params, pretty_type)
+  https://github.com/lustre-labs/dev-tools/issues/new
 
-      message
-      |> string.replace("{name}", name)
-      |> string.replace("{params}", string.join(params, ", "))
-    }
+With the following information:
 
-    Variable(id) -> pretty_var(id)
-  }
-}
+  - os: ${os}
+  - arch: ${arch}
+  - version: ${version}
+      "
+      |> string.replace("${os}", os)
+      |> string.replace("${arch}", arch)
+      |> string.replace("${version}", version)
 
-fn pretty_var(id: Int) -> String {
-  case id >= 26 {
-    True -> pretty_var(id / 26 - 1) <> pretty_var(id % 26)
+    // -------------------------------------------------------------------------
+    CouldNotVerifyBunHash(expected:, actual:) ->
+      "
+I ran into a problem while trying to verify the integrity of the Bun archive I
+just downloaded. The expected hash was:
 
-    False -> {
-      let id = id + 97
-      let assert Ok(var) = bit_array.to_string(<<id:int>>)
+  ${expected}
 
-      var
-    }
+But the actual hash was:
+
+  ${actual}
+
+This can happen if you have a proxy or firewall that interferes with the download.
+If you think this is a bug, please open an issue at:
+
+https://github.com/lustre-labs/dev-tools/issues/new
+
+Hint: you can provide a path to a local Bun binary by setting the
+`tools.lustre.bin.bun` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Bun binary accessible in your system path.
+      "
+      |> string.replace("${expected}", expected)
+      |> string.replace("${actual}", actual)
+
+    // -------------------------------------------------------------------------
+    CouldNotVerifyTailwindHash(expected:, actual:) ->
+      "
+I ran into a problem while trying to verify the integrity of the Tailwind binary
+I just downloaded. The expected hash was:
+
+  ${expected}
+
+But the actual hash was:
+
+  ${actual}
+
+This can happen if you have a proxy or firewall that interferes with the download.
+If you think this is a bug, please open an issue at:
+
+https://github.com/lustre-labs/dev-tools/issues/new
+
+Hint: you can provide a path to a local Tailwind binary by setting the
+`tools.lustre.bin.tailwind` field in your `gleam.toml`. Use the string `\"system\"`
+to use the Tailwind binary accessible in your system path.
+        "
+      |> string.replace("${expected}", expected)
+      |> string.replace("${actual}", actual)
+
+    // -------------------------------------------------------------------------
+    CouldNotWriteFile(path:, reason:) ->
+      "
+I ran into a problem while trying to write a file at the following path:
+
+  ${path}
+
+Here's the error I got from the file system:
+
+  ${reason}
+
+Make sure you have permissions to write files in this directory.
+      "
+      |> string.replace("${path}", path)
+      |> string.replace("${reason}", string.inspect(reason))
+
+    // -------------------------------------------------------------------------
+    ExternalCommandFailed(command:, reason:) ->
+      "
+I ran into a problem while trying to run the following command:
+
+  ${command}
+
+Here's the error I got from the command:
+
+  ${reason}
+
+Please open an issue at:
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+
+With the following information:
+
+  - command: ${command}
+  - os: ${os}
+  - arch: ${arch}
+      "
+      |> string.replace("${command}", command)
+      |> string.replace("${reason}", reason)
+      |> string.replace("${os}", system.detect_os())
+      |> string.replace("${arch}", system.detect_arch())
+
+    // -------------------------------------------------------------------------
+    FailedToBuildProject(reason:) ->
+      "
+I ran into a problem while trying to build your application. Here's the error I
+got while building:
+
+  ${reason}
+
+Make sure your Gleam code compiles without errors and any entry points point to
+Gleam modules.
+      "
+      |> string.replace("${reason}", reason)
+
+    // -------------------------------------------------------------------------
+    MissingRequiredFlag(name:) ->
+      "
+I'm missing at least one required flag to run this command. Please make sure you
+provide the `--${name}` flag when running the command or configure your `gleam.toml`
+to include the `tools.lustre.${path}` field.
+      "
+      |> string.replace("${name}", string.join(name, "-"))
+      |> string.replace("${path}", string.join(name, "."))
+
+    // -------------------------------------------------------------------------
+    MustBeProjectRoot(path:) ->
+      "
+I need to be run from the root directory of a Gleam project. I looked for a
+`gleam.toml` and found one at:
+
+  ${path}
+
+Please run me from the directory that contains that file!
+      "
+      |> string.replace("${path}", path)
+
+    // -------------------------------------------------------------------------
+    ProxyInvalidTo ->
+      "
+I ran into a problem trying to set up the proxy you provided. The `to` URL
+looks invalid. Please make sure you provide a valid URL for the `to` field.
+      "
+
+    // -------------------------------------------------------------------------
+    ProxyMissingFrom ->
+      "
+I ran into a problem trying to set up the proxy you provided. The `from` field
+is missing. Please make sure you provide a value for the `from` field like
+`\"/api\"`.
+      "
+
+    // -------------------------------------------------------------------------
+    ProxyMissingTo ->
+      "
+I ran into a problem trying to set up the proxy you provided. The `to` field
+is missing. Please make sure you provide a value for the `to` field like
+`\"http://localhost:3000\"`. This should be the full URL of the server you want
+to proxy requests to.
+      "
+
+    // -------------------------------------------------------------------------
+    UnknownBuildTool(name:) ->
+      "
+I ran into a problem trying to eject your project from Lustre Dev Tools. I don't
+know how to eject for the build tool `${name}`. Currently I can generate the
+config required for either Bun or Vite.
+
+If you need to use a different build tool, please configure the project yourself.
+If you think this is a bug, please open an issue at:
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+      "
+      |> string.replace("${name}", name)
+
+    // -------------------------------------------------------------------------
+    UnknownGleamModule(name:) ->
+      "
+I ran into a problem while trying to build your application. I couldn't find the
+entry module you provided:
+
+  ${name}
+
+Make sure the module exists in your project and the name is correct. Gleam module
+names are the full path from the `src` directory like `wibble/wobble/woo`.
+      "
+      |> string.replace("${name}", name)
+
+    // -------------------------------------------------------------------------
+    UnknownIntegration(name:) ->
+      "
+I don't know how to add the integration `${name}`. Currently I have integrations
+for Bun and Tailwind. If you have suggestions for other integrations we could
+support in the future, please open an issue at:
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+      "
+      |> string.replace("${name}", name)
+
+    // -------------------------------------------------------------------------
+    UnsupportedBunVersion(path:, expected:, actual:) ->
+      "
+I ran into a problem while trying to verify the version of the Bun binary at:
+
+  ${path}
+
+The expected version was:
+
+  ${expected}
+
+But the actual version was:
+
+  ${actual}
+
+If you are supplying a path to a local Bun binary, make sure it matches the
+version I expect!
+      "
+      |> string.replace("${path}", path)
+      |> string.replace("${expected}", expected)
+      |> string.replace("${actual}", actual)
+      |> string.trim
+
+    // -------------------------------------------------------------------------
+    UnsupportedTailwindVersion(path:, expected:, actual:) ->
+      "
+I ran into a problem while trying to verify the version of the Tailwind binary
+at:
+
+  ${path}
+
+The expected version was:
+
+  ${expected}
+
+But the actual version was:
+
+  ${actual}
+
+If you are supplying a path to a local Bun binary, make sure it matches the
+version I expect!
+        "
+      |> string.replace("${path}", path)
+      |> string.replace("${expected}", expected)
+      |> string.replace("${actual}", actual)
+      |> string.trim
+
+    // -------------------------------------------------------------------------
+    UnsupportedPlatform(os:, arch:) ->
+      "
+Unfortunately, I don't support the platform you're running on. Currently, I
+only support 64-bit Linux, macOS, and Windows systems. It would be helpful if
+you could open an issue at:
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+
+With the following information:
+
+  - os: ${os}
+  - arch: ${arch}
+
+So we can consider how to support more users in the future. In the meantime, I
+suggest you take a look at https://vite.dev or https://esbuild.github.io as
+alternatives for building your Lustre applications.
+      "
+      |> string.replace("${os}", os)
+      |> string.replace("${arch}", arch)
+
+    // -------------------------------------------------------------------------
+    CouldNotStartDevServer(reason:) ->
+      "
+I ran into a problem while trying to start the development server. Here's what I
+got:
+
+  ${reason}
+
+Make sure the port you're trying to use is not already in use by another program.
+      "
+      |> string.replace("${reason}", string.inspect(reason))
   }
 }

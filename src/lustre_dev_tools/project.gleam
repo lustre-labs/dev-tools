@@ -2,171 +2,111 @@
 
 import filepath
 import gleam/dict.{type Dict}
-import gleam/dynamic/decode.{type Decoder}
-import gleam/int
-import gleam/json
-import gleam/list
-import gleam/package_interface.{type Type, Fn, Named, Tuple, Variable}
-import gleam/pair
 import gleam/result
 import gleam/string
-import lustre_dev_tools/cmd
-import lustre_dev_tools/error.{type Error, BuildError}
+import lustre_dev_tools/error.{type Error}
 import simplifile
 import tom.{type Toml}
 
 // TYPES -----------------------------------------------------------------------
 
-pub type Config {
-  Config(name: String, toml: Dict(String, Toml))
-}
-
-pub type Interface {
-  Interface(name: String, version: String, modules: Dict(String, Module))
-}
-
-pub type Module {
-  Module(constants: Dict(String, Type), functions: Dict(String, Function))
-}
-
-pub type Function {
-  Function(parameters: List(Type), return: Type)
-}
-
-// COMMANDS --------------------------------------------------------------------
-
-pub fn otp_version() -> Int {
-  let version = do_otp_version()
-  case int.parse(version) {
-    Ok(version) -> version
-    Error(_) -> panic as { "unexpected version number format: " <> version }
-  }
-}
-
-@external(erlang, "lustre_dev_tools_ffi", "otp_version")
-fn do_otp_version() -> String
-
-/// Compile the current project running the `gleam build` command.
 ///
-pub fn build() -> Result(Nil, Error) {
-  cmd.exec(run: "gleam", in: ".", env: [], with: [
-    "build", "--target", "javascript",
-  ])
-  |> result.map_error(fn(err) { BuildError(pair.second(err)) })
-  |> result.replace(Nil)
+///
+pub type Project {
+  Project(
+    // Config
+    name: String,
+    options: Dict(String, Toml),
+    // Directories
+    root: String,
+    src: String,
+    dev: String,
+    assets: String,
+    bin: String,
+    build: String,
+  )
 }
 
-pub fn interface() -> Result(Interface, Error) {
-  let dir = filepath.join(root(), "build/.lustre")
-  let out = filepath.join(dir, "package-interface.json")
-  let args = ["export", "package-interface", "--out", out]
+// CONSTRUCTORS ----------------------------------------------------------------
+
+///
+///
+pub fn initialise() -> Result(Project, Error) {
+  let project = config()
+
+  use _ <- result.try(case project.root {
+    "./" -> Ok(Nil)
+    "./" <> path | path -> Error(error.MustBeProjectRoot(path:))
+  })
 
   use _ <- result.try(
-    cmd.exec(run: "gleam", in: ".", env: [], with: args)
-    |> result.map_error(fn(err) { BuildError(pair.second(err)) }),
+    simplifile.create_directory_all(project.bin)
+    |> result.map_error(error.CouldNotInitialiseDevTools),
   )
 
-  let assert Ok(json) = simplifile.read(out)
-  let assert Ok(interface) = json.parse(json, interface_decoder())
+  use _ <- result.try(
+    simplifile.create_directory_all(project.build)
+    |> result.map_error(error.CouldNotInitialiseDevTools),
+  )
 
-  Ok(interface)
+  let gitignore_path = filepath.join(project.root, ".gitignore")
+
+  use _ <- result.try(case simplifile.read(gitignore_path) {
+    Ok(gitignore) ->
+      case string.contains(gitignore, ".lustre") {
+        True -> Ok(Nil)
+        False ->
+          simplifile.append(gitignore_path, {
+            "\n#Added automatically by Lustre Dev Tools\n/.lustre\n/dist\n"
+          })
+          |> result.map_error(error.CouldNotInitialiseDevTools)
+          |> result.replace(Nil)
+      }
+
+    Error(_) -> Ok(Nil)
+  })
+
+  Ok(project)
 }
 
-/// Read the project configuration in the `gleam.toml` file.
 ///
-pub fn config() -> Result(Config, Error) {
-  // Since we made sure that the project could compile we're sure that there is
-  // bound to be a `gleam.toml` file somewhere in the current directory (or in
-  // its parent directories). So we can safely call `root()` without
-  // it looping indefinitely.
-  let configuration_path = filepath.join(root(), "gleam.toml")
-
-  // All these operations are safe to assert because the Gleam project wouldn't
-  // compile if any of this stuff was invalid.
-  let assert Ok(configuration) = simplifile.read(configuration_path)
-  let assert Ok(toml) = tom.parse(configuration)
-  let assert Ok(name) = tom.get_string(toml, ["name"])
-
-  Ok(Config(name: name, toml: toml))
-}
-
-// UTILS -----------------------------------------------------------------------
-
-/// Finds the path leading to the project's root folder. This recursively walks
-/// up from the current directory until it finds a `gleam.toml`.
 ///
-pub fn root() -> String {
-  find_root(".")
+pub fn config() -> Project {
+  let root = find_root("./")
+  let bin = filepath.join(root, ".lustre/bin")
+  let src = filepath.join(root, "src")
+  let dev = filepath.join(root, "dev")
+  let assets = filepath.join(root, "assets")
+  let build = filepath.join(root, ".lustre/build")
+
+  // These are safe to assert because we are guaranteed to be inside a Gleam
+  // project if we're running this program! All Gleam projects must have a
+  // `gleam.toml` with at least a `name` field, so we can safely assert all of
+  // the following:
+  //
+  let assert Ok(toml) = simplifile.read(filepath.join(root, "gleam.toml"))
+  let assert Ok(config) = tom.parse(toml)
+  let assert Ok(name) = tom.get_string(config, ["name"])
+
+  let options =
+    tom.get_table(config, ["tools", "lustre"])
+    |> result.unwrap(dict.new())
+
+  Project(name:, root:, src:, dev:, assets:, bin:, build:, options:)
 }
+
+// QUERIES ---------------------------------------------------------------------
 
 fn find_root(path: String) -> String {
-  let toml = filepath.join(path, "gleam.toml")
-
-  case simplifile.is_file(toml) {
-    Ok(False) | Error(_) -> find_root(filepath.join("..", path))
+  case simplifile.is_file(filepath.join(path, "gleam.toml")) {
     Ok(True) -> path
+    Ok(False) | Error(_) -> find_root(filepath.join(path, "../"))
   }
 }
 
-pub fn type_to_string(type_: Type) -> String {
-  case type_ {
-    Tuple(elements) -> {
-      let elements = list.map(elements, type_to_string)
-      "#(" <> string.join(elements, with: ", ") <> ")"
-    }
-
-    Fn(params, return) -> {
-      let params = list.map(params, type_to_string)
-      let return = type_to_string(return)
-      "fn(" <> string.join(params, with: ", ") <> ") -> " <> return
-    }
-
-    Named(name, _package, _module, []) -> name
-    Named(name, _package, _module, params) -> {
-      let params = list.map(params, type_to_string)
-      name <> "(" <> string.join(params, with: ", ") <> ")"
-    }
-
-    Variable(id) -> "a_" <> int.to_string(id)
+pub fn exists(project: Project, module: String) -> Bool {
+  case simplifile.is_file(filepath.join(project.src, module <> ".gleam")) {
+    Ok(True) -> True
+    Ok(False) | Error(_) -> False
   }
-}
-
-// DECODERS --------------------------------------------------------------------
-
-fn interface_decoder() -> Decoder(Interface) {
-  use name <- decode.field("name", decode.string)
-  use version <- decode.field("version", decode.string)
-  use modules <- decode.field("modules", string_dict(module_decoder()))
-
-  decode.success(Interface(name:, version:, modules:))
-}
-
-fn module_decoder() -> Decoder(Module) {
-  use constants <- decode.field(
-    "constants",
-    string_dict(decode.at(["type"], package_interface.type_decoder())),
-  )
-  use functions <- decode.field("functions", string_dict(function_decoder()))
-
-  decode.success(Module(constants:, functions:))
-}
-
-fn function_decoder() -> Decoder(Function) {
-  use parameters <- decode.field(
-    "parameters",
-    decode.list(labelled_argument_decoder()),
-  )
-  use return <- decode.field("return", package_interface.type_decoder())
-
-  decode.success(Function(parameters:, return:))
-}
-
-fn labelled_argument_decoder() -> Decoder(Type) {
-  // In this case we don't really care about the label, so we're just ignoring
-  // it and returning the argument's type.
-  decode.at(["type"], package_interface.type_decoder())
-}
-
-fn string_dict(values: Decoder(a)) -> Decoder(Dict(String, a)) {
-  decode.dict(decode.string, values)
 }
