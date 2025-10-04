@@ -104,15 +104,25 @@ pub fn dev(
         scripts(project),
 
         html.script([attribute.src("/.lustre/server-hot-reload.js")], ""),
-        html.script([attribute.type_("module")], {
-          "
-            import { main } from '/${name}/${entry}.mjs';
 
-            main();
-            "
-          |> string.replace("${name}", project.name)
-          |> string.replace("${entry}", entry)
-        }),
+        case project.has_node_modules {
+          True ->
+            html.script(
+              [attribute.type_("module"), attribute.src(entry <> ".dev.js")],
+              "",
+            )
+
+          False ->
+            html.script([attribute.type_("module")], {
+              "
+              import { main } from '/${name}/${entry}.mjs';
+
+              main();
+              "
+              |> string.replace("${name}", project.name)
+              |> string.replace("${entry}", entry)
+            })
+        },
       ]),
 
       body(project),

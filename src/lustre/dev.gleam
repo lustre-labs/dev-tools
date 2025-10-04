@@ -456,6 +456,32 @@ directories are always watched and do not need to be specified here.
     )
 
   use _ <- result.try(gleam.build(project))
+  use _ <- result.try(case project.has_node_modules {
+    True -> {
+      let module =
+        "import { main } from '../../build/dev/javascript/${name}/${entry}.mjs'; main();"
+        |> string.replace("${name}", project.name)
+        |> string.replace("${entry}", project.name)
+
+      let name = justin.snake_case(project.name) <> ".dev.mjs"
+      let path = filepath.join(project.build, name)
+
+      use _ <- result.try(
+        simplifile.write(path, module)
+        |> result.map_error(error.CouldNotWriteFile(path, _)),
+      )
+
+      bun.build(
+        project,
+        [path],
+        outdir: filepath.join(project.root, "build/dev/javascript"),
+        minify: False,
+        quiet: False,
+      )
+    }
+
+    False -> Ok(Nil)
+  })
   use _ <- result.try(case options.tailwind_entry {
     Some(tailwind_entry) ->
       tailwind.build(
