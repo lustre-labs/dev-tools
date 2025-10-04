@@ -209,12 +209,15 @@ fn scripts(project: Project) -> Element(msg) {
         let type_ = tom.get_string(toml, ["type"])
 
         case src, content, type_ {
-          Ok(src), _, Ok("module") ->
-            Ok(html.script([attribute.src(src), attribute.type_("module")], ""))
+          Ok(src), _, Ok(type_value) ->
+            Ok(html.script(
+              [attribute.src(src), attribute.type_(type_value)],
+              "",
+            ))
           Ok(src), _, _ -> Ok(html.script([attribute.src(src)], ""))
 
-          _, Ok(content), Ok("module") ->
-            Ok(html.script([attribute.type_("module")], content))
+          _, Ok(content), Ok(type_value) ->
+            Ok(html.script([attribute.type_(type_value)], content))
           _, Ok(content), _ -> Ok(html.script([], content))
 
           _, _, _ -> Error(Nil)
