@@ -4,6 +4,26 @@ let reconnectAttempts = 0;
 const maxReconnectAttempts = 10;
 const reconnectInterval = 1000;
 
+if (window.sessionStorage.getItem("hotreload")) {
+  console.log("[lustre] Page reloaded by hot reload");
+  window.sessionStorage.removeItem("hotreload");
+}
+
+window.addEventListener("error", (event) => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "client-error",
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        stack: event.error ? event.error.stack : "",
+      }),
+    );
+  }
+});
+
 function connect() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const url = `${protocol}//${window.location.host}/.lustre/ws`;
@@ -20,6 +40,7 @@ function connect() {
 
     switch (data.type) {
       case "reload": {
+        window.sessionStorage.setItem("hotreload", "true");
         window.location.reload();
         return;
       }
@@ -27,6 +48,8 @@ function connect() {
       case "asset-update": {
         const path = data.asset;
         const selector = `[src*="${path}"], [href*="${path}"]`;
+
+        console.log(`[lustre] Asset updated ${path}`);
 
         for (const el of document.querySelectorAll(selector)) {
           if (el.hasAttribute("href")) {
