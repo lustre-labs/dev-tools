@@ -53,7 +53,8 @@ pub fn start(
   let context = Context(project:, entry:, tailwind_entry:, priv:, proxy:)
   let handler = fn(request) {
     case request.path_segments(request) {
-      [".lustre", "ws"] -> live_reload.start(request, project, error, watcher)
+      [".lustre", "ws"] ->
+        live_reload.start(request, project, error, watcher, tailwind_entry)
       _ -> wisp_mist.handler(handle_wisp_request(_, context), "")(request)
     }
   }

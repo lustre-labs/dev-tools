@@ -1,12 +1,12 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import booklet.{type Booklet}
-import filepath
 import gleam/erlang/process
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
 import gleam/option.{type Option, None, Some}
+import gleam/string
 import lustre_dev_tools/dev/watcher.{type Watcher}
 import lustre_dev_tools/error
 import lustre_dev_tools/project.{type Project}
@@ -19,6 +19,7 @@ pub fn start(
   project: Project,
   error: Booklet(Option(error.Error)),
   watcher: Watcher,
+  tailwind_entry: Option(String),
 ) -> Response(ResponseData) {
   use _, message, connection <- mist.websocket(
     request,
@@ -67,8 +68,11 @@ pub fn start(
     }
 
     mist.Custom(watcher.Change(path:, ..)) ->
-      case filepath.extension(path) {
-        Ok("css") -> {
+      // We special-case changes to the tailwind entry in `src/` because we know
+      // that it's safe to do an asset-update rather than a full reload when this
+      // changes.
+      case Some(path) == option.map(tailwind_entry, string.append(_, ".css")) {
+        True -> {
           let _ =
             json.object([
               #("type", json.string("asset-update")),
@@ -80,7 +84,7 @@ pub fn start(
           mist.continue(Nil)
         }
 
-        _ -> {
+        False -> {
           let _ =
             json.object([
               #("type", json.string("reload")),
