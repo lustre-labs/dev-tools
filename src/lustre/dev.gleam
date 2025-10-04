@@ -52,8 +52,8 @@
 //// and must be provided manually if needed.
 ////
 //// The produced JavaScript bundle(s) will be minified and written to your project's
-//// `priv/static` directory by default. Some optimisations such as dead-code
-//// elimination may also be performed.
+//// `dist` directory by default. Some optimisations such as dead-code elimination
+//// may also be performed.
 ////
 //// ## `start`
 ////
@@ -172,8 +172,8 @@ fn build(project: Project) -> Command(Result(Nil, Error)) {
     "
 Build your Gleam project and produce a JavaScript bundle ready to be served and
 run in a Web browser. The produced JavaScript bundle(s) will be minified and written
-to your project's `priv/static` directory by default. Some optimisations such as
-dead-code elimination may also be performed.
+to your project's `dist` directory by default. Some optimisations such as dead-code
+elimination may also be performed.
     "
   })
 
@@ -219,9 +219,9 @@ key `tools.lustre.build.no_tailwind`.
   use outdir <- cli.string("outdir", ["build", "outdir"], project, {
     "
 Configure where the build JavaScript bundle will be written to: by default this
-is `priv/static` within the project root. Common alternatives include `docs/` for
-GitHub Pages sites, `public/`, for hosting with services like Vercel, or the
-`priv/static` directory of another Gleam or Elixir project.
+is `dist` within the project root. Common alternatives include `docs/` for GitHub
+Pages sites, `public/` for hosting with services like Vercel, or the `priv/static`
+directory of another Gleam or Elixir project.
 
 
 This option can also be provided in your `gleam.toml` configuration under the
@@ -249,7 +249,7 @@ key `tools.lustre.build.outdir`.
       minify: minify(flags) |> result.unwrap(False),
       outdir: filepath.join(
         project.root,
-        outdir(flags) |> result.unwrap("priv/static"),
+        outdir(flags) |> result.unwrap("dist"),
       ),
       entries:,
       skip_html: case skip_html(flags), entries {

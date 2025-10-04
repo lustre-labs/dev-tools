@@ -57,7 +57,7 @@ pub fn initialise() -> Result(Project, Error) {
         True -> Ok(Nil)
         False ->
           simplifile.append(gitignore_path, {
-            "\n#Added automatically by Lustre Dev Tools\n/.lustre\n/priv/static\n"
+            "\n#Added automatically by Lustre Dev Tools\n/.lustre\n/dist\n"
           })
           |> result.map_error(error.CouldNotInitialiseDevTools)
           |> result.replace(Nil)

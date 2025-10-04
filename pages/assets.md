@@ -27,12 +27,11 @@ copied to the output directory specified in your `gleam.toml` file. So if we bui
 the above example, the build artifacts might look something like:
 
 ```
-priv/
-└── static/
-    ├── index.html
-    ├── app.js
-    └── image/
-        └── wibble.png
+dist/
+├── index.html
+├── app.js
+└── image/
+    └── wibble.png
 ```
 
 ## External build tools

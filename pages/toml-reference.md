@@ -86,7 +86,7 @@ These options affect how Lustre builds your project when you run
   Common choices include `./dist`, `./docs`, `./public`, or another Gleam project's
   `priv/static` directory.
 
-  Default: `./priv/static`.
+  Default: `./dist`.
 
 ## `tools.lustre.dev`
 
