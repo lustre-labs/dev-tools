@@ -351,15 +351,15 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
   let is_alpine = system.is_alpine()
 
   case os, arch {
-    "darwin", "aarch64" -> Ok("tailwindcss-macos-arm64")
-    "darwin", "x64" -> Ok("tailwindcss-macos-x64")
-    "linux", "aarch64" if is_alpine -> Ok("tailwindcss-linux-arm64-musl")
-    "linux", "aarch64" -> Ok("tailwindcss-linux-arm64")
-    "linux", "arm64" if is_alpine -> Ok("tailwindcss-linux-arm64-musl")
-    "linux", "arm64" -> Ok("tailwindcss-linux-arm64")
-    "linux", "x64" if is_alpine -> Ok("tailwindcss-linux-x64-musl")
-    "linux", "x64" -> Ok("tailwindcss-linux-x64")
-    "windows", "x64" -> Ok("tailwindcss-windows-x64.exe")
+    "darwin", "aarch64" | "darwin", "arm64" -> Ok("tailwindcss-macos-arm64")
+    "darwin", "x64" | "darwin", "x86_64" -> Ok("tailwindcss-macos-x64")
+    "linux", "aarch64" | "linux", "arm64" if is_alpine ->
+      Ok("tailwindcss-linux-arm64-musl")
+    "linux", "aarch64" | "linux", "arm64" -> Ok("tailwindcss-linux-arm64")
+    "linux", "x64" | "linux", "x86_64" if is_alpine ->
+      Ok("tailwindcss-linux-x64-musl")
+    "linux", "x64" | "linux", "x86_64" -> Ok("tailwindcss-linux-x64")
+    "windows", "x64" | "windows", "x86_64" -> Ok("tailwindcss-windows-x64.exe")
     _, _ -> Error(Nil)
   }
 }

@@ -261,21 +261,21 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
   let baseline = requires_baseline(os)
 
   case os, arch {
-    "darwin", "aarch64" -> Ok("bun-darwin-aarch64")
-    "darwin", "x64" -> Ok("bun-darwin-x64")
-    "linux", "arm64" if is_alpine -> Ok("bun-linux-aarch64-musl")
-    "linux", "arm64" -> Ok("bun-linux-aarch64")
-    "linux", "aarch64" if is_alpine -> Ok("bun-linux-aarch64-musl")
-    "linux", "aarch64" -> Ok("bun-linux-aarch64")
-    "linux", "x64" ->
+    "darwin", "aarch64" | "darwin", "arm64" -> Ok("bun-darwin-aarch64")
+    "darwin", "x64" | "darwin", "x86_64" -> Ok("bun-darwin-x64")
+    "linux", "aarch64" | "linux", "arm64" if is_alpine ->
+      Ok("bun-linux-aarch64-musl")
+    "linux", "aarch64" | "linux", "arm64" -> Ok("bun-linux-aarch64")
+    "linux", "x64" | "linux", "x86_x64" ->
       case baseline, is_alpine {
         True, True -> Ok("bun-linux-x64-musl-baseline")
         True, False -> Ok("bun-linux-x64-baseline")
         False, True -> Ok("bun-linux-x64-musl")
         False, False -> Ok("bun-linux-x64")
       }
-    "windows", "x64" if baseline -> Ok("bun-windows-x64-baseline")
-    "windows", "x64" -> Ok("bun-windows-x64")
+    "windows", "x64" | "windows", "x86_64" if baseline ->
+      Ok("bun-windows-x64-baseline")
+    "windows", "x64" | "windows", "x86_64" -> Ok("bun-windows-x64")
     _, _ -> Error(Nil)
   }
 }
