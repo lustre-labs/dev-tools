@@ -43,7 +43,7 @@ build and development process.
 
   Default: `undefined`. Lustre will download and manage its own Bun version.
 
-- **`tailwind = "system" | string`**: choose a local Tailwind CSS binary to use
+- **`tailwindcss = "system" | string`**: choose a local Tailwind CSS binary to use
   instead of letting Lustre download and manage its own Tailwind version. You
   can specify a path to the Tailwind binary you want to use, or the string
   `"system"` to look up the `tailwindcss` in your system `PATH`.
