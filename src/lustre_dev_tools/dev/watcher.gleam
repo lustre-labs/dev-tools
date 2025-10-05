@@ -95,6 +95,7 @@ fn start_polly_watcher(
   let polly =
     polly.new()
     |> polly.add_dir(first)
+    |> polly.ignore_initial_missing
     |> list.fold(rest, _, polly.add_dir)
 
   use change <- polly.watch(polly)
