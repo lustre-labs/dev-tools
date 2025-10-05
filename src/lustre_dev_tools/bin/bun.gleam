@@ -285,8 +285,8 @@ fn requires_baseline(os: String) -> Bool {
   case os {
     "linux" ->
       case system.run("cat /proc/cpuinfo | grep avx2") {
-        Ok(output) -> output != ""
-        Error(_) -> False
+        Ok(output) -> output == ""
+        Error(_) -> True
       }
 
     "windows" -> {
@@ -295,7 +295,7 @@ fn requires_baseline(os: String) -> Bool {
 
       case system.run(command) {
         Ok(output) -> string.trim(output) != "True"
-        Error(_) -> False
+        Error(_) -> True
       }
     }
 
