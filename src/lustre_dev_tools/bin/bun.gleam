@@ -267,7 +267,7 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
     "linux", "aarch64" | "linux", "arm64" if is_alpine ->
       Ok("bun-linux-aarch64-musl")
     "linux", "aarch64" | "linux", "arm64" -> Ok("bun-linux-aarch64")
-    "linux", "x64" | "linux", "x86_x64" ->
+    "linux", "x64" | "linux", "x86_64" ->
       case baseline, is_alpine {
         True, True -> Ok("bun-linux-x64-musl-baseline")
         True, False -> Ok("bun-linux-x64-baseline")
