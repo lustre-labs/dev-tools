@@ -1,5 +1,5 @@
 name = "lustre_dev_tools"
-version = "1.9.2"
+version = "2.0.0"
 target = "erlang"
 
 description = "Lustre's official CLI and development tooling."
@@ -20,6 +20,7 @@ internal_modules = ["lustre_dev_tools/*"]
 
 [dependencies]
 argv = ">= 1.0.0 and < 2.0.0"
+booklet = ">= 1.0.2 and < 2.0.0"
 filepath = ">= 1.0.0 and < 2.0.0"
 gleam_community_ansi = ">= 1.4.3 and < 2.0.0"
 gleam_crypto = ">= 1.5.1 and < 2.0.0"
@@ -39,4 +40,3 @@ polly = ">= 2.1.0 and < 3.0.0"
 simplifile = ">= 2.2.0 and < 3.0.0"
 tom = ">= 1.0.1 and < 2.0.0"
 wisp = ">= 2.0.0 and < 3.0.0"
-booklet = ">= 1.0.2 and < 2.0.0"
