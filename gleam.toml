@@ -1,5 +1,5 @@
 name = "lustre_dev_tools"
-version = "2.0.0"
+version = "2.0.1"
 target = "erlang"
 
 description = "Lustre's official CLI and development tooling."
@@ -10,13 +10,14 @@ links = [
     { title = "Sponsor", href = "https://github.com/sponsors/hayleigh-dot-dev" },
 ]
 
+internal_modules = ["lustre_dev_tools/*"]
+
 [documentation]
 pages = [
     { title = "Static assets", path = "assets.html", source = "./pages/assets.md" },
     { title = "TOML reference", path = "toml-reference.html", source = "./pages/toml-reference.md" }
 ]
 
-internal_modules = ["lustre_dev_tools/*"]
 
 [dependencies]
 argv = ">= 1.0.0 and < 2.0.0"
