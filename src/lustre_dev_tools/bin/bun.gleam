@@ -130,6 +130,7 @@ pub fn watch(
       on_unknown: fn() { Nil },
     )
     |> result.replace_error(error.CouldNotStartFileWatcher(
+      watcher: path,
       os: system.detect_os(),
       arch: system.detect_arch(),
     )),

@@ -14,7 +14,7 @@ pub type Error {
   CouldNotReadFile(path: String, reason: simplifile.FileError)
   CouldNotSetFilePermissions(path: String, reason: simplifile.FileError)
   CouldNotStartDevServer(reason: actor.StartError)
-  CouldNotStartFileWatcher(os: String, arch: String)
+  CouldNotStartFileWatcher(watcher: String, os: String, arch: String)
   CouldNotVerifyBunHash(expected: String, actual: String)
   CouldNotVerifyTailwindHash(expected: String, actual: String)
   CouldNotWriteFile(path: String, reason: simplifile.FileError)
@@ -168,7 +168,7 @@ reference on HexDocs for more information.
       |> string.replace("${reason}", string.inspect(reason))
 
     // -------------------------------------------------------------------------
-    CouldNotStartFileWatcher(os:, arch:) ->
+    CouldNotStartFileWatcher(watcher:, os:, arch:) ->
       "
 I ran into a problem while trying to start the file watcher. This might be due
 to an incompatibility with your platform or a bug in the watcher code. Please
@@ -178,9 +178,11 @@ open an issue at:
 
 With the following information:
 
+  - watcher: ${watcher}
   - os: ${os}
   - arch: ${arch}
       "
+      |> string.replace("${watcher}", watcher)
       |> string.replace("${os}", os)
       |> string.replace("${arch}", arch)
 

@@ -65,6 +65,7 @@ pub fn start(
       start_polly_watcher(project, error, watch, registry)
       |> result.replace(registry)
       |> result.replace_error(error.CouldNotStartFileWatcher(
+        watcher: "polly",
         os: system.detect_os(),
         arch: system.detect_arch(),
       ))
