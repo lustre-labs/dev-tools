@@ -89,13 +89,15 @@ in the [assets documentation](https://hexdocs.pm/lustre_dev_tools/assets.html).
 ## External binaries
 
 Lustre's dev tools are a wrapper around existing binary build tools. Specifically,
-we use [bun](bun.sh) for bundling and file watching and we also support Tailwind
+we use [bun](https://bun.sh/) for bundling and file watching and we also support Tailwind
 through their standalone CLI.
 
 Lustre will automatically detect your platform and download the appropriate
 binaries when you first run a command. These binaries are cached _per-project_
 in the project's `.lustre` directory. If you prefer, Lustre can be told to use a
-local path or check your system's `$PATH` for the binaries instead. See the
+local path or check your system's `$PATH` for the binaries instead. 
+See the [TOML reference](https://hexdocs.pm/lustre_dev_tools/toml-reference.html)
+for an overview on how to define those options.
 
 ## Support
 
