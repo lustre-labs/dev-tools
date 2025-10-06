@@ -343,11 +343,11 @@ const hashes = [
   ),
   #(
     "bun-linux-aarch64-musl",
-    "e85feb78bbff552ff6dcde0d99a7618f20df4544efd6248d9e97939709bc9406",
+    "88c54cd66169aeb5ff31bc0c9d74a8017c7e6965597472ff49ecc355acb3a884",
   ),
   #(
     "bun-linux-aarch64",
-    "88c54cd66169aeb5ff31bc0c9d74a8017c7e6965597472ff49ecc355acb3a884",
+    "a97c687fb5e54de4e2fb0869a7ac9a2d9c3af75ac182e2b68138c1dd8f98131b",
   ),
   #(
     "bun-linux-x64-baseline",
