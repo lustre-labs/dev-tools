@@ -373,14 +373,8 @@ key `tools.lustre.build.outdir`.
   use _ <- result.try(case simplifile.is_directory(project.assets) {
     Ok(True) -> {
       use _ <- result.try(
-        simplifile.copy_directory(
-          project.assets,
-          filepath.join(options.outdir, "assets"),
-        )
-        |> result.map_error(error.CouldNotWriteFile(
-          filepath.join(options.outdir, "assets"),
-          _,
-        )),
+        simplifile.copy_directory(project.assets, options.outdir)
+        |> result.map_error(error.CouldNotWriteFile(options.outdir, _)),
       )
 
       cli.success("Assets copied.", False)
