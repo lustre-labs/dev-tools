@@ -327,11 +327,18 @@ key `tools.lustre.build.outdir`.
 
   // 4.
   use _ <- result.try(case options.entries, options.skip_html {
-    _, True | [_, _, ..], _ -> Ok(Nil)
+    _, True -> Ok(Nil)
+
+    [_, _, ..], _ -> {
+      cli.log(
+        "Multiple entry modules provided, skipping HTML generation",
+        False,
+      )
+
+      Ok(Nil)
+    }
 
     [], False -> {
-      cli.log("Building index.html", False)
-
       use _ <- result.try(
         html.generate(project, project.name, tailwind_entry, options.minify)
         |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
@@ -347,8 +354,6 @@ key `tools.lustre.build.outdir`.
     }
 
     [entry], False -> {
-      cli.log("Building index.html", False)
-
       use _ <- result.try(
         html.generate(project, entry, tailwind_entry, options.minify)
         |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
@@ -367,8 +372,6 @@ key `tools.lustre.build.outdir`.
   // 5.
   use _ <- result.try(case simplifile.is_directory(project.assets) {
     Ok(True) -> {
-      cli.log("Copying static assets", False)
-
       use _ <- result.try(
         simplifile.copy_directory(
           project.assets,

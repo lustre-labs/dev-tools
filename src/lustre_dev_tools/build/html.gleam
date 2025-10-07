@@ -8,7 +8,7 @@ import lustre/attribute.{type Attribute, attribute}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre_dev_tools/project.{type Project}
-import tom
+import tom.{type Toml}
 
 //
 
@@ -34,13 +34,15 @@ pub fn generate(
 
         title(project, entry),
 
+        links(project),
+
         stylesheets(project),
 
         case tailwind_entry {
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href("./" <> filepath.base_name(entry) <> ".css"),
+              attribute.href("/" <> filepath.base_name(entry) <> ".css"),
             ])
 
           None -> element.none()
@@ -49,7 +51,7 @@ pub fn generate(
         scripts(project),
 
         html.script(
-          [attribute.type_("module"), attribute.src("./" <> name <> ".js")],
+          [attribute.type_("module"), attribute.src("/" <> name <> ".js")],
           "",
         ),
       ]),
@@ -88,6 +90,8 @@ pub fn dev(
         meta(project),
 
         title(project, entry),
+
+        links(project),
 
         stylesheets(project),
 
@@ -158,8 +162,8 @@ fn meta(project: Project) -> Element(msg) {
     |> result.map(
       list.map(_, {
         dict.fold(_, [], fn(attributes, key, toml) {
-          case tom.as_string(toml) {
-            Ok(value) -> [attribute(key, value), ..attributes]
+          case as_attribute(key, toml) {
+            Ok(attribute) -> [attribute, ..attributes]
             Error(_) -> attributes
           }
         })
@@ -169,6 +173,32 @@ fn meta(project: Project) -> Element(msg) {
       list.filter_map(_, fn(attributes) {
         case attributes {
           [_, ..] -> Ok(html.meta(attributes))
+          [] -> Error(Nil)
+        }
+      }),
+    )
+    |> result.unwrap([])
+  })
+}
+
+fn links(project: Project) -> Element(msg) {
+  element.fragment({
+    tom.get_array(project.options, ["html", "links"])
+    |> result.map(list.filter_map(_, tom.as_table))
+    |> result.map(
+      list.map(_, {
+        dict.fold(_, [], fn(attributes, key, toml) {
+          case as_attribute(key, toml) {
+            Ok(attribute) -> [attribute, ..attributes]
+            Error(_) -> attributes
+          }
+        })
+      }),
+    )
+    |> result.map(
+      list.filter_map(_, fn(attributes) {
+        case attributes {
+          [_, ..] -> Ok(html.link(attributes))
           [] -> Error(Nil)
         }
       }),
@@ -226,6 +256,15 @@ fn scripts(project: Project) -> Element(msg) {
     )
     |> result.unwrap([])
   })
+}
+
+fn as_attribute(key: String, toml: Toml) -> Result(Attribute(msg), Nil) {
+  case tom.as_string(toml), tom.as_bool(toml) {
+    Ok(value), _ -> Ok(attribute(key, value))
+    _, Ok(True) -> Ok(attribute(key, ""))
+    _, Ok(False) -> Error(Nil)
+    _, _ -> Error(Nil)
+  }
 }
 
 fn body(project: Project) -> Element(msg) {

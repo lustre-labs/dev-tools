@@ -147,6 +147,16 @@ application or serves during development.
 
   Default: `en`.
 
+- **`links = { rel: string, href: string, [key: string]: string }[]`**: an array
+  of `<link>` tags to include in the `<head>` of the generated HTML document. Each
+  object in the array represents a single `<link>` element where the keys are the
+  attribute names and the values are the attribute values.
+
+  You can use this to include favicons or preconnect hints for example. For including
+  external stylesheets, prefer using the `stylesheets` option instead.
+
+  Default: `[]`.
+
 - **`meta = { [key: string]: string }[]`**: an array of `<meta>` tags to include
   in the `<head>` of the generated HTML document. Each object in the array
   represents a single `<meta>` tag where the keys are the attribute names and
