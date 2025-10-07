@@ -66,7 +66,9 @@
 import argv
 import booklet
 import filepath
+import gleam/bool
 import gleam/erlang/process
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -372,10 +374,43 @@ key `tools.lustre.build.outdir`.
   // 5.
   use _ <- result.try(case simplifile.is_directory(project.assets) {
     Ok(True) -> {
-      use _ <- result.try(
-        simplifile.copy_directory(project.assets, options.outdir)
-        |> result.map_error(error.CouldNotWriteFile(options.outdir, _)),
+      use assets <- result.try(
+        simplifile.get_files(project.assets)
+        |> result.map_error(error.CouldNotReadFile(project.assets, _)),
       )
+
+      let count = list.length(assets)
+      use <- bool.guard(count == 0, Ok(Nil))
+
+      cli.log(
+        case count {
+          1 -> "Copying 1 asset"
+          n -> "Copying {n} assets" |> string.replace("{n}", int.to_string(n))
+        },
+        False,
+      )
+
+      use _ <- result.try({
+        use asset <- list.try_each(assets)
+        let path =
+          asset
+          |> string.replace(project.assets, "")
+          |> filepath.join(options.outdir, _)
+
+        let dir = filepath.directory_name(path)
+
+        use _ <- result.try(
+          simplifile.create_directory_all(dir)
+          |> result.map_error(error.CouldNotWriteFile(dir, _)),
+        )
+
+        use _ <- result.try(
+          simplifile.copy_file(asset, path)
+          |> result.map_error(error.CouldNotWriteFile(path, _)),
+        )
+
+        Ok(Nil)
+      })
 
       cli.success("Assets copied.", False)
 
