@@ -12,6 +12,7 @@ import gleam/option.{None}
 import gleam/regexp
 import gleam/result
 import gleam/string
+import gleam_community/ansi
 import lustre_dev_tools/cli
 import lustre_dev_tools/error.{type Error}
 import lustre_dev_tools/port
@@ -387,7 +388,7 @@ fn verify_version(path: String) -> Result(Nil, Error) {
   // Tailwind pulls some bullshit here. They don't provide an actual `-v` or
   // `--version` flag, so we have to parse out the first line of the help output
   // where they coincidentally print the version.
-  case actual {
+  case ansi.strip(actual) {
     "≈ tailwindcss v" <> v if v == version -> Ok(Nil)
 
     "≈ tailwindcss v" <> v ->
