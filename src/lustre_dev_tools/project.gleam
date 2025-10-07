@@ -81,10 +81,6 @@ pub fn config() -> Project {
   let assets = filepath.join(root, "assets")
   let build = filepath.join(root, ".lustre/build")
 
-  let has_node_modules =
-    simplifile.is_directory(filepath.join(root, "node_modules"))
-    |> result.unwrap(False)
-
   // These are safe to assert because we are guaranteed to be inside a Gleam
   // project if we're running this program! All Gleam projects must have a
   // `gleam.toml` with at least a `name` field, so we can safely assert all of
@@ -97,6 +93,18 @@ pub fn config() -> Project {
   let options =
     tom.get_table(config, ["tools", "lustre"])
     |> result.unwrap(dict.new())
+
+  let has_node_modules = {
+    let dir_exists =
+      simplifile.is_directory(filepath.join(root, "node_modules"))
+      |> result.unwrap(False)
+
+    let config_enabled =
+      tom.get_bool(options, ["dev", "use_node_modules"])
+      |> result.unwrap(False)
+
+    dir_exists || config_enabled
+  }
 
   Project(
     name:,

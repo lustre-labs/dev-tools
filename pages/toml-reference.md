@@ -21,6 +21,10 @@ host = "0.0.0.0"
 # This lets us avoid CORS issues while the frontend and backend are running on
 # different ports.
 proxy = { from = "/api", to = "http://localhost:3000/api" }
+# This application uses gleam packages that rely on node_modules, even though
+# it may not have a "node_modules" directory itself. This option forces the
+# hot reloading server to enable node_modules.
+use_node_modules = true
 
 [tools.lustre.html]
 # Include Bootstrap in our project for simple styling.
