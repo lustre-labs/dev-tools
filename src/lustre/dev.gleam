@@ -364,6 +364,30 @@ key `tools.lustre.build.outdir`.
     }
   })
 
+  // 5.
+  use _ <- result.try(case simplifile.is_directory(project.assets) {
+    Ok(True) -> {
+      cli.log("Copying static assets", False)
+
+      use _ <- result.try(
+        simplifile.copy_directory(
+          project.assets,
+          filepath.join(options.outdir, "assets"),
+        )
+        |> result.map_error(error.CouldNotWriteFile(
+          filepath.join(options.outdir, "assets"),
+          _,
+        )),
+      )
+
+      cli.success("Assets copied.", False)
+
+      Ok(Nil)
+    }
+
+    Ok(False) | Error(_) -> Ok(Nil)
+  })
+
   cli.success("Build complete!", False)
 
   Ok(Nil)
