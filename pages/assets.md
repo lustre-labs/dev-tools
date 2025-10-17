@@ -34,6 +34,15 @@ dist/
     └── wibble.png
 ```
 
+#### Loading custom CSS
+For example if you want to load your custom css file named `style.css` place it in the `assets` folder
+in your root project dir and edit the gleam.toml with
+
+```
+[tools.lustre.html]
+stylesheets = [{ href = "/style.css" }]
+```
+
 ## External build tools
 
 The `assets` directory is also a suitable place to emit files from additional
