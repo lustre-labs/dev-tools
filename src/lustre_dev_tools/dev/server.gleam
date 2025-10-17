@@ -6,6 +6,7 @@
 import booklet.{type Booklet}
 import filepath
 import gleam/erlang/application
+import gleam/http
 import gleam/http/request
 import gleam/int
 import gleam/option.{type Option}
@@ -91,7 +92,15 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
 
   use <- proxy.handle(request, context.proxy)
 
-  let html = html.dev(context.project, context.entry, context.tailwind_entry)
+  case request.method, filepath.extension(request.path) {
+    // If we get this far then we want to operate in a type of "SPA mode" that
+    // serves the main HTML file for any unknown route. We need to make sure we
+    // don't do this for unknown _assets_ though so we'll only do this for paths
+    // that don't have a file extension.
+    http.Get, Error(_) ->
+      html.dev(context.project, context.entry, context.tailwind_entry)
+      |> wisp.html_body(wisp.ok(), _)
 
-  wisp.html_body(wisp.ok(), html)
+    _, _ -> wisp.not_found()
+  }
 }
