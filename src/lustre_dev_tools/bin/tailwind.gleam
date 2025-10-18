@@ -361,7 +361,8 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
     "linux", "x64" | "linux", "x86_64" if is_alpine ->
       Ok("tailwindcss-linux-x64-musl")
     "linux", "x64" | "linux", "x86_64" -> Ok("tailwindcss-linux-x64")
-    "windows", "x64" | "windows", "x86_64" -> Ok("tailwindcss-windows-x64.exe")
+    "win32", "x64" | "windows", "x64" | "win32", "x86_64" | "windows", "x86_64" ->
+      Ok("tailwindcss-windows-x64.exe")
     _, _ -> Error(Nil)
   }
 }

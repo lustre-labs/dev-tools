@@ -274,9 +274,11 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
         False, True -> Ok("bun-linux-x64-musl")
         False, False -> Ok("bun-linux-x64")
       }
-    "windows", "x64" | "windows", "x86_64" if baseline ->
-      Ok("bun-windows-x64-baseline")
-    "windows", "x64" | "windows", "x86_64" -> Ok("bun-windows-x64")
+    "wn32", "x64" | "windows", "x64" | "wn32", "x86_64" | "windows", "x86_64"
+      if baseline
+    -> Ok("bun-windows-x64-baseline")
+    "win32", "x64" | "windows", "x64" | "win32", "x86_64" | "windows", "x86_64" ->
+      Ok("bun-windows-x64")
     _, _ -> Error(Nil)
   }
 }
@@ -289,7 +291,7 @@ fn requires_baseline(os: String) -> Bool {
         Error(_) -> True
       }
 
-    "windows" -> {
+    "win32" | "windows" -> {
       let command =
         "powershell -Command \"(Add-Type -MemberDefinition '[DllImport(\\\"kernel32.dll\\\")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);' -Name 'Kernel32' -Namespace 'Win32' -PassThru)::IsProcessorFeaturePresent(40)\""
 
