@@ -22,6 +22,10 @@ pub fn wibble() -> Element(msg) {
 }
 ```
 
+
+> **Note**: note how the image's path is `/image/wibble.png` and not
+> `/assets/image/wibble.png`!
+
 When you build your application, the contents of the `assets` directory will be
 copied to the output directory specified in your `gleam.toml` file. So if we build
 the above example, the build artifacts might look something like:
@@ -34,14 +38,27 @@ dist/
     └── wibble.png
 ```
 
-#### Loading custom CSS
-For example if you want to load your custom css file named `style.css` place it in the `assets` folder
-in your root project dir and edit the gleam.toml with
+## Static CSS
+
+The most common use of the `assets` directory is to include static CSS instead of
+using the built-in Tailwind integration. To do this you'll also need to teach
+Lustre how to load your CSS into the generated HTML by adding some configuration
+to your `gleam.toml` file.
+
+For example, let's say you've written some CSS and saved it to `assets/style.css`.
+To make sure the stylesheet is properly loaded both during development and in the
+built output, you would add the following to your `gleam.toml` file:
 
 ```
 [tools.lustre.html]
-stylesheets = [{ href = "/style.css" }]
+stylesheets = [
+  { href = "/style.css" }
+]
 ```
+
+Lustre has special hot-relaoding support for CSS files included this way, so any
+changes you make will be reflected in the browser without needing to refresh the
+page!
 
 ## External build tools
 
