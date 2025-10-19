@@ -274,7 +274,7 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
         False, True -> Ok("bun-linux-x64-musl")
         False, False -> Ok("bun-linux-x64")
       }
-    "wn32", "x64" | "windows", "x64" | "wn32", "x86_64" | "windows", "x86_64"
+    "win32", "x64" | "windows", "x64" | "win32", "x86_64" | "windows", "x86_64"
       if baseline
     -> Ok("bun-windows-x64-baseline")
     "win32", "x64" | "windows", "x64" | "win32", "x86_64" | "windows", "x86_64" ->
