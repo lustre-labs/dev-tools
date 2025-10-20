@@ -56,7 +56,7 @@ stylesheets = [
 ]
 ```
 
-Lustre has special hot-relaoding support for CSS files included this way, so any
+Lustre has special hot-reloading support for CSS files included this way, so any
 changes you make will be reflected in the browser without needing to refresh the
 page!
 
