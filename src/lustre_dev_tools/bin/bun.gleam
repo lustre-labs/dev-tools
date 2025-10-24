@@ -25,9 +25,10 @@ import tom
 
 //
 
+/// Download bun cli executable, verify integrity and copy to lustre bin path.
+/// Returns absolute path to executable.
 ///
-///
-pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
+pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
   // 1. First detect what release we need to download based on the user's system
   //    information. If this fails it's because Bun doesn't support the user's
   //    system.
@@ -80,6 +81,14 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
     )),
   )
 
+  // 4.1. Verify executable and return absolute path.
+  // GH#163 windows path to exe relative not work.
+  //
+  use path <- result.try(
+    system.find_exec(path)
+    |> result.replace_error(error.CouldNotLocateBunBinary(path:)),
+  )
+
   // 5. We downloaded an executable, so we need to make it executable! This can
   //    fail if the user doesn't have permission to change this.
   use _ <- result.try(
@@ -94,7 +103,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
 
   cli.success("Bun v" <> version <> " is ready to go!", quiet)
 
-  Ok(Nil)
+  Ok(path)
 }
 
 ///
@@ -207,18 +216,18 @@ fn guard(project: Project, quiet: Bool) -> Result(String, Error) {
 
     Error(_) -> {
       use name <- result.try(detect_platform())
-      let path = filepath.join(project.bin, name <> "/bun")
+      let path = filepath.join(project.bin, filepath.join(name, "bun"))
 
       // Detect if we're already downloaded Bun because of an earlier command.
       // If not, we automatically download it now.
-      use _ <- result.try(case simplifile.is_file(path) {
-        Ok(True) ->
+      use path <- result.try(case system.find_exec(path) {
+        Ok(path) -> {
           case verify_version(path) {
-            Ok(_) -> Ok(Nil)
+            Ok(_) -> Ok(path)
             Error(_) -> download(project, quiet)
           }
-
-        Ok(False) | Error(_) -> download(project, quiet)
+        }
+        Error(_) -> download(project, quiet)
       })
 
       Ok(path)
