@@ -1,3 +1,6 @@
+import filepath
+import gleam/result
+
 ///
 ///
 @external(erlang, "system_ffi", "detect_os")
@@ -18,6 +21,12 @@ pub fn is_alpine() -> Bool
 ///
 @external(erlang, "system_ffi", "run")
 pub fn run(command: String) -> Result(String, String)
+
+/// Find executable from path param into file system and returns absolute path.
+/// see erlang: `os:find_executable/1`.
+/// 
+@external(erlang, "system_ffi", "find_exec")
+pub fn find_exec(executable: String) -> Result(String, String)
 
 @external(erlang, "system_ffi", "find")
 pub fn find(executable: String) -> Result(String, Nil)

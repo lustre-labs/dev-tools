@@ -1,6 +1,6 @@
 -module(system_ffi).
 
--export([detect_os/0, detect_arch/0, is_alpine/0, run/1, find/1, exit/1]).
+-export([detect_os/0, detect_arch/0, is_alpine/0, run/1, find_exec/1, find/1, exit/1]).
 
 detect_os() ->
     case os:type() of
@@ -32,6 +32,15 @@ detect_arch() ->
 
 is_alpine() ->
     filelib:is_file("/etc/alpine-release").
+
+find_exec(ExeName) ->
+    ExeName1 = unicode:characters_to_list(ExeName),
+    case os:find_executable(ExeName1) of
+        false ->
+            {error, <<"Not found">>};
+        FullPath ->
+            {ok, unicode:characters_to_binary(FullPath)}
+    end.
 
 run(Cmd) ->
     case catch os:cmd(

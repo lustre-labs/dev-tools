@@ -34,9 +34,10 @@ pub type Detection {
 
 //
 
+/// Download tailwindcss cli executable, verify integrity and copy to lustre bin path.
+/// Returns absolute path to executable.
 ///
-///
-pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
+pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
   // 1. First detect what release we need to download based on the user's system
   //    information. If this fails it's because Tailwind doesn't support the user's
   //    system.
@@ -86,7 +87,10 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
     |> result.map_error(error.CouldNotWriteFile(path:, reason: _)),
   )
 
-  let path = filepath.join(path, "tailwindcss")
+  // Uses same returns on detect_platform()
+  // GH#163 Fix windows not work without '.exe' extension
+  //
+  let path = filepath.join(path, name)
 
   use _ <- result.try(
     simplifile.write_bits(path, res.body)
@@ -100,10 +104,20 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
     |> result.map_error(error.CouldNotWriteFile(path:, reason: _)),
   )
 
+  // 4.1. Verify executable and return absolute path.
+  // GH#163 windows path to exe relative not work.
+  //
+  use path <- result.try(
+    system.find_exec(path)
+    |> result.replace_error(error.CouldNotLocateBunBinary(path:)),
+  )
+
   // 6. This shouldn't be necessary because we already verified the archive hash,
   //    but as a final step we run `tailwind --version` and make sure it matches
   //    the version we support.
   use _ <- result.try(verify_version(path))
+  // Absolute path to exe needs to return.
+  let path_to_exe = path
 
   cli.success("TailwindCSS v" <> version <> " is ready to go!", quiet)
 
@@ -112,7 +126,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
   let path = filepath.join(project.src, project.name <> ".css")
 
   case detection {
-    HasTailwindEntry -> Ok(Nil)
+    HasTailwindEntry -> Ok(path_to_exe)
 
     HasLegacyConfig -> {
       let css = [
@@ -128,7 +142,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
 
       cli.success("Tailwind config generated", quiet)
 
-      Ok(Nil)
+      Ok(path_to_exe)
     }
 
     HasViableEntry -> {
@@ -146,7 +160,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
 
       cli.success("Tailwind config generated", quiet)
 
-      Ok(Nil)
+      Ok(path_to_exe)
     }
 
     Nothing -> {
@@ -159,7 +173,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(Nil, Error) {
 
       cli.success("Tailwind config generated", quiet)
 
-      Ok(Nil)
+      Ok(path_to_exe)
     }
   }
 }
@@ -299,18 +313,21 @@ fn guard(project: Project, quiet quiet: Bool) -> Result(String, Error) {
 
     Error(_) -> {
       use name <- result.try(detect_platform())
-      let path = filepath.join(project.bin, name <> "/tailwindcss")
+      let path = filepath.join(project.bin, name)
+      // Uses same name returns on detect_platform
+      // GH#163 Fix windwos not work without '.exe' extension
+      let path = filepath.join(path, name)
 
       // Detect if we've already downloaded Tailwind because of an earlier command.
       // If not, we automatically download it now.
-      use _ <- result.try(case simplifile.is_file(path) {
-        Ok(True) ->
+      use path <- result.try(case system.find_exec(path) {
+        Ok(path) -> {
           case verify_version(path) {
-            Ok(_) -> Ok(Nil)
+            Ok(_) -> Ok(path)
             Error(_) -> download(project, quiet:)
           }
-
-        Ok(False) | Error(_) -> download(project, quiet:)
+        }
+        Error(_) -> download(project, quiet:)
       })
 
       Ok(path)
