@@ -11,6 +11,7 @@ pub type Error {
   CouldNotInitialiseDevTools(reason: simplifile.FileError)
   CouldNotLocateBunBinary(path: String)
   CouldNotLocateTailwindBinary(path: String)
+  CouldNotLocateGleamBinary
   CouldNotReadFile(path: String, reason: simplifile.FileError)
   CouldNotSetFilePermissions(path: String, reason: simplifile.FileError)
   CouldNotStartDevServer(reason: actor.StartError)
@@ -116,6 +117,13 @@ If you are trying to use a local binary, make sure the path is correct and that
 relative paths are relative to the current working directory.
       "
       |> string.replace("${path}", path)
+
+    CouldNotLocateGleamBinary ->
+      "
+I ran into a problem while trying to run the Gleam binary.
+
+Make sure Gleam is available in your current path.
+      "
 
     // -------------------------------------------------------------------------
     CouldNotInitialiseDevTools(reason:) ->

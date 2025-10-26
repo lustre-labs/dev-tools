@@ -1,5 +1,10 @@
-import filepath
-import gleam/result
+/// The platform-specific executable name, including its file extension.
+pub fn executable_name(name: String) {
+  case detect_os() {
+    "win32" | "windows" -> "name" <> ".exe"
+    _ -> name
+  }
+}
 
 ///
 ///
@@ -20,13 +25,11 @@ pub fn is_alpine() -> Bool
 /// with a non-zero status, any output will be returned as an `Error` instead.
 ///
 @external(erlang, "system_ffi", "run")
-pub fn run(command: String) -> Result(String, String)
-
-/// Find executable from path param into file system and returns absolute path.
-/// see erlang: `os:find_executable/1`.
-/// 
-@external(erlang, "system_ffi", "find_exec")
-pub fn find_exec(executable: String) -> Result(String, String)
+pub fn run(
+  cmd command: String,
+  with args: List(String),
+  env variables: List(#(String, String)),
+) -> Result(String, String)
 
 @external(erlang, "system_ffi", "find")
 pub fn find(executable: String) -> Result(String, Nil)

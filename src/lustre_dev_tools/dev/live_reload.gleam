@@ -7,6 +7,7 @@ import gleam/http/response.{type Response}
 import gleam/json
 import gleam/option.{type Option, None, Some}
 import gleam/string
+import gleam_community/ansi
 import lustre_dev_tools/dev/watcher.{type Watcher}
 import lustre_dev_tools/error
 import lustre_dev_tools/project.{type Project}
@@ -30,7 +31,7 @@ pub fn start(
 
       case booklet.get(error) {
         Some(reason) -> {
-          let message = error.explain(reason)
+          let message = ansi.strip(error.explain(reason))
           let _ =
             json.object([
               #("type", json.string("error")),
@@ -99,7 +100,7 @@ pub fn start(
     mist.Custom(watcher.Styles) -> mist.continue(Nil)
 
     mist.Custom(watcher.BuildError(reason:)) -> {
-      let message = error.explain(reason)
+      let message = ansi.strip(error.explain(reason))
 
       let _ =
         json.object([
