@@ -1,7 +1,7 @@
 /// The platform-specific executable name, including its file extension.
 pub fn executable_name(name: String) {
   case detect_os() {
-    "win32" | "windows" -> "name" <> ".exe"
+    "win32" | "windows" -> name <> ".exe"
     _ -> name
   }
 }

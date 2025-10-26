@@ -288,17 +288,25 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
 
 fn requires_baseline(os: String) -> Bool {
   case os {
-    "linux" ->
-      case system.run("sh", ["-c", "cat /proc/cpuinfo | grep avx2"], []) {
+    "linux" -> {
+      let sh = system.find("sh") |> result.unwrap("/bin/sh")
+      case system.run(sh, ["-c", "cat /proc/cpuinfo | grep avx2"], []) {
         Ok(output) -> output == ""
         Error(_) -> True
       }
+    }
 
     "win32" | "windows" -> {
+      let powershell =
+        system.find("powershell")
+        |> result.unwrap(
+          "c:/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe",
+        )
+
       let command =
         "(Add-Type -MemberDefinition '[DllImport(\"kernel32.dll\")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);' -Name 'Kernel32' -Namespace 'Win32' -PassThru)::IsProcessorFeaturePresent(40)"
 
-      case system.run("powershell", ["-Command", command], []) {
+      case system.run(powershell, ["-Command", command], []) {
         Ok(output) -> string.trim(output) != "True"
         Error(_) -> True
       }
