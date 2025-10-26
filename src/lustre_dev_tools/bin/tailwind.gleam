@@ -54,7 +54,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
       path: "/tailwindlabs/tailwindcss/releases/download/v"
         <> version
         <> "/"
-        <> name,
+        <> system.executable_name(name),
       query: None,
     )
 
@@ -82,14 +82,11 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
   let path = filepath.join(project.bin, name)
 
   use _ <- result.try(
-    simplifile.create_directory(path)
+    simplifile.create_directory_all(path)
     |> result.map_error(error.CouldNotWriteFile(path:, reason: _)),
   )
 
-  // Uses same returns on detect_platform()
-  // GH#163 Fix windows not work without '.exe' extension
-  //
-  let path = filepath.join(path, name)
+  let path = filepath.join(path, system.executable_name(name))
 
   use _ <- result.try(
     simplifile.write_bits(path, res.body)
@@ -375,7 +372,7 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
       Ok("tailwindcss-linux-x64-musl")
     "linux", "x64" | "linux", "x86_64" -> Ok("tailwindcss-linux-x64")
     "win32", "x64" | "windows", "x64" | "win32", "x86_64" | "windows", "x86_64" ->
-      Ok("tailwindcss-windows-x64.exe")
+      Ok("tailwindcss-windows-x64")
     _, _ -> Error(Nil)
   }
 }
@@ -451,7 +448,7 @@ const hashes = [
     "c3b230bdbfaa46c94cad8db44da1f82773f10bac54f56fa196c8977d819c09e4",
   ),
   #(
-    "tailwindcss-windows-x64.exe",
+    "tailwindcss-windows-x64",
     "ad16a528e13111e5df4e771b4b4981bd4b73e69140fa021f4102f46f02eeb86d",
   ),
 ]
