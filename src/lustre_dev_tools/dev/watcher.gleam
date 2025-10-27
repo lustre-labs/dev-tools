@@ -165,16 +165,16 @@ fn handle_change(
     Error(reason) -> {
       booklet.set(error, Some(reason))
 
-      io.println_error(ansi.grey(
+      io.println_error(
         case reason {
           // Compile errors while the dev server is running are going to be quite
           // common so we print the error straight from gleam to cut down on
           // chatty noise.
           error.ExternalCommandFailed(command: "gleam", reason:) -> reason
-          _ -> error.explain(reason)
+          _ -> ansi.gray(error.explain(reason))
         }
         <> "\n",
-      ))
+      )
 
       BuildError(reason:)
     }

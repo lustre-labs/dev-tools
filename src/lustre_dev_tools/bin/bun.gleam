@@ -2,7 +2,6 @@
 
 import filepath
 import gleam/bit_array
-import gleam/bool
 import gleam/crypto
 import gleam/dynamic/decode
 import gleam/erlang/application
@@ -81,14 +80,6 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
     )),
   )
 
-  // 4.1. Verify executable and return absolute path.
-  // GH#163 windows path to exe relative not work.
-  //
-  use path <- result.try(
-    system.find_exec(path)
-    |> result.replace_error(error.CouldNotLocateBunBinary(path:)),
-  )
-
   // 5. We downloaded an executable, so we need to make it executable! This can
   //    fail if the user doesn't have permission to change this.
   use _ <- result.try(
@@ -113,7 +104,7 @@ pub fn watch(
   directories: List(String),
   on_change: fn(String, String) -> Nil,
 ) -> Result(Subject(port.Message), Error) {
-  use path <- result.try(guard(project, False))
+  use path <- result.try(locate_bun(project, False))
 
   let assert Ok(priv) = application.priv_directory("lustre_dev_tools")
   let watcher = filepath.join(priv, "bun-watcher.js")
@@ -167,21 +158,21 @@ pub fn build(
   minify minify: Bool,
   quiet quiet: Bool,
 ) -> Result(Nil, Error) {
-  use path <- result.try(guard(project, quiet))
-  let minify = bool.guard(minify, "--minify", fn() { "" })
-  let split = bool.guard(list.length(entries) > 1, "--splitting", fn() { "" })
-  let flags = [minify, split, "--outdir " <> outdir]
+  use cmd <- result.try(locate_bun(project, quiet))
+
+  let args =
+    list.flatten([
+      ["build"],
+      entries,
+      maybe(minify, ["--minify"], []),
+      maybe(list.length(entries) > 1, ["--splitting"], []),
+      ["--outdir", outdir],
+    ])
 
   cli.log("Creating JavaScript bundle", quiet)
 
   use _ <- result.try(
-    system.run(
-      path
-      <> " build "
-      <> string.join(entries, " ")
-      <> " "
-      <> string.join(flags, " "),
-    )
+    system.run(cmd, args, [])
     |> result.map_error(error.FailedToBuildProject),
   )
 
@@ -194,7 +185,7 @@ pub fn build(
 
 ///
 ///
-fn guard(project: Project, quiet: Bool) -> Result(String, Error) {
+fn locate_bun(project: Project, quiet: Bool) -> Result(String, Error) {
   case tom.get_string(project.options, ["bin", "bun"]) {
     Ok("system") ->
       system.find("bun")
@@ -216,18 +207,21 @@ fn guard(project: Project, quiet: Bool) -> Result(String, Error) {
 
     Error(_) -> {
       use name <- result.try(detect_platform())
-      let path = filepath.join(project.bin, filepath.join(name, "bun"))
+      let path =
+        project.bin
+        |> filepath.join(name)
+        |> filepath.join(system.executable_name("bun"))
 
       // Detect if we're already downloaded Bun because of an earlier command.
       // If not, we automatically download it now.
-      use path <- result.try(case system.find_exec(path) {
-        Ok(path) -> {
+      use path <- result.try(case simplifile.is_file(path) {
+        Ok(True) -> {
           case verify_version(path) {
             Ok(_) -> Ok(path)
             Error(_) -> download(project, quiet)
           }
         }
-        Error(_) -> download(project, quiet)
+        _ -> download(project, quiet)
       })
 
       Ok(path)
@@ -294,17 +288,25 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
 
 fn requires_baseline(os: String) -> Bool {
   case os {
-    "linux" ->
-      case system.run("cat /proc/cpuinfo | grep avx2") {
+    "linux" -> {
+      let sh = system.find("sh") |> result.unwrap("/bin/sh")
+      case system.run(sh, ["-c", "cat /proc/cpuinfo | grep avx2"], []) {
         Ok(output) -> output == ""
         Error(_) -> True
       }
+    }
 
     "win32" | "windows" -> {
-      let command =
-        "powershell -Command \"(Add-Type -MemberDefinition '[DllImport(\\\"kernel32.dll\\\")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);' -Name 'Kernel32' -Namespace 'Win32' -PassThru)::IsProcessorFeaturePresent(40)\""
+      let powershell =
+        system.find("powershell")
+        |> result.unwrap(
+          "c:/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe",
+        )
 
-      case system.run(command) {
+      let command =
+        "(Add-Type -MemberDefinition '[DllImport(\"kernel32.dll\")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);' -Name 'Kernel32' -Namespace 'Win32' -PassThru)::IsProcessorFeaturePresent(40)"
+
+      case system.run(powershell, ["-Command", command], []) {
         Ok(output) -> string.trim(output) != "True"
         Error(_) -> True
       }
@@ -327,7 +329,7 @@ fn extract(archive: BitArray, to path: String) -> Result(String, Nil)
 ///
 fn verify_version(path: String) -> Result(Nil, Error) {
   use output <- result.try(
-    system.run(path <> " --version")
+    system.run(path, ["--version"], [])
     |> result.replace_error(error.CouldNotLocateBunBinary(path:)),
   )
   let actual = string.trim(output)
@@ -336,6 +338,14 @@ fn verify_version(path: String) -> Result(Nil, Error) {
     True -> Ok(Nil)
     False ->
       Error(error.UnsupportedBunVersion(path:, expected: version, actual:))
+  }
+}
+
+///
+fn maybe(when condition: Bool, then true: a, otherwise false: a) {
+  case condition {
+    True -> true
+    False -> false
   }
 }
 

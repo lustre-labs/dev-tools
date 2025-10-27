@@ -2,7 +2,6 @@
 
 import filepath
 import gleam/bit_array
-import gleam/bool
 import gleam/crypto
 import gleam/http.{Get, Https}
 import gleam/http/request.{Request}
@@ -55,7 +54,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
       path: "/tailwindlabs/tailwindcss/releases/download/v"
         <> version
         <> "/"
-        <> name,
+        <> system.executable_name(name),
       query: None,
     )
 
@@ -83,14 +82,11 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
   let path = filepath.join(project.bin, name)
 
   use _ <- result.try(
-    simplifile.create_directory(path)
+    simplifile.create_directory_all(path)
     |> result.map_error(error.CouldNotWriteFile(path:, reason: _)),
   )
 
-  // Uses same returns on detect_platform()
-  // GH#163 Fix windows not work without '.exe' extension
-  //
-  let path = filepath.join(path, name)
+  let path = filepath.join(path, system.executable_name(name))
 
   use _ <- result.try(
     simplifile.write_bits(path, res.body)
@@ -102,14 +98,6 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
   use _ <- result.try(
     simplifile.set_permissions_octal(path, 0o755)
     |> result.map_error(error.CouldNotWriteFile(path:, reason: _)),
-  )
-
-  // 4.1. Verify executable and return absolute path.
-  // GH#163 windows path to exe relative not work.
-  //
-  use path <- result.try(
-    system.find_exec(path)
-    |> result.replace_error(error.CouldNotLocateBunBinary(path:)),
   )
 
   // 6. This shouldn't be necessary because we already verified the archive hash,
@@ -222,20 +210,25 @@ pub fn build(
   minify minify: Bool,
   quiet quiet: Bool,
 ) -> Result(Nil, Error) {
-  use path <- result.try(guard(project, quiet:))
+  use cmd <- result.try(locate_tailwind(project, quiet:))
+
   let name = filepath.base_name(in)
   let output = filepath.join(project.root, out) |> filepath.join(name)
-  let minify = bool.guard(minify, "--minify", fn() { "" })
-  let flags = [
-    "-i " <> filepath.join(project.src, in <> ".css"),
-    "-o " <> output <> ".css",
-    minify,
-  ]
+
+  let args =
+    list.flatten([
+      ["-i", filepath.join(project.src, in <> ".css")],
+      ["-o", output <> ".css"],
+      case minify {
+        True -> ["--minify"]
+        False -> []
+      },
+    ])
 
   cli.log("Building Tailwind stylesheet", quiet)
 
   use _ <- result.try(
-    system.run(path <> " " <> string.join(flags, " "))
+    system.run(cmd, args, [])
     |> result.map_error(error.FailedToBuildProject),
   )
 
@@ -251,7 +244,7 @@ pub fn watch(
   quiet quiet: Bool,
   on_change handle_change: fn() -> Nil,
 ) -> Result(Nil, Error) {
-  use path <- result.try(guard(project, quiet:))
+  use path <- result.try(locate_tailwind(project, quiet:))
   let name = filepath.base_name(in)
   let output = filepath.join(project.root, out) |> filepath.join(name)
   let flags = [
@@ -289,7 +282,7 @@ pub fn watch(
 
 ///
 ///
-fn guard(project: Project, quiet quiet: Bool) -> Result(String, Error) {
+fn locate_tailwind(project: Project, quiet quiet: Bool) -> Result(String, Error) {
   case tom.get_string(project.options, ["bin", "tailwindcss"]) {
     Ok("system") ->
       system.find("tailwindcss")
@@ -313,21 +306,21 @@ fn guard(project: Project, quiet quiet: Bool) -> Result(String, Error) {
 
     Error(_) -> {
       use name <- result.try(detect_platform())
-      let path = filepath.join(project.bin, name)
-      // Uses same name returns on detect_platform
-      // GH#163 Fix windwos not work without '.exe' extension
-      let path = filepath.join(path, name)
+      let path =
+        project.bin
+        |> filepath.join(name)
+        |> filepath.join(system.executable_name(name))
 
       // Detect if we've already downloaded Tailwind because of an earlier command.
       // If not, we automatically download it now.
-      use path <- result.try(case system.find_exec(path) {
-        Ok(path) -> {
+      use path <- result.try(case simplifile.is_file(path) {
+        Ok(True) -> {
           case verify_version(path) {
             Ok(_) -> Ok(path)
             Error(_) -> download(project, quiet:)
           }
         }
-        Error(_) -> download(project, quiet:)
+        _ -> download(project, quiet:)
       })
 
       Ok(path)
@@ -379,7 +372,7 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
       Ok("tailwindcss-linux-x64-musl")
     "linux", "x64" | "linux", "x86_64" -> Ok("tailwindcss-linux-x64")
     "win32", "x64" | "windows", "x64" | "win32", "x86_64" | "windows", "x86_64" ->
-      Ok("tailwindcss-windows-x64.exe")
+      Ok("tailwindcss-windows-x64")
     _, _ -> Error(Nil)
   }
 }
@@ -390,7 +383,7 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
 ///
 fn verify_version(path: String) -> Result(Nil, Error) {
   use output <- result.try(
-    system.run(path <> " --help")
+    system.run(path, ["--help"], [#("NO_COLOR", "1")])
     |> result.replace_error(error.CouldNotLocateTailwindBinary(path:)),
   )
 
@@ -455,7 +448,7 @@ const hashes = [
     "c3b230bdbfaa46c94cad8db44da1f82773f10bac54f56fa196c8977d819c09e4",
   ),
   #(
-    "tailwindcss-windows-x64.exe",
+    "tailwindcss-windows-x64",
     "ad16a528e13111e5df4e771b4b4981bd4b73e69140fa021f4102f46f02eeb86d",
   ),
 ]

@@ -1,6 +1,6 @@
 -module(system_ffi).
 
--export([detect_os/0, detect_arch/0, is_alpine/0, run/1, find_exec/1, find/1, exit/1]).
+-export([detect_os/0, detect_arch/0, is_alpine/0, run/3, find/1, exit/1]).
 
 detect_os() ->
     case os:type() of
@@ -33,28 +33,57 @@ detect_arch() ->
 is_alpine() ->
     filelib:is_file("/etc/alpine-release").
 
-find_exec(ExeName) ->
-    ExeName1 = unicode:characters_to_list(ExeName),
-    case os:find_executable(ExeName1) of
-        false ->
-            {error, <<"Not found">>};
-        FullPath ->
-            {ok, unicode:characters_to_binary(FullPath)}
+run(Cmd, Args, Env) ->
+    PortResult =
+        try
+            {ok,
+             open_port({spawn_executable, unicode:characters_to_list(Cmd)},
+                       [binary,
+                        stderr_to_stdout,
+                        stream,
+                        in,
+                        hide,
+                        exit_status,
+                        {args, [unicode:characters_to_list(Arg) || Arg <- Args]},
+                        {env,
+                         [{unicode:characters_to_list(Var), unicode:characters_to_list(Val)}
+                          || {Var, Val} <- Env]}])}
+        catch
+            error:Reason ->
+                io:format("Unexpected error: ~p~n", [Reason]),
+                {error, <<""/utf8>>}
+        end,
+    case PortResult of
+        {ok, Port} ->
+            MonRef = erlang:monitor(port, Port),
+            {ExitStatus, Bytes} = run_loop(Port, MonRef, [], 0),
+            case ExitStatus of
+                0 ->
+                    {ok, Bytes};
+                _ ->
+                    {error, Bytes}
+            end;
+        _ ->
+            PortResult
     end.
 
-run(Cmd) ->
-    case catch os:cmd(
-                   unicode:characters_to_list(Cmd), #{exception_on_failure => true})
-    of
-        {'EXIT', {{command_failed, Output, _}, _}} ->
-            {error, unicode:characters_to_binary(Output)};
-        Output when is_binary(Output) ->
-            {ok, Output};
-        Output when is_list(Output) ->
-            {ok, unicode:characters_to_binary(Output)};
-        Output ->
-            io:format("Unexpected output: ~p~n", [Output]),
-            {error, <<"">>}
+run_loop(Port, MonRef, Acc, ExitStatus) ->
+    receive
+        {Port, {data, <<>>}} ->
+            run_loop(Port, MonRef, Acc, ExitStatus);
+        {Port, {data, Bytes}} ->
+            run_loop(Port, MonRef, [Acc, Bytes], ExitStatus);
+        {Port, {exit_status, N}} ->
+            run_loop(Port, MonRef, Acc, N);
+        {'DOWN', MonRef, _, _, _} ->
+            % flush an EXIT signal sent to this process if we trap exits.
+            receive
+                {'EXIT', Port, _} ->
+                    ok
+            after 0 ->
+                ok
+            end,
+            {ExitStatus, iolist_to_binary(Acc)}
     end.
 
 exit(Status) ->
