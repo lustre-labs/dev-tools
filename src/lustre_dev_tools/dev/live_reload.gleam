@@ -6,7 +6,6 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
 import gleam/option.{type Option, None, Some}
-import gleam/string
 import gleam_community/ansi
 import lustre_dev_tools/dev/watcher.{type Watcher}
 import lustre_dev_tools/error
@@ -20,7 +19,6 @@ pub fn start(
   project: Project,
   error: Booklet(Option(error.Error)),
   watcher: Watcher,
-  tailwind_entry: Option(String),
 ) -> Response(ResponseData) {
   use _, message, connection <- mist.websocket(
     request,
@@ -68,36 +66,28 @@ pub fn start(
       mist.continue(Nil)
     }
 
-    mist.Custom(watcher.Change(path:, ..)) ->
-      // We special-case changes to the tailwind entry in `src/` because we know
-      // that it's safe to do an asset-update rather than a full reload when this
-      // changes.
-      case Some(path) == option.map(tailwind_entry, string.append(_, ".css")) {
-        True -> {
-          let _ =
-            json.object([
-              #("type", json.string("asset-update")),
-              #("asset", json.string(path)),
-            ])
-            |> json.to_string
-            |> mist.send_text_frame(connection, _)
+    mist.Custom(watcher.Change(..)) -> {
+      let _ =
+        json.object([
+          #("type", json.string("reload")),
+        ])
+        |> json.to_string
+        |> mist.send_text_frame(connection, _)
 
-          mist.continue(Nil)
-        }
+      mist.continue(Nil)
+    }
 
-        False -> {
-          let _ =
-            json.object([
-              #("type", json.string("reload")),
-            ])
-            |> json.to_string
-            |> mist.send_text_frame(connection, _)
+    mist.Custom(watcher.Styles) -> {
+      let _ =
+        json.object([
+          #("type", json.string("asset-update")),
+          #("asset", json.string(project.name <> ".css")),
+        ])
+        |> json.to_string
+        |> mist.send_text_frame(connection, _)
 
-          mist.continue(Nil)
-        }
-      }
-
-    mist.Custom(watcher.Styles) -> mist.continue(Nil)
+      mist.continue(Nil)
+    }
 
     mist.Custom(watcher.BuildError(reason:)) -> {
       let message = ansi.strip(error.explain(reason))
