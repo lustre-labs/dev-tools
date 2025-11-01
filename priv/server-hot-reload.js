@@ -4,10 +4,18 @@ let reconnectAttempts = 0;
 const maxReconnectAttempts = 10;
 const reconnectInterval = 1000;
 
-if (window.sessionStorage.getItem("hotreload")) {
-  console.log("[lustre] Page reloaded by hot reload");
-  window.sessionStorage.removeItem("hotreload");
-}
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.sessionStorage.getItem("hotreload")) {
+    const scrollPosition = JSON.parse(window.sessionStorage.getItem("hotreload"));
+
+    console.log("[lustre] Page reloaded by hot reload");
+    window.sessionStorage.removeItem("hotreload");
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo(scrollPosition.x, scrollPosition.y);
+    });
+  }
+})
 
 window.addEventListener("error", (event) => {
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -40,8 +48,14 @@ function connect() {
 
     switch (data.type) {
       case "reload": {
-        window.sessionStorage.setItem("hotreload", "true");
+        const scrollPosition = JSON.stringify({
+          x: window.scrollX,
+          y: window.scrollY,
+        })
+
+        window.sessionStorage.setItem("hotreload", scrollPosition);
         window.location.reload();
+
         return;
       }
 
