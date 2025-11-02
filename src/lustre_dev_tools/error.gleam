@@ -29,6 +29,7 @@ pub type Error {
   UnknownBuildTool(name: String)
   UnknownGleamModule(name: String)
   UnknownIntegration(name: String)
+  UnknownWatchStrategy(name: String)
   UnsupportedBunVersion(path: String, expected: String, actual: String)
   UnsupportedPlatform(os: String, arch: String)
   UnsupportedTailwindVersion(path: String, expected: String, actual: String)
@@ -366,6 +367,16 @@ names are the full path from the `src` directory like `wibble/wobble/woo`.
 I don't know how to add the integration `${name}`. Currently I have integrations
 for Bun and Tailwind. If you have suggestions for other integrations we could
 support in the future, please open an issue at:
+
+  https://github.com/lustre-labs/dev-tools/issues/new
+      "
+      |> string.replace("${name}", name)
+
+    // -------------------------------------------------------------------------
+    UnknownWatchStrategy(name:) ->
+      "
+I don't know how to use the watch strategy `${name}`. Currently I support `polling`
+and `events` as options. If you think this is a bug, please open an issue at:
 
   https://github.com/lustre-labs/dev-tools/issues/new
       "

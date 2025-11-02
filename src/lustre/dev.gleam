@@ -430,6 +430,7 @@ key `tools.lustre.build.outdir`.
 type StartOptions {
   StartOptions(
     watch: List(String),
+    watch_mode: Option(watcher.Mode),
     proxy: Proxy,
     entry: String,
     tailwind_entry: Option(String),
@@ -472,6 +473,8 @@ directories are always watched and do not need to be specified here.
     "
   })
 
+  use watch_mode <- cli.string("", ["dev", "watch_mode"], project, "")
+
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
 
@@ -493,6 +496,14 @@ directories are always watched and do not need to be specified here.
     Error(e) -> Error(e)
   })
 
+  use watch_mode <- result.try(case watch_mode(flags) {
+    Ok("events") -> Ok(Some(watcher.Events))
+    Ok("polling") -> Ok(Some(watcher.Polling))
+    Ok("") | Ok("none") -> Ok(None)
+    Ok(other) -> Error(error.UnknownWatchStrategy(name: other))
+    Error(_) -> Ok(None)
+  })
+
   let options =
     StartOptions(
       watch: watch(flags)
@@ -504,6 +515,7 @@ directories are always watched and do not need to be specified here.
           }
         })
         |> list.append([project.src, project.assets]),
+      watch_mode:,
       proxy:,
       entry:,
       tailwind_entry:,
@@ -558,6 +570,7 @@ directories are always watched and do not need to be specified here.
   // fall back to file system polling.
   use watcher <- result.try(watcher.start(
     project,
+    options.watch_mode,
     error,
     options.watch,
     options.tailwind_entry,

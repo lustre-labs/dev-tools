@@ -129,6 +129,19 @@ These options affect the development server that runs when you run
 
   Default: `[]`.
 
+- **`watch_mode = "events" | "polling" | "none"`**: choose the file watching strategy
+  used by the development server. The `"events"` strategy uses platform-specific
+  file system events to detect changes, which is more efficient but may not work
+  correctly on all file systems. The `"polling"` strategy periodically checks for
+  changes, which is more reliable but uses more CPU. The `"none"` option disables
+  file watching entirely.
+
+  Users of editors like helix and nvim have reported problems with Bun's file
+  system events not working properly. If you're using one of these editors and
+  notice that changes are not triggering reloads, try switching to the `"polling"`
+  strategy.
+
+
 ## `tools.lustre.html`
 
 These options control the HTML document that Lustre generates when building your

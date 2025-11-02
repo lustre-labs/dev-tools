@@ -24,6 +24,11 @@ import simplifile
 
 // TYPES -----------------------------------------------------------------------
 
+pub type Mode {
+  Events
+  Polling
+}
+
 pub type Watcher =
   GroupRegistry(Event)
 
@@ -37,6 +42,7 @@ pub type Event {
 
 pub fn start(
   project: Project,
+  mode: Option(Mode),
   error: Booklet(Option(Error)),
   watch: List(String),
   tailwind_entry: Option(String),
@@ -46,36 +52,56 @@ pub fn start(
   let assert Ok(Started(data: builder, ..)) =
     start_build_actor(project, error, registry)
 
-  use _ <- result.try(case tailwind_entry {
-    Some(entry) ->
-      tailwind.watch(
-        project,
-        entry,
-        filepath.join(project.root, "build/dev/javascript"),
-        True,
-        fn() {
-          group_registry.members(registry, "watch")
-          |> list.each(process.send(_, Styles))
-        },
-      )
-    None -> Ok(Nil)
-  })
+  case mode {
+    None -> Ok(registry)
 
-  case start_bun_watcher(project, watch, tailwind_entry, builder) {
-    Ok(_) -> Ok(registry)
-    Error(_) -> {
-      cli.log(
-        "Failed to start file watcher, falling back to polling watcher.",
-        False,
-      )
+    Some(mode) -> {
+      use _ <- result.try(case tailwind_entry {
+        Some(entry) ->
+          tailwind.watch(
+            project,
+            entry,
+            filepath.join(project.root, "build/dev/javascript"),
+            True,
+            fn() {
+              group_registry.members(registry, "watch")
+              |> list.each(process.send(_, Styles))
+            },
+          )
 
-      start_polly_watcher(watch, tailwind_entry, builder)
-      |> result.replace(registry)
-      |> result.replace_error(error.CouldNotStartFileWatcher(
-        watcher: "polly",
-        os: system.detect_os(),
-        arch: system.detect_arch(),
-      ))
+        None -> Ok(Nil)
+      })
+
+      case mode {
+        Events ->
+          case start_bun_watcher(project, watch, tailwind_entry, builder) {
+            Ok(_) -> Ok(registry)
+
+            Error(_) -> {
+              cli.log(
+                "Failed to start file watcher, falling back to polling watcher.",
+                False,
+              )
+
+              start_polly_watcher(watch, tailwind_entry, builder)
+              |> result.replace(registry)
+              |> result.replace_error(error.CouldNotStartFileWatcher(
+                watcher: "polly",
+                os: system.detect_os(),
+                arch: system.detect_arch(),
+              ))
+            }
+          }
+
+        Polling ->
+          start_polly_watcher(watch, tailwind_entry, builder)
+          |> result.replace(registry)
+          |> result.replace_error(error.CouldNotStartFileWatcher(
+            watcher: "polly",
+            os: system.detect_os(),
+            arch: system.detect_arch(),
+          ))
+      }
     }
   }
 }
