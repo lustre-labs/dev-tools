@@ -4,8 +4,10 @@ import gleam/erlang/atom
 import gleam/erlang/port.{type Port}
 import gleam/erlang/process.{type Subject}
 import gleam/json.{type Json}
+import gleam/list
 import gleam/otp/actor.{type StartError}
 import gleam/result
+import gleam/string
 
 // TYPES -----------------------------------------------------------------------
 
@@ -52,10 +54,12 @@ pub fn start(
       }
 
       Data(data) -> {
-        case json.parse(data, decode.dynamic) {
-          Ok(data) -> handle_data(data)
-          Error(_) -> handle_unknown()
-        }
+        list.each(string.split(data, on: "\n"), fn(line) {
+          case json.parse(line, decode.dynamic) {
+            Ok(data) -> handle_data(data)
+            Error(_) -> handle_unknown()
+          }
+        })
 
         actor.continue(port)
       }
