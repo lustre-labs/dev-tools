@@ -497,9 +497,9 @@ directories are always watched and do not need to be specified here.
   })
 
   use watch_mode <- result.try(case watch_mode(flags) {
-    Ok("events") -> Ok(Some(watcher.Events))
+    Ok("events") | Ok("") -> Ok(Some(watcher.Events))
     Ok("polling") -> Ok(Some(watcher.Polling))
-    Ok("") | Ok("none") -> Ok(None)
+    Ok("none") -> Ok(None)
     Ok(other) -> Error(error.UnknownWatchStrategy(name: other))
     Error(_) -> Ok(None)
   })
