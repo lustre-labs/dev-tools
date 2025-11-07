@@ -112,7 +112,10 @@ pub fn dev(
         case project.has_node_modules {
           True ->
             html.script(
-              [attribute.type_("module"), attribute.src(entry <> ".dev.js")],
+              [
+                attribute.type_("module"),
+                attribute.src("/" <> entry <> ".dev.js"),
+              ],
               "",
             )
 
