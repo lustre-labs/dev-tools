@@ -75,8 +75,6 @@ function connect() {
           }
         }
 
-        removeError();
-
         return;
       }
 
