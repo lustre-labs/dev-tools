@@ -137,6 +137,7 @@ fn start_polly_watcher(
   case change {
     polly.Changed(path:) | polly.Created(path:) | polly.Deleted(path:) -> {
       let assert Ok(dir) = list.find(watch, string.starts_with(path, _))
+      let path = string.drop_start(path, string.length(dir) + 1)
 
       case Some(path) == option.map(tailwind_entry, string.append(_, ".css")) {
         True -> Nil
