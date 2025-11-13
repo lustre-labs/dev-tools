@@ -266,7 +266,21 @@ pub fn watch(
       //
       // Fortunately (?) Tailwind's output only really tells is it rebuilt and
       // nothing else so there's no data we'd need to parse out anyway.
-      on_unknown: handle_change,
+      on_unknown: fn() {
+        // Check that the output file has actually been modified before resending assets 
+        let file_info = simplifile.file_info(output <> ".css")
+        case file_info {
+          Ok(info) -> {
+            case info.mtime_seconds > info.atime_seconds {
+              True -> handle_change()
+              False -> Nil
+            }
+          }
+          Error(_e) -> {
+            cli.log("Failed to locate output css file", quiet)
+          }
+        }
+      },
     )
     |> result.replace_error(error.CouldNotStartFileWatcher(
       watcher: path,
