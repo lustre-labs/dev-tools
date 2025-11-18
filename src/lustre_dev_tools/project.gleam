@@ -123,6 +123,8 @@ fn find_root(path: String) -> String {
 pub fn exists(project: Project, module: String) -> Bool {
   case simplifile.is_file(filepath.join(project.src, module <> ".gleam")) {
     Ok(True) -> True
-    Ok(False) | Error(_) -> False
+    Ok(False) | Error(_) ->
+      simplifile.is_file(filepath.join(project.dev, module <> ".gleam"))
+      |> result.unwrap(False)
   }
 }

@@ -35,7 +35,7 @@ pub type Watcher =
 pub type Event {
   Change(in: String, path: String)
   Styles
-  BuildError(reason: Error)
+  BuildError
 }
 
 //
@@ -271,7 +271,7 @@ fn start_build_actor(
         )
 
         group_registry.members(watcher, "watch")
-        |> list.each(process.send(_, BuildError(reason:)))
+        |> list.each(process.send(_, BuildError))
 
         actor.continue(Waiting(self:))
       }

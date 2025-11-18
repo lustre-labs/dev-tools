@@ -89,16 +89,18 @@ pub fn start(
       mist.continue(Nil)
     }
 
-    mist.Custom(watcher.BuildError(reason:)) -> {
-      let message = ansi.strip(error.explain(reason))
+    mist.Custom(watcher.BuildError) -> {
+      let _ = case booklet.get(error) {
+        Some(reason) ->
+          json.object([
+            #("type", json.string("error")),
+            #("message", json.string(ansi.strip(error.explain(reason)))),
+          ])
+          |> json.to_string
+          |> mist.send_text_frame(connection, _)
 
-      let _ =
-        json.object([
-          #("type", json.string("error")),
-          #("message", json.string(message)),
-        ])
-        |> json.to_string
-        |> mist.send_text_frame(connection, _)
+        None -> Ok(Nil)
+      }
 
       mist.continue(Nil)
     }

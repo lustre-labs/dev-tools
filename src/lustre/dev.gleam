@@ -483,10 +483,14 @@ directories are always watched and do not need to be specified here.
     proxy_to(flags) |> result.unwrap(""),
   ))
 
-  let entry = case entries {
-    [] -> project.name
-    [entry, ..] -> entry
-  }
+  use entry <- result.try(case entries {
+    [] -> Ok(project.name)
+    [entry, ..] ->
+      case project.exists(project, entry) {
+        True -> Ok(entry)
+        False -> Error(error.UnknownGleamModule(name: entry))
+      }
+  })
 
   use tailwind_entry <- result.try(case tailwind.detect(project, entry) {
     Ok(tailwind.HasTailwindEntry) -> Ok(Some(entry))
