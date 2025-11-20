@@ -42,7 +42,7 @@ pub fn generate(
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href("/" <> filepath.base_name(entry) <> ".css"),
+              attribute.href("/" <> filepath.base_name(entry)),
             ])
 
           None -> element.none()
@@ -99,7 +99,7 @@ pub fn dev(
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href("/" <> entry <> ".css"),
+              attribute.href("/" <> filepath.base_name(entry)),
             ])
 
           None -> element.none()

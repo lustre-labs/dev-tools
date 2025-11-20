@@ -25,8 +25,8 @@ import tom
 ///
 ///
 pub type Detection {
-  HasViableEntry
-  HasTailwindEntry
+  HasViableEntry(path: String)
+  HasTailwindEntry(path: String)
   HasLegacyConfig
   Nothing
 }
@@ -111,10 +111,9 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
 
   // 7.
   use detection <- result.try(detect(project, project.name))
-  let path = filepath.join(project.src, project.name <> ".css")
 
   case detection {
-    HasTailwindEntry -> Ok(path_to_exe)
+    HasTailwindEntry(_) -> Ok(path_to_exe)
 
     HasLegacyConfig -> {
       let css = [
@@ -133,7 +132,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
       Ok(path_to_exe)
     }
 
-    HasViableEntry -> {
+    HasViableEntry(path:) -> {
       use css <- result.try(
         simplifile.read(path)
         |> result.map_error(error.CouldNotReadFile(path:, reason: _)),
@@ -171,11 +170,19 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
 pub fn detect(project: Project, entry: String) -> Result(Detection, Error) {
   // 1. Check if the user has a CSS file that is - or could be - the entry for
   //    Tailwind.
-  let tailwind_config = filepath.join(project.src, entry <> ".css")
-  let has_tailwind_config =
-    tailwind_config
-    |> simplifile.is_file
-    |> result.unwrap(False)
+  let tailwind_config = {
+    let src_path = filepath.join(project.src, entry <> ".css")
+    let dev_path = filepath.join(project.dev, entry <> ".css")
+
+    case simplifile.is_file(src_path) {
+      Ok(True) -> Ok(src_path)
+      Ok(False) | Error(_) ->
+        case simplifile.is_file(dev_path) {
+          Ok(True) -> Ok(dev_path)
+          Ok(False) | Error(_) -> Error(Nil)
+        }
+    }
+  }
 
   // 2. Detect if they have a legacy Tailwind v3 config file, which is
   //    deprecated but still supported in v4.
@@ -185,40 +192,40 @@ pub fn detect(project: Project, entry: String) -> Result(Detection, Error) {
     |> simplifile.is_file
     |> result.unwrap(False)
 
-  case has_tailwind_config {
-    True -> {
+  case tailwind_config {
+    Ok(path) -> {
       use css <- result.try(
-        simplifile.read(tailwind_config)
-        |> result.map_error(error.CouldNotReadFile(tailwind_config, _)),
+        simplifile.read(path)
+        |> result.map_error(error.CouldNotReadFile(path, _)),
       )
 
       let assert Ok(re) = regexp.from_string("^@import\\s+['\"]tailwindcss")
       case regexp.check(re, css) {
-        True -> Ok(HasTailwindEntry)
-        False -> Ok(HasViableEntry)
+        True -> Ok(HasTailwindEntry(path:))
+        False -> Ok(HasViableEntry(path:))
       }
     }
-    False if has_legacy_config -> Ok(HasLegacyConfig)
-    False -> Ok(Nothing)
+    Error(_) if has_legacy_config -> Ok(HasLegacyConfig)
+    Error(_) -> Ok(Nothing)
   }
 }
 
 pub fn build(
   project project: Project,
-  input in: String,
+  input entry: String,
   outdir out: String,
   minify minify: Bool,
   quiet quiet: Bool,
 ) -> Result(Nil, Error) {
   use cmd <- result.try(locate_tailwind(project, quiet:))
 
-  let name = filepath.base_name(in)
+  let name = filepath.base_name(entry)
   let output = filepath.join(project.root, out) |> filepath.join(name)
 
   let args =
     list.flatten([
-      ["-i", filepath.join(project.src, in <> ".css")],
-      ["-o", output <> ".css"],
+      ["-i", entry],
+      ["-o", output],
       case minify {
         True -> ["--minify"]
         False -> []
@@ -239,21 +246,15 @@ pub fn build(
 
 pub fn watch(
   project project: Project,
-  input in: String,
+  input entry: String,
   outdir out: String,
   quiet quiet: Bool,
   on_change handle_change: fn() -> Nil,
 ) -> Result(Nil, Error) {
   use path <- result.try(locate_tailwind(project, quiet:))
-  let name = filepath.base_name(in)
+  let name = filepath.base_name(entry)
   let output = filepath.join(project.root, out) |> filepath.join(name)
-  let flags = [
-    "-i",
-    filepath.join(project.src, in <> ".css"),
-    "-o",
-    output <> ".css",
-    "-w",
-  ]
+  let flags = ["-i", entry, "-o", output, "-w"]
 
   use _ <- result.try(
     port.start(
@@ -267,8 +268,8 @@ pub fn watch(
       // Fortunately (?) Tailwind's output only really tells is it rebuilt and
       // nothing else so there's no data we'd need to parse out anyway.
       on_unknown: fn() {
-        // Check that the output file has actually been modified before resending assets 
-        let file_info = simplifile.file_info(output <> ".css")
+        // Check that the output file has actually been modified before resending assets
+        let file_info = simplifile.file_info(output)
         case file_info {
           Ok(info) -> {
             case info.mtime_seconds > info.atime_seconds {

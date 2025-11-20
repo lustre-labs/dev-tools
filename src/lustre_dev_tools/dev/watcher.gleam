@@ -114,7 +114,7 @@ fn start_bun_watcher(
 ) -> Result(_, _) {
   use dir, path <- bun.watch(project, watch)
 
-  case Some(path) == option.map(tailwind_entry, string.append(_, ".css")) {
+  case Some(path) == tailwind_entry {
     True -> Nil
     False -> process.send(builder, FileChanged(in: dir, path:))
   }
@@ -139,7 +139,7 @@ fn start_polly_watcher(
       let assert Ok(dir) = list.find(watch, string.starts_with(path, _))
       let path = string.drop_start(path, string.length(dir) + 1)
 
-      case Some(path) == option.map(tailwind_entry, string.append(_, ".css")) {
+      case Some(path) == tailwind_entry {
         True -> Nil
         False -> process.send(builder, FileChanged(in: dir, path:))
       }

@@ -305,21 +305,21 @@ key `tools.lustre.build.outdir`.
 
   use tailwind_entry <- result.try(
     case tailwind.detect(project, tailwind_entry) {
-      Ok(tailwind.HasTailwindEntry) if options.skip_tailwind -> Ok(None)
+      Ok(tailwind.HasTailwindEntry(_)) if options.skip_tailwind -> Ok(None)
 
-      Ok(tailwind.HasTailwindEntry) -> {
+      Ok(tailwind.HasTailwindEntry(path:)) -> {
         use _ <- result.try(tailwind.build(
           project,
-          tailwind_entry,
+          path,
           options.outdir,
           options.minify,
           quiet: False,
         ))
 
-        Ok(Some(tailwind_entry))
+        Ok(Some(path))
       }
 
-      Ok(tailwind.HasViableEntry)
+      Ok(tailwind.HasViableEntry(_))
       | Ok(tailwind.Nothing)
       | Ok(tailwind.HasLegacyConfig) -> Ok(None)
 
@@ -493,8 +493,8 @@ directories are always watched and do not need to be specified here.
   })
 
   use tailwind_entry <- result.try(case tailwind.detect(project, entry) {
-    Ok(tailwind.HasTailwindEntry) -> Ok(Some(entry))
-    Ok(tailwind.HasViableEntry)
+    Ok(tailwind.HasTailwindEntry(path:)) -> Ok(Some(path))
+    Ok(tailwind.HasViableEntry(_))
     | Ok(tailwind.Nothing)
     | Ok(tailwind.HasLegacyConfig) -> Ok(None)
     Error(e) -> Error(e)
