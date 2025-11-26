@@ -9,6 +9,7 @@ import gleam/erlang/process.{type Subject}
 import gleam/http
 import gleam/http/request.{Request}
 import gleam/httpc
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
@@ -17,7 +18,7 @@ import gleam/string
 import lustre_dev_tools/cli
 import lustre_dev_tools/error.{type Error}
 import lustre_dev_tools/port
-import lustre_dev_tools/project.{type Project}
+import lustre_dev_tools/project.{type Project, bin_timeout_ms}
 import lustre_dev_tools/system
 import simplifile
 import tom
@@ -50,12 +51,23 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
       query: option.None,
     )
 
+  let timeout_ms = bin_timeout_ms(project)
   cli.log("Downloading Bun v" <> version, quiet)
+
+  case timeout_ms != 60_000 {
+    True ->
+      cli.log(
+        "Using custom timeout: " <> int.to_string(timeout_ms) <> "ms",
+        quiet,
+      )
+    False -> Nil
+  }
 
   use res <- result.try(
     httpc.configure()
     // GitHub will redirect us to a CDN for the download, so we need to make sure
     // httpc is configured to follow redirects.
+    |> httpc.timeout(timeout_ms)
     |> httpc.follow_redirects(True)
     |> httpc.dispatch_bits(req)
     |> result.map_error(error.CouldNotDownloadBunBinary),
