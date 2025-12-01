@@ -9,7 +9,7 @@ might look something like this:
 # Use the system-installed `bun` binary instead of downloading one automatically.
 bun = "system"
 # gleam/httpc download timeout option in milliseconds for bun/tailwind cli executable DLs (default: 60000ms)
-timeout_ms = 120000
+timeout = 120000
 
 [tools.lustre.build]
 minify = true
