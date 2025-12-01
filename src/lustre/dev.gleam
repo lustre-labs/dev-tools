@@ -129,7 +129,7 @@ pub fn main() {
 // COMMANDS: ADD ---------------------------------------------------------------
 
 type AddOptions {
-  AddOptions(integrations: List(String))
+  AddOptions(integrations: List(String), timeout: Int)
 }
 
 fn add(project: Project) -> Command(Result(Nil, Error)) {
@@ -142,17 +142,31 @@ integrations from GitHub for dev tools to use.
     "
   })
 
+  use timeout <- cli.int("timeout", ["bin", "timeout"], project, {
+    "
+Configure the network request timeout, in milliseconds, when downloading
+external binaries for Bun and Tailwind. Defaults to 60000ms.
+
+This option can also be provided in your `gleam.toml` configuration under the
+key `tools.lustre.bin.timeout`.
+    "
+  })
+
   use get_integration <- glint.named_arg("integration")
   use <- glint.unnamed_args(glint.MinArgs(0))
-  use arg, args, _ <- glint.command
+  use arg, args, flags <- glint.command
 
-  let options = AddOptions(integrations: [get_integration(arg), ..args])
+  let options =
+    AddOptions(
+      integrations: [get_integration(arg), ..args],
+      timeout: timeout(flags) |> result.unwrap(60_000),
+    )
   use integration <- list.try_each(options.integrations)
 
   case integration {
-    "bun" -> bun.download(project, quiet: False)
+    "bun" -> bun.download(project, quiet: False, timeout: options.timeout)
     "tailwind" | "tailwindcss" | "tw" ->
-      tailwind.download(project, quiet: False)
+      tailwind.download(project, quiet: False, timeout: options.timeout)
     name -> Error(error.UnknownIntegration(name:))
   }
 }

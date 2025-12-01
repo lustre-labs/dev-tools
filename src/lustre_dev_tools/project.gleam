@@ -112,16 +112,6 @@ pub fn config() -> Project {
 }
 
 // QUERIES ---------------------------------------------------------------------
-
-pub fn bin_timeout_ms(project: Project) -> Int {
-  let bin_table =
-    tom.get_table(project.options, ["bin"])
-    |> result.unwrap(dict.new())
-
-  tom.get_int(bin_table, ["timeout_ms"])
-  |> result.unwrap(60_000)
-}
-
 fn find_root(path: String) -> String {
   case simplifile.is_file(filepath.join(path, "gleam.toml")) {
     Ok(True) -> path
