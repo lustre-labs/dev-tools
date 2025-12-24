@@ -290,7 +290,7 @@ key `tools.lustre.build.outdir`.
   use bun_entries <- result.try({
     use entry <- list.try_map(options.entries)
     let segments = string.split(entry, "/")
-    let relative = string.repeat("../", list.length(segments) + 2)
+    let relative = string.repeat("../", list.length(segments) + 1)
     let module =
       "import { main } from '"
       <> relative
