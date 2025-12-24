@@ -289,8 +289,12 @@ key `tools.lustre.build.outdir`.
 
   use bun_entries <- result.try({
     use entry <- list.try_map(options.entries)
+    let segments = string.split(entry, "/")
+    let relative = string.repeat("../", list.length(segments) + 2)
     let module =
-      "import { main } from '../../build/dev/javascript/${name}/${entry}.mjs'; main();"
+      "import { main } from '"
+      <> relative
+      <> "build/dev/javascript/${name}/${entry}.mjs'; main();"
       |> string.replace("${name}", project.name)
       |> string.replace("${entry}", entry)
 
