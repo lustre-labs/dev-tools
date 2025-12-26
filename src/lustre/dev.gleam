@@ -296,6 +296,14 @@ key `tools.lustre.build.outdir`.
     let path = filepath.join(project.build, name)
 
     use _ <- result.try(
+      simplifile.create_directory_all(filepath.directory_name(path))
+      |> result.map_error(error.CouldNotWriteFile(
+        filepath.directory_name(path),
+        _,
+      )),
+    )
+
+    use _ <- result.try(
       simplifile.write(path, module)
       |> result.map_error(error.CouldNotWriteFile(path, _)),
     )
