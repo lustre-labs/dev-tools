@@ -40,7 +40,7 @@ pub type Detection {
 pub fn download(
   project: Project,
   quiet quiet: Bool,
-  timeout timeout: Int,
+  timeout_ms timeout_ms: Int,
 ) -> Result(String, Error) {
   // 1. First detect what release we need to download based on the user's system
   //    information. If this fails it's because Tailwind doesn't support the user's
@@ -65,15 +65,9 @@ pub fn download(
 
   cli.log("Downloading TailwindCSS v" <> version, quiet)
 
-  case timeout != 60_000 {
-    True ->
-      cli.log("Using custom timeout: " <> int.to_string(timeout) <> "ms", quiet)
-    False -> Nil
-  }
-
   use res <- result.try(
     httpc.configure()
-    |> httpc.timeout(timeout)
+    |> httpc.timeout(timeout_ms)
     // GitHub will redirect us to a CDN for the download, so we need to make sure
     // httpc is configured to follow redirects.
     |> httpc.follow_redirects(True)
@@ -339,6 +333,7 @@ fn locate_tailwind(project: Project, quiet quiet: Bool) -> Result(String, Error)
       // If not, we automatically download it now.
       let timeout =
         tom.get_int(project.options, ["bin", "timeout"])
+        |> result.map(fn(seconds) { seconds * 1000 })
         |> result.unwrap(60_000)
 
       use path <- result.try(case simplifile.is_file(path) {

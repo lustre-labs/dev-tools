@@ -31,7 +31,7 @@ import tom
 pub fn download(
   project: Project,
   quiet quiet: Bool,
-  timeout timeout: Int,
+  timeout_ms timeout_ms: Int,
 ) -> Result(String, Error) {
   // 1. First detect what release we need to download based on the user's system
   //    information. If this fails it's because Bun doesn't support the user's
@@ -57,17 +57,11 @@ pub fn download(
 
   cli.log("Downloading Bun v" <> version, quiet)
 
-  case timeout != 60_000 {
-    True ->
-      cli.log("Using custom timeout: " <> int.to_string(timeout) <> "ms", quiet)
-    False -> Nil
-  }
-
   use res <- result.try(
     httpc.configure()
     // GitHub will redirect us to a CDN for the download, so we need to make sure
     // httpc is configured to follow redirects.
-    |> httpc.timeout(timeout)
+    |> httpc.timeout(timeout_ms)
     |> httpc.follow_redirects(True)
     |> httpc.dispatch_bits(req)
     |> result.map_error(error.CouldNotDownloadBunBinary),
@@ -228,6 +222,7 @@ fn locate_bun(project: Project, quiet: Bool) -> Result(String, Error) {
       // If not, we automatically download it now.
       let timeout =
         tom.get_int(project.options, ["bin", "timeout"])
+        |> result.map(fn(seconds) { seconds * 1000 })
         |> result.unwrap(60_000)
 
       use path <- result.try(case simplifile.is_file(path) {

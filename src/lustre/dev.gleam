@@ -144,8 +144,8 @@ integrations from GitHub for dev tools to use.
 
   use timeout <- cli.int("timeout", ["bin", "timeout"], project, {
     "
-Configure the network request timeout, in milliseconds, when downloading
-external binaries for Bun and Tailwind. Defaults to 60000ms.
+Configure the network request timeout, in seconds, when downloading
+external binaries for Bun and Tailwind. Defaults to 60s.
 
 This option can also be provided in your `gleam.toml` configuration under the
 key `tools.lustre.bin.timeout`.
@@ -159,14 +159,16 @@ key `tools.lustre.bin.timeout`.
   let options =
     AddOptions(
       integrations: [get_integration(arg), ..args],
-      timeout: timeout(flags) |> result.unwrap(60_000),
+      timeout: timeout(flags)
+        |> result.map(fn(seconds) { seconds * 1000 })
+        |> result.unwrap(60_000),
     )
   use integration <- list.try_each(options.integrations)
 
   case integration {
-    "bun" -> bun.download(project, quiet: False, timeout: options.timeout)
+    "bun" -> bun.download(project, quiet: False, timeout_ms: options.timeout)
     "tailwind" | "tailwindcss" | "tw" ->
-      tailwind.download(project, quiet: False, timeout: options.timeout)
+      tailwind.download(project, quiet: False, timeout_ms: options.timeout)
     name -> Error(error.UnknownIntegration(name:))
   }
 }
