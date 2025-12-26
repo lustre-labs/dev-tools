@@ -9,6 +9,7 @@ import gleam/erlang/process.{type Subject}
 import gleam/http
 import gleam/http/request.{Request}
 import gleam/httpc
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
@@ -27,7 +28,11 @@ import tom
 /// Download bun cli executable, verify integrity and copy to lustre bin path.
 /// Returns absolute path to executable.
 ///
-pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
+pub fn download(
+  project: Project,
+  quiet quiet: Bool,
+  timeout_ms timeout_ms: Int,
+) -> Result(String, Error) {
   // 1. First detect what release we need to download based on the user's system
   //    information. If this fails it's because Bun doesn't support the user's
   //    system.
@@ -56,6 +61,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
     httpc.configure()
     // GitHub will redirect us to a CDN for the download, so we need to make sure
     // httpc is configured to follow redirects.
+    |> httpc.timeout(timeout_ms)
     |> httpc.follow_redirects(True)
     |> httpc.dispatch_bits(req)
     |> result.map_error(error.CouldNotDownloadBunBinary),
@@ -214,14 +220,19 @@ fn locate_bun(project: Project, quiet: Bool) -> Result(String, Error) {
 
       // Detect if we're already downloaded Bun because of an earlier command.
       // If not, we automatically download it now.
+      let timeout =
+        tom.get_int(project.options, ["bin", "timeout"])
+        |> result.map(fn(seconds) { seconds * 1000 })
+        |> result.unwrap(60_000)
+
       use path <- result.try(case simplifile.is_file(path) {
         Ok(True) -> {
           case verify_version(path) {
             Ok(_) -> Ok(path)
-            Error(_) -> download(project, quiet)
+            Error(_) -> download(project, quiet, timeout)
           }
         }
-        _ -> download(project, quiet)
+        _ -> download(project, quiet, timeout)
       })
 
       Ok(path)

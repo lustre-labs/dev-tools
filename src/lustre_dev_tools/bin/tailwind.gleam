@@ -6,6 +6,7 @@ import gleam/crypto
 import gleam/http.{Get, Https}
 import gleam/http/request.{Request}
 import gleam/httpc
+import gleam/int
 import gleam/list
 import gleam/option.{None}
 import gleam/regexp
@@ -36,7 +37,11 @@ pub type Detection {
 /// Download tailwindcss cli executable, verify integrity and copy to lustre bin path.
 /// Returns absolute path to executable.
 ///
-pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
+pub fn download(
+  project: Project,
+  quiet quiet: Bool,
+  timeout_ms timeout_ms: Int,
+) -> Result(String, Error) {
   // 1. First detect what release we need to download based on the user's system
   //    information. If this fails it's because Tailwind doesn't support the user's
   //    system.
@@ -62,9 +67,7 @@ pub fn download(project: Project, quiet quiet: Bool) -> Result(String, Error) {
 
   use res <- result.try(
     httpc.configure()
-    // The Tailwind binary is uncompressed and ~100mb so we'll bump the timeout
-    // up to a minute to be safe.
-    |> httpc.timeout(60_000)
+    |> httpc.timeout(timeout_ms)
     // GitHub will redirect us to a CDN for the download, so we need to make sure
     // httpc is configured to follow redirects.
     |> httpc.follow_redirects(True)
@@ -328,14 +331,19 @@ fn locate_tailwind(project: Project, quiet quiet: Bool) -> Result(String, Error)
 
       // Detect if we've already downloaded Tailwind because of an earlier command.
       // If not, we automatically download it now.
+      let timeout =
+        tom.get_int(project.options, ["bin", "timeout"])
+        |> result.map(fn(seconds) { seconds * 1000 })
+        |> result.unwrap(60_000)
+
       use path <- result.try(case simplifile.is_file(path) {
         Ok(True) -> {
           case verify_version(path) {
             Ok(_) -> Ok(path)
-            Error(_) -> download(project, quiet:)
+            Error(_) -> download(project, quiet, timeout)
           }
         }
-        _ -> download(project, quiet:)
+        _ -> download(project, quiet, timeout)
       })
 
       Ok(path)

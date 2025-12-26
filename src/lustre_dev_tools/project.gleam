@@ -112,7 +112,6 @@ pub fn config() -> Project {
 }
 
 // QUERIES ---------------------------------------------------------------------
-
 fn find_root(path: String) -> String {
   case simplifile.is_file(filepath.join(path, "gleam.toml")) {
     Ok(True) -> path

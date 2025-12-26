@@ -8,6 +8,8 @@ might look something like this:
 [tools.lustre.bin]
 # Use the system-installed `bun` binary instead of downloading one automatically.
 bun = "system"
+# gleam/httpc download timeout option in seconds for bun/tailwind cli executable DLs (default: 60s)
+timeout = 120
 
 [tools.lustre.build]
 minify = true
@@ -140,7 +142,6 @@ These options affect the development server that runs when you run
   system events not working properly. If you're using one of these editors and
   notice that changes are not triggering reloads, try switching to the `"polling"`
   strategy.
-
 
 ## `tools.lustre.html`
 
