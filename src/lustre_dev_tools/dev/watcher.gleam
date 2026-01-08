@@ -126,27 +126,27 @@ fn start_polly_watcher(
   builder: Builder,
 ) -> Result(_, _) {
   let assert [first, ..rest] = watch
-  let polly =
-    polly.new()
-    |> polly.add_dir(first)
-    |> polly.ignore_initial_missing
-    |> list.fold(rest, _, polly.add_dir)
 
-  use change <- polly.watch(polly)
+  polly.new()
+  |> polly.add_dir(first)
+  |> polly.ignore_initial_missing
+  |> list.fold(rest, _, polly.add_dir)
+  |> polly.add_callback(fn(change) {
+    case change {
+      polly.Changed(path:) | polly.Created(path:) | polly.Deleted(path:) -> {
+        let assert Ok(dir) = list.find(watch, string.starts_with(path, _))
+        let path = string.drop_start(path, string.length(dir) + 1)
 
-  case change {
-    polly.Changed(path:) | polly.Created(path:) | polly.Deleted(path:) -> {
-      let assert Ok(dir) = list.find(watch, string.starts_with(path, _))
-      let path = string.drop_start(path, string.length(dir) + 1)
-
-      case Some(path) == tailwind_entry {
-        True -> Nil
-        False -> process.send(builder, FileChanged(in: dir, path:))
+        case Some(path) == tailwind_entry {
+          True -> Nil
+          False -> process.send(builder, FileChanged(in: dir, path:))
+        }
       }
-    }
 
-    polly.Error(..) -> Nil
-  }
+      polly.Error(..) -> Nil
+    }
+  })
+  |> polly.watch
 }
 
 //
