@@ -6,7 +6,6 @@ import gleam/crypto
 import gleam/http.{Get, Https}
 import gleam/http/request.{Request}
 import gleam/httpc
-import gleam/int
 import gleam/list
 import gleam/option.{None}
 import gleam/regexp

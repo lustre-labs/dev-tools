@@ -9,7 +9,6 @@ import gleam/erlang/process.{type Subject}
 import gleam/http
 import gleam/http/request.{Request}
 import gleam/httpc
-import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
