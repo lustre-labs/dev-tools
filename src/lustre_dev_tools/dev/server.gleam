@@ -32,7 +32,7 @@ type Context {
     entry: String,
     tailwind_entry: Option(String),
     priv: String,
-    proxy: Proxy,
+    proxies: List(Proxy),
   )
 }
 
@@ -44,14 +44,14 @@ pub fn start(
   project: Project,
   error: Booklet(Option(Error)),
   watcher: Watcher,
-  proxy: Proxy,
+  proxies: List(Proxy),
   entry: String,
   tailwind_entry: Option(String),
   host: String,
   port: Int,
 ) -> Result(Started(Supervisor), Error) {
   let assert Ok(priv) = application.priv_directory("lustre_dev_tools")
-  let context = Context(project:, entry:, tailwind_entry:, priv:, proxy:)
+  let context = Context(project:, entry:, tailwind_entry:, priv:, proxies:)
   let handler = fn(request) {
     case request.path_segments(request) {
       [".lustre", "ws"] -> live_reload.start(request, project, error, watcher)
@@ -89,7 +89,7 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
 
   use <- wisp.serve_static(request, under: "/", from: context.project.assets)
 
-  use <- proxy.handle(request, context.proxy)
+  use <- proxy.handle(request, context.proxies)
 
   case request.method, filepath.extension(request.path) {
     // If we get this far then we want to operate in a type of "SPA mode" that

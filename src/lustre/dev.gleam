@@ -459,7 +459,7 @@ type StartOptions {
   StartOptions(
     watch: List(String),
     watch_mode: Option(watcher.Mode),
-    proxy: Proxy,
+    proxies: List(Proxy),
     entry: String,
     tailwind_entry: Option(String),
     host: String,
@@ -491,9 +491,6 @@ Configure the port the development server will listen on: by default this is
     "
   })
 
-  use proxy_from <- cli.string("", ["dev", "proxy", "from"], project, "")
-  use proxy_to <- cli.string("", ["dev", "proxy", "to"], project, "")
-
   use watch <- cli.string_list("watch", ["dev", "watch"], project, {
     "
 Configure additional directories to watch for changes. The `src/` and `assets/`
@@ -506,10 +503,9 @@ directories are always watched and do not need to be specified here.
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
 
-  use proxy <- result.try(proxy.new(
-    proxy_from(flags) |> result.unwrap(""),
-    proxy_to(flags) |> result.unwrap(""),
-  ))
+  use proxies <- result.try(
+    proxy.get_proxies_from_config(project.options, ["dev", "proxy"])
+  )
 
   use entry <- result.try(case entries {
     [] -> Ok(project.name)
@@ -547,7 +543,7 @@ directories are always watched and do not need to be specified here.
         })
         |> list.append([project.src, project.assets]),
       watch_mode:,
-      proxy:,
+      proxies:,
       entry:,
       tailwind_entry:,
       host: host(flags) |> result.unwrap("localhost"),
@@ -611,7 +607,7 @@ directories are always watched and do not need to be specified here.
     project,
     error,
     watcher,
-    options.proxy,
+    options.proxies,
     options.entry,
     options.tailwind_entry,
     options.host,

@@ -23,9 +23,11 @@ pub type Error {
   FailedToBuildProject(reason: String)
   MissingRequiredFlag(name: List(String))
   MustBeProjectRoot(path: String)
+  ProxyInvalidConfig
   ProxyInvalidTo
   ProxyMissingFrom
   ProxyMissingTo
+  ProxyMissingFromTo
   UnknownBuildTool(name: String)
   UnknownGleamModule(name: String)
   UnknownIntegration(name: String)
@@ -311,6 +313,14 @@ Please run me from the directory that contains that file!
       |> string.replace("${path}", path)
 
     // -------------------------------------------------------------------------
+    ProxyInvalidConfig ->
+      "
+I ran into a problem trying to set up the proxy you provided. Consult documentation 
+to ensure that the proxy is correctly configured in `gleam.toml`.
+      "
+
+
+    // -------------------------------------------------------------------------
     ProxyInvalidTo ->
       "
 I ran into a problem trying to set up the proxy you provided. The `to` URL
@@ -324,6 +334,15 @@ I ran into a problem trying to set up the proxy you provided. The `from` field
 is missing. Please make sure you provide a value for the `from` field like
 `\"/api\"`.
       "
+
+    // -------------------------------------------------------------------------
+    ProxyMissingFromTo ->
+      "
+I ran into a problem trying to set up the proxy you provided. The `from` and `to`
+fields are missing. Please make sure you provide values for the `from` and `to`
+fields like `\"/api\"`.
+      "
+
 
     // -------------------------------------------------------------------------
     ProxyMissingTo ->

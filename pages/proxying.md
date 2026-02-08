@@ -13,9 +13,9 @@ proxying that request to your backend.
 
 ## Configuration
 
-To configure the API proxy, you'll need to add an entry to your `gleam.toml` file
-under the `tools.lustre.dev` section. The most common configuration looks something
-like this:
+To configure the API proxy, you'll need to add a `proxy` entry to your `gleam.toml`
+file under the `tools.lustre.dev` section. The most common configuration looks 
+something like this:
 
 ```toml
 [tools.lustre.dev]
@@ -25,3 +25,14 @@ proxy = { from = "/api", to = "http://localhost:3000/api" }
 In this example, any requests made to paths starting with `/api` will be forwarded
 to `http://localhost:3000/api`. So a request to `/api/users` would be proxied to
 `http://localhost:3000/api/users`.
+
+You can also proxy multiple paths to different endpoints in your backend, or even
+different servers if you need to: 
+
+```toml
+[tools.lustre.dev]
+proxy = [{ from = "/api", to = "http://localhost:3000/api" }, { from = "/auth", to = "http://localhost:3000/auth" }]
+```
+
+In this example, requests will be forwarded to the `auth` or `api` endpoints depending 
+on the request's path. :wa
