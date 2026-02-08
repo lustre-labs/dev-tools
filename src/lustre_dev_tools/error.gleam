@@ -26,6 +26,7 @@ pub type Error {
   ProxyInvalidTo
   ProxyMissingFrom
   ProxyMissingTo
+  ProxyMissingFromTo
   UnknownBuildTool(name: String)
   UnknownGleamModule(name: String)
   UnknownIntegration(name: String)
@@ -324,6 +325,15 @@ I ran into a problem trying to set up the proxy you provided. The `from` field
 is missing. Please make sure you provide a value for the `from` field like
 `\"/api\"`.
       "
+
+    // -------------------------------------------------------------------------
+    ProxyMissingFromTo ->
+      "
+I ran into a problem trying to set up the proxy you provided. The `from` and `to`
+fields are missing. Please make sure you provide values for the `from` and `to`
+fields like `\"/api\"`.
+      "
+
 
     // -------------------------------------------------------------------------
     ProxyMissingTo ->
