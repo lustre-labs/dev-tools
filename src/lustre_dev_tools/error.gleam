@@ -23,6 +23,7 @@ pub type Error {
   FailedToBuildProject(reason: String)
   MissingRequiredFlag(name: List(String))
   MustBeProjectRoot(path: String)
+  ProxyInvalidConfig
   ProxyInvalidTo
   ProxyMissingFrom
   ProxyMissingTo
@@ -310,6 +311,14 @@ I need to be run from the root directory of a Gleam project. I looked for a
 Please run me from the directory that contains that file!
       "
       |> string.replace("${path}", path)
+
+    // -------------------------------------------------------------------------
+    ProxyInvalidConfig ->
+      "
+I ran into a problem trying to set up the proxy you provided. Consult documentation 
+to ensure that the proxy is correctly configured in `gleam.toml`.
+      "
+
 
     // -------------------------------------------------------------------------
     ProxyInvalidTo ->

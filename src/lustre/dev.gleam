@@ -503,10 +503,9 @@ directories are always watched and do not need to be specified here.
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
 
-  let proxies =
-    project.options
-    |> proxy.get_proxies_from_config(["dev", "proxy"])
-    |> result.unwrap([])
+  use proxies <- result.try(
+    proxy.get_proxies_from_config(project.options, ["dev", "proxy"])
+  )
 
   use entry <- result.try(case entries {
     [] -> Ok(project.name)

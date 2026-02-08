@@ -23,7 +23,7 @@ pub type Proxy {
 
 // CONSTRUCTORS ----------------------------------------------------------------
 
-pub fn new(from: String, to: String) -> Result(Proxy, Nil) {
+pub fn new(from: String, to: String) -> Result(Proxy, Error) {
   case from, to {
     "", "" -> Error(error.ProxyMissingFromTo)
     "", _ -> Error(error.ProxyMissingFrom)
@@ -43,40 +43,48 @@ pub fn new(from: String, to: String) -> Result(Proxy, Nil) {
 
 // EXTRACTORS ------------------------------------------------------------------
 
-fn parse_proxy(options: Dict(String, Toml)) -> Result(Proxy, Nil) {
+fn parse_proxy(options: Dict(String, Toml)) -> Result(Proxy, Error) {
   use from <- result.try(
-    tom.get_string(options, ["from"]) |> result.replace_error(Nil),
+    tom.get_string(options, ["from"])
+    |> result.replace_error(error.ProxyMissingFrom),
   )
   use to <- result.try(
-    tom.get_string(options, ["to"]) |> result.replace_error(Nil),
+    tom.get_string(options, ["to"])
+    |> result.replace_error(error.ProxyMissingTo),
   )
-  use proxy <- result.try(new(from, to) |> result.replace_error(Nil))
-  Ok(proxy)
+  new(from, to)
 }
 
 pub fn get_proxies_from_config(
   config: Dict(String, Toml),
   path: List(String),
-) -> Result(List(Proxy), Nil) {
-  use proxy_toml <- result.try(
-    tom.get(config, path) |> result.replace_error(Nil),
-  )
-  case proxy_toml {
-    tom.InlineTable(table) ->
-      table
-      |> parse_proxy
-      |> result.map(list.wrap)
-    tom.Array(array) -> {
-      array
-      |> list.map(fn(table) {
-        case table {
-          tom.InlineTable(proxy) -> parse_proxy(proxy)
-          _ -> Error(Nil)
+) -> Result(List(Proxy), Error) {
+  case tom.get(config, path) {
+    Ok(proxy_toml) -> {
+      case proxy_toml {
+        tom.InlineTable(table) ->
+          table
+          |> parse_proxy
+          |> result.map(list.wrap)
+        tom.Array(array) -> {
+          array
+          |> list.map(fn(table) {
+            case table {
+              tom.InlineTable(proxy) -> parse_proxy(proxy)
+              _ -> Error(error.ProxyInvalidConfig)
+            }
+          })
+          |> result.all
         }
-      })
-      |> result.all
+        _ -> Error(error.ProxyInvalidConfig)
+      }
     }
-    _ -> Error(Nil)
+    Error(e) -> {
+      case e {
+        tom.NotFound(_) -> Ok([])
+        tom.WrongType(_, _, _) -> Error(error.ProxyInvalidConfig)
+      }
+    }
   }
 }
 
