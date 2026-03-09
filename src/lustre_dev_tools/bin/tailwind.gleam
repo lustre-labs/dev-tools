@@ -38,6 +38,7 @@ pub type Detection {
 ///
 pub fn download(
   project: Project,
+  generate_config generate_config: Bool,
   quiet quiet: Bool,
   timeout_ms timeout_ms: Int,
 ) -> Result(String, Error) {
@@ -112,7 +113,10 @@ pub fn download(
   cli.success("TailwindCSS v" <> version <> " is ready to go!", quiet)
 
   // 7.
-  use detection <- result.try(detect(project, project.name))
+  use detection <- result.try(case generate_config {
+    True -> detect(project, project.name)
+    False -> Ok(Nothing)
+  })
 
   case detection {
     HasTailwindEntry(_) -> Ok(path_to_exe)
@@ -152,11 +156,12 @@ pub fn download(
       Ok(path_to_exe)
     }
 
-    Nothing -> {
+    Nothing if generate_config -> {
+      let config_path = filepath.join(project.src, project.name <> ".css")
       let css = ["@import \"tailwindcss\";", ""]
 
       use _ <- result.try(
-        simplifile.write(path, string.join(css, "\n"))
+        simplifile.write(config_path, string.join(css, "\n"))
         |> result.map_error(error.CouldNotWriteFile(path:, reason: _)),
       )
 
@@ -164,6 +169,8 @@ pub fn download(
 
       Ok(path_to_exe)
     }
+
+    Nothing -> Ok(path_to_exe)
   }
 }
 
@@ -339,10 +346,10 @@ fn locate_tailwind(project: Project, quiet quiet: Bool) -> Result(String, Error)
         Ok(True) -> {
           case verify_version(path) {
             Ok(_) -> Ok(path)
-            Error(_) -> download(project, quiet, timeout)
+            Error(_) -> download(project, False, quiet, timeout)
           }
         }
-        _ -> download(project, quiet, timeout)
+        _ -> download(project, False, quiet, timeout)
       })
 
       Ok(path)

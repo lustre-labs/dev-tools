@@ -168,7 +168,12 @@ key `tools.lustre.bin.timeout`.
   case integration {
     "bun" -> bun.download(project, quiet: False, timeout_ms: options.timeout)
     "tailwind" | "tailwindcss" | "tw" ->
-      tailwind.download(project, quiet: False, timeout_ms: options.timeout)
+      tailwind.download(
+        project,
+        generate_config: True,
+        quiet: False,
+        timeout_ms: options.timeout,
+      )
     name -> Error(error.UnknownIntegration(name:))
   }
 }
