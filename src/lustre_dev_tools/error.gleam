@@ -319,7 +319,6 @@ I ran into a problem trying to set up the proxy you provided. Consult documentat
 to ensure that the proxy is correctly configured in `gleam.toml`.
       "
 
-
     // -------------------------------------------------------------------------
     ProxyInvalidTo ->
       "
@@ -342,7 +341,6 @@ I ran into a problem trying to set up the proxy you provided. The `from` and `to
 fields are missing. Please make sure you provide values for the `from` and `to`
 fields like `\"/api\"`.
       "
-
 
     // -------------------------------------------------------------------------
     ProxyMissingTo ->

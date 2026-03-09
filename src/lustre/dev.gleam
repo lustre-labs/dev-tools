@@ -509,7 +509,7 @@ directories are always watched and do not need to be specified here.
   use _, entries, flags <- glint.command
 
   use proxies <- result.try(
-    proxy.get_proxies_from_config(project.options, ["dev", "proxy"])
+    proxy.get_proxies_from_config(project.options, ["dev", "proxy"]),
   )
 
   use entry <- result.try(case entries {
