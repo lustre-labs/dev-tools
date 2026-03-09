@@ -99,7 +99,6 @@ pub fn handle(
     use Proxy(from:, to:) <- list.find_map(proxies)
     case string.split_once(request.path, on: from) {
       Ok(#("", path)) -> {
-        echo "matched on " <> path
         let internal_error =
           response.new(500)
           |> response.set_body(wisp.Bytes(bytes_tree.new()))
