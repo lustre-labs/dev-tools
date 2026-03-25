@@ -208,7 +208,7 @@ pub fn detect(project: Project, entry: String) -> Result(Detection, Error) {
         |> result.map_error(error.CouldNotReadFile(path, _)),
       )
 
-      let assert Ok(re) = regexp.from_string("^@import\\s+['\"]tailwindcss")
+      let assert Ok(re) = regexp.from_string("@import\\s+['\"]tailwindcss")
       case regexp.check(re, css) {
         True -> Ok(HasTailwindEntry(path:))
         False -> Ok(HasViableEntry(path:))
