@@ -62,7 +62,7 @@ pub fn get_proxies_from_config(
   case tom.get(config, path) {
     Ok(proxy_toml) -> {
       case proxy_toml {
-        tom.InlineTable(table) ->
+        tom.InlineTable(table) | tom.Table(table) ->
           table
           |> parse_proxy
           |> result.map(list.wrap)
@@ -70,7 +70,8 @@ pub fn get_proxies_from_config(
           array
           |> list.map(fn(table) {
             case table {
-              tom.InlineTable(proxy) -> parse_proxy(proxy)
+              tom.InlineTable(proxy) | tom.Table(proxy) ->
+                parse_proxy(proxy)
               _ -> Error(error.ProxyInvalidConfig)
             }
           })
