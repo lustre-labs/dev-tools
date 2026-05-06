@@ -208,3 +208,7 @@ application or serves during development.
   be included in the `<title>` tag in the `<head>` of the document.
 
   Default: the name of the Gleam project as specified in `gleam.toml`.
+
+- **`url_prefix = string`**: prefix for the `src` attributed used by the generated `script` tag. This path prefix is relative to the generated `index.html` file.
+  
+  Default: `"./"`

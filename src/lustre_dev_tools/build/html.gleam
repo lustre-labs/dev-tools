@@ -50,10 +50,8 @@ pub fn generate(
 
         scripts(project),
 
-        html.script(
-          [attribute.type_("module"), attribute.src("/" <> name <> ".js")],
-          "",
-        ),
+        script(project, name),
+
       ]),
 
       body(project),
@@ -259,6 +257,16 @@ fn scripts(project: Project) -> Element(msg) {
     )
     |> result.unwrap([])
   })
+}
+
+fn script(project: Project, name: String) -> Element(msg) {
+  let url_prefix = tom.get_string(project.options, ["html", "url_prefix"])
+  |> result.unwrap("")
+
+  html.script(
+    [attribute.type_("module"), attribute.src(url_prefix <> name <> ".js")],
+    "",
+  )
 }
 
 fn as_attribute(key: String, toml: Toml) -> Result(Attribute(msg), Nil) {
