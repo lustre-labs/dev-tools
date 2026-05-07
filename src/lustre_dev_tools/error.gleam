@@ -68,7 +68,7 @@ Make sure you're connected to the internet and that no firewall or proxy is
 blocking connections to GitHub.
 
 Hint: you can provide a path to a local Tailwind binary by setting the
-`tools.lustre.bin.tailwind` field in your `gleam.toml`. Use the string `\"system\"`
+`tools.lustre.bin.tailwindcss` field in your `gleam.toml`. Use the string `\"system\"`
 to use the Tailwind binary accessible in your system path.
         "
       |> string.replace("${reason}", string.inspect(reason))
@@ -239,7 +239,7 @@ If you think this is a bug, please open an issue at:
 https://github.com/lustre-labs/dev-tools/issues/new
 
 Hint: you can provide a path to a local Tailwind binary by setting the
-`tools.lustre.bin.tailwind` field in your `gleam.toml`. Use the string `\"system\"`
+`tools.lustre.bin.tailwindcss` field in your `gleam.toml`. Use the string `\"system\"`
 to use the Tailwind binary accessible in your system path.
         "
       |> string.replace("${expected}", expected)
