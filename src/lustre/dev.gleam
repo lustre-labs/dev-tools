@@ -385,7 +385,6 @@ key `tools.lustre.build.path_base`.
     }
 
     [], False -> {
-      // let path_base_string = result.try()
       use _ <- result.try(
         html.generate(
           project,
