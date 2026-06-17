@@ -19,6 +19,7 @@ pub fn generate(
   entry: String,
   tailwind_entry: Option(String),
   minify: Bool,
+  path_base: String,
 ) -> String {
   let name = filepath.base_name(entry)
   let html =
@@ -51,7 +52,10 @@ pub fn generate(
         scripts(project),
 
         html.script(
-          [attribute.type_("module"), attribute.src("/" <> name <> ".js")],
+          [
+            attribute.type_("module"),
+            attribute.src("/" <> path_base <> "/" <> name <> ".js"),
+          ],
           "",
         ),
       ]),

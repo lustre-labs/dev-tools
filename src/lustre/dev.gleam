@@ -187,6 +187,7 @@ type BuildOptions {
     entries: List(String),
     skip_html: Bool,
     skip_tailwind: Bool,
+    path_base: String,
   )
 }
 
@@ -252,6 +253,15 @@ key `tools.lustre.build.outdir`.
     "
   })
 
+  use path_base <- cli.string("path-base", ["build", "path_base"], project, {
+    "
+Set a base path where the compiled Javascript should be saved. Useful for SPAs when deployed to anywhere but the root of the domain.
+
+This option can also be provided in your `gleam.toml` configuration under the
+key `tools.lustre.build.path_base`.
+  "
+  })
+
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
   // If the user did not provide any explicit entry modules, we'll take the
@@ -281,6 +291,7 @@ key `tools.lustre.build.outdir`.
         Ok(False), _ | Error(_), _ -> False
       },
       skip_tailwind: skip_tailwind(flags) |> result.unwrap(False),
+      path_base: path_base(flags) |> result.unwrap(""),
     )
 
   // 1.
@@ -374,8 +385,15 @@ key `tools.lustre.build.outdir`.
     }
 
     [], False -> {
+      // let path_base_string = result.try()
       use _ <- result.try(
-        html.generate(project, project.name, tailwind_entry, options.minify)
+        html.generate(
+          project,
+          project.name,
+          tailwind_entry,
+          options.minify,
+          options.path_base,
+        )
         |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
         |> result.map_error(error.CouldNotWriteFile(
           filepath.join(options.outdir, "index.html"),
@@ -390,7 +408,13 @@ key `tools.lustre.build.outdir`.
 
     [entry], False -> {
       use _ <- result.try(
-        html.generate(project, entry, tailwind_entry, options.minify)
+        html.generate(
+          project,
+          entry,
+          tailwind_entry,
+          options.minify,
+          options.path_base,
+        )
         |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
         |> result.map_error(error.CouldNotWriteFile(
           filepath.join(options.outdir, "index.html"),
