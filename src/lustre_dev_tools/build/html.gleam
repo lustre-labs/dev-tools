@@ -22,6 +22,10 @@ pub fn generate(
   path_base: String,
 ) -> String {
   let name = filepath.base_name(entry)
+  let src_path = case path_base {
+    "" -> "/" <> name <> ".js"
+    _ -> "/" <> path_base <> "/" <> name <> ".js"
+  }
   let html =
     html.html([lang(project)], [
       html.head([], [
@@ -54,7 +58,7 @@ pub fn generate(
         html.script(
           [
             attribute.type_("module"),
-            attribute.src("/" <> path_base <> "/" <> name <> ".js"),
+            attribute.src(src_path),
           ],
           "",
         ),
