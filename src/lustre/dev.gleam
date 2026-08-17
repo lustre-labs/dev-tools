@@ -469,7 +469,12 @@ type StartOptions {
     tailwind_entry: Option(String),
     host: String,
     port: Int,
+    https: Option(HttpsOptions),
   )
+}
+
+type HttpsOptions {
+  HttpsOptions(port: Int, key: String, cert: String)
 }
 
 fn start(project: Project) -> Command(Result(Nil, Error)) {
@@ -493,6 +498,30 @@ on yoru local network. This can be useful for testing with real mobile devices.
     "
 Configure the port the development server will listen on: by default this is
 `1234`. If this port is already in use the server will fail to start.
+    "
+  })
+
+  use cert <- cli.string("cert", ["dev", "cert"], project, {
+    "
+Configure the path to a TLS certificate file. Providing both `--cert` and
+`--key` will start an additional HTTPS server alongside the standard HTTP
+server.
+    "
+  })
+
+  use key <- cli.string("key", ["dev", "key"], project, {
+    "
+Configure the path to the private key file matching the certificate provided
+with `--cert`. Both flags must be provided together to enable the HTTPS
+server.
+    "
+  })
+
+  use https_port <- cli.int("https-port", ["dev", "https_port"], project, {
+    "
+Configure the port the HTTPS server will listen on when `--cert` and `--key`
+are both provided: by default this is `1235`. If this port is already in use
+the server will fail to start.
     "
   })
 
@@ -553,6 +582,15 @@ directories are always watched and do not need to be specified here.
       tailwind_entry:,
       host: host(flags) |> result.unwrap("localhost"),
       port: port(flags) |> result.unwrap(1234),
+      https: case cert(flags), key(flags) {
+        Ok(cert), Ok(key) ->
+          Some(HttpsOptions(
+            port: https_port(flags) |> result.unwrap(1235),
+            key:,
+            cert:,
+          ))
+        _, _ -> None
+      },
     )
 
   use _ <- result.try(gleam.build(project))
@@ -617,6 +655,8 @@ directories are always watched and do not need to be specified here.
     options.tailwind_entry,
     options.host,
     options.port,
+    options.https
+      |> option.map(fn(https) { #(https.port, https.cert, https.key) }),
   ))
 
   Ok(process.sleep_forever())
