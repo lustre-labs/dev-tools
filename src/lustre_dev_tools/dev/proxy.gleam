@@ -5,6 +5,7 @@ import filepath
 import gleam/bytes_tree
 import gleam/dict.{type Dict}
 import gleam/erlang/process
+import gleam/http
 import gleam/http/request.{Request}
 import gleam/http/response
 import gleam/httpc
@@ -197,7 +198,18 @@ pub fn handle_websocket(
 
             let proxy_to_connection =
               collie.new(
-                Request(..request, host:, port: to.port, path:, body:),
+                Request(
+                  ..request,
+                  scheme: case option.map(to.scheme, string.lowercase) {
+                    Some("https") -> http.Https
+                    Some("wss") -> http.Https
+                    _ -> http.Http
+                  },
+                  host:,
+                  port: to.port,
+                  path:,
+                  body:,
+                ),
                 WebSocketProxyToRelayBuffering([]),
               )
               |> collie.on_message(fn(proxy_to_conn, state, message) {
