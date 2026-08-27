@@ -6,13 +6,16 @@
 import booklet.{type Booklet}
 import filepath
 import gleam/erlang/application
+import gleam/erlang/charlist
 import gleam/http
 import gleam/http/request
 import gleam/int
+import gleam/list
 import gleam/option.{type Option}
 import gleam/otp/actor.{type Started}
 import gleam/otp/static_supervisor.{type Supervisor}
 import gleam/result
+import gleam/string
 import lustre_dev_tools/build/html
 import lustre_dev_tools/cli
 import lustre_dev_tools/dev/live_reload
@@ -58,16 +61,48 @@ pub fn start(
       _ -> wisp_mist.handler(handle_wisp_request(_, context), "")(request)
     }
   }
+  let assert Ok(interfaces) = network_interfaces()
+  let print_message = case host {
+    "0.0.0.0" -> {
+      let message =
+        "Server started on local loopback interface\n"
+        <> "   http://"
+        <> "127.0.0.1"
+        <> ":"
+        <> int.to_string(port)
+      message |> cli.success(False)
+
+      let message =
+        "Server also started on all interfaces\n"
+        <> list.map(interfaces, fn(interface) {
+          let #(name, address) = interface
+          let host =
+            [address.0, address.1, address.2, address.3]
+            |> list.map(int.to_string)
+            |> string.join(".")
+
+          "   http://"
+          <> host
+          <> ":"
+          <> int.to_string(port)
+          <> "\t"
+          <> charlist.to_string(name)
+        })
+        |> string.join("\n")
+
+      message |> cli.info(False)
+    }
+    _ -> {
+      let message =
+        "Server started on http://" <> host <> ":" <> int.to_string(port)
+      message |> cli.success(False)
+    }
+  }
 
   mist.new(handler)
   |> mist.port(port)
   |> mist.bind(host)
-  |> mist.after_start(fn(_, _, _) {
-    cli.success(
-      "Server started on http://" <> host <> ":" <> int.to_string(port),
-      False,
-    )
-  })
+  |> mist.after_start(fn(_, _, _) { print_message })
   |> mist.start
   |> result.map_error(error.CouldNotStartDevServer)
 }
@@ -103,3 +138,12 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
     _, _ -> wisp.not_found()
   }
 }
+
+pub type InterfaceName =
+  charlist.Charlist
+
+pub type InterfaceAddress =
+  #(Int, Int, Int, Int)
+
+@external(erlang, "server_ffi", "network_interfaces")
+fn network_interfaces() -> Result(List(#(InterfaceName, InterfaceAddress)), Nil)
