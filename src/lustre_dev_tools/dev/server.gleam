@@ -49,7 +49,7 @@ pub fn start(
   tailwind_entry: Option(String),
   host: String,
   port: Int,
-  tls: Option(#(Int, String, String)),
+  tls: Option(#(String, String)),
 ) -> Result(Started(Supervisor), Error) {
   let assert Ok(priv) = application.priv_directory("lustre_dev_tools")
   let context = Context(project:, entry:, tailwind_entry:, priv:, proxies:)
@@ -60,48 +60,31 @@ pub fn start(
     }
   }
 
-  let http_server =
-    mist.new(handler)
-    |> mist.port(port)
-    |> mist.bind(host)
-    |> mist.after_start(fn(_, _, _) {
-      cli.success(
-        "Server started on http://" <> host <> ":" <> int.to_string(port),
-        False,
-      )
-    })
-    |> mist.supervised
-
-  let supervisor_builder =
-    static_supervisor.new(static_supervisor.OneForOne)
-    |> static_supervisor.add(http_server)
-
-  let supervisor_builder = case tls {
-    Some(#(https_port, cert, key)) -> {
-      let https_server =
-        mist.new(handler)
-        |> mist.port(https_port)
-        |> mist.bind(host)
-        |> mist.with_tls(certfile: cert, keyfile: key)
-        |> mist.after_start(fn(_, _, _) {
-          cli.success(
-            "Server started on https://"
-              <> host
-              <> ":"
-              <> int.to_string(https_port),
-            False,
-          )
-        })
-        |> mist.supervised
-
-      supervisor_builder
-      |> static_supervisor.add(https_server)
+  case tls {
+    None ->
+      mist.new(handler)
+      |> mist.port(port)
+      |> mist.bind(host)
+      |> mist.after_start(fn(_, _, _) {
+        cli.success(
+          "Server started on http://" <> host <> ":" <> int.to_string(port),
+          False,
+        )
+      })
+    Some(#(cert, key)) -> {
+      mist.new(handler)
+      |> mist.port(port)
+      |> mist.bind(host)
+      |> mist.with_tls(certfile: cert, keyfile: key)
+      |> mist.after_start(fn(_, _, _) {
+        cli.success(
+          "Server started on https://" <> host <> ":" <> int.to_string(port),
+          False,
+        )
+      })
     }
-    None -> supervisor_builder
   }
-
-  supervisor_builder
-  |> static_supervisor.start
+  |> mist.start
   |> result.map_error(error.CouldNotStartDevServer)
 }
 

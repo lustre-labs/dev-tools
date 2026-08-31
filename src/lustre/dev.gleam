@@ -469,12 +469,8 @@ type StartOptions {
     tailwind_entry: Option(String),
     host: String,
     port: Int,
-    https: Option(HttpsOptions),
+    tls: Option(#(String, String)),
   )
-}
-
-type HttpsOptions {
-  HttpsOptions(port: Int, key: String, cert: String)
 }
 
 fn start(project: Project) -> Command(Result(Nil, Error)) {
@@ -504,24 +500,15 @@ Configure the port the development server will listen on: by default this is
   use cert <- cli.string("cert", ["dev", "cert"], project, {
     "
 Configure the path to a TLS certificate file. Providing both `--cert` and
-`--key` will start an additional HTTPS server alongside the standard HTTP
-server.
+`--key` will start the development server with HTTPS instead of HTTP, on the
+same port.
     "
   })
 
   use key <- cli.string("key", ["dev", "key"], project, {
     "
 Configure the path to the private key file matching the certificate provided
-with `--cert`. Both flags must be provided together to enable the HTTPS
-server.
-    "
-  })
-
-  use https_port <- cli.int("https-port", ["dev", "https_port"], project, {
-    "
-Configure the port the HTTPS server will listen on when `--cert` and `--key`
-are both provided: by default this is `1235`. If this port is already in use
-the server will fail to start.
+with `--cert`. Both flags must be provided together to enable HTTPS.
     "
   })
 
@@ -582,13 +569,8 @@ directories are always watched and do not need to be specified here.
       tailwind_entry:,
       host: host(flags) |> result.unwrap("localhost"),
       port: port(flags) |> result.unwrap(1234),
-      https: case cert(flags), key(flags) {
-        Ok(cert), Ok(key) ->
-          Some(HttpsOptions(
-            port: https_port(flags) |> result.unwrap(1235),
-            key:,
-            cert:,
-          ))
+      tls: case cert(flags), key(flags) {
+        Ok(cert), Ok(key) -> Some(#(cert, key))
         _, _ -> None
       },
     )
@@ -655,8 +637,7 @@ directories are always watched and do not need to be specified here.
     options.tailwind_entry,
     options.host,
     options.port,
-    options.https
-      |> option.map(fn(https) { #(https.port, https.cert, https.key) }),
+    options.tls,
   ))
 
   Ok(process.sleep_forever())

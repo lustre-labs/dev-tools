@@ -109,22 +109,16 @@ These options affect the development server that runs when you run
   Default: `1234`.
 
 - **`cert = string`**: the path to a TLS certificate file. Providing both `cert`
-  and `key` will start an additional HTTPS server alongside the standard HTTP
-  server.
+  and `key` will start the development server with HTTPS instead of HTTP, on
+  the same port.
 
   Default: `undefined`.
 
 - **`key = string`**: the path to the private key file matching the certificate
-  provided with `cert`. Both options must be provided together to enable the
-  HTTPS server.
+  provided with `cert`. Both options must be provided together to enable
+  HTTPS.
 
   Default: `undefined`.
-
-- **`https_port = number`**: choose which port the HTTPS server should listen on
-  when `cert` and `key` are both provided. If the specified port is already in
-  use, the development server will fail to start.
-
-  Default: `1235`.
 
 - **`proxy = { from: string, to: string }`**: configure an API proxy to forward
   requests from the app to a different server. This lets you avoid CORS issues
