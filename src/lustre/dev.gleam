@@ -497,18 +497,18 @@ Configure the port the development server will listen on: by default this is
     "
   })
 
-  use cert <- cli.string("cert", ["dev", "cert"], project, {
+  use cert <- cli.string("https-cert", ["dev", "https", "cert"], project, {
     "
-Configure the path to a TLS certificate file. Providing both `--cert` and
-`--key` will start the development server with HTTPS instead of HTTP, on the
-same port.
+Configure the path to a TLS certificate file. Providing both `--https-cert`
+and `--https-key` will start the development server with HTTPS instead of
+HTTP, on the same port.
     "
   })
 
-  use key <- cli.string("key", ["dev", "key"], project, {
+  use key <- cli.string("https-key", ["dev", "https", "key"], project, {
     "
 Configure the path to the private key file matching the certificate provided
-with `--cert`. Both flags must be provided together to enable HTTPS.
+with `--https-cert`. Both flags must be provided together to enable HTTPS.
     "
   })
 
@@ -552,6 +552,13 @@ directories are always watched and do not need to be specified here.
     Ok(other) -> Error(error.UnknownWatchStrategy(name: other))
   })
 
+  use tls <- result.try(case cert(flags), key(flags) {
+    Ok(cert), Ok(key) -> Ok(Some(#(cert, key)))
+    Error(_), Error(_) -> Ok(None)
+    Ok(_), Error(_) -> Error(error.HttpsMissingKey)
+    Error(_), Ok(_) -> Error(error.HttpsMissingCert)
+  })
+
   let options =
     StartOptions(
       watch: watch(flags)
@@ -569,10 +576,7 @@ directories are always watched and do not need to be specified here.
       tailwind_entry:,
       host: host(flags) |> result.unwrap("localhost"),
       port: port(flags) |> result.unwrap(1234),
-      tls: case cert(flags), key(flags) {
-        Ok(cert), Ok(key) -> Some(#(cert, key))
-        _, _ -> None
-      },
+      tls:,
     )
 
   use _ <- result.try(gleam.build(project))

@@ -108,15 +108,12 @@ These options affect the development server that runs when you run
 
   Default: `1234`.
 
-- **`cert = string`**: the path to a TLS certificate file. Providing both `cert`
-  and `key` will start the development server with HTTPS instead of HTTP, on
-  the same port.
+- **`https = { cert: string, key: string }`**: configure the development server
+  to run over HTTPS instead of HTTP, on the same port.
 
-  Default: `undefined`.
-
-- **`key = string`**: the path to the private key file matching the certificate
-  provided with `cert`. Both options must be provided together to enable
-  HTTPS.
+  The `cert` field is the path to a TLS certificate file, and the `key` field
+  is the path to the private key file matching that certificate. Both fields
+  must be provided together to enable HTTPS.
 
   Default: `undefined`.
 
