@@ -19,8 +19,10 @@ pub fn generate(
   entry: String,
   tailwind_entry: Option(String),
   minify: Bool,
+  path_base: String,
 ) -> String {
   let name = filepath.base_name(entry)
+  let src_path = prefixed_path(path_base, name)
   let html =
     html.html([lang(project)], [
       html.head([], [
@@ -42,7 +44,7 @@ pub fn generate(
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href("/" <> filepath.base_name(entry)),
+              attribute.href(prefixed_path(path_base, filepath.base_name(entry))),
             ])
 
           None -> element.none()
@@ -51,7 +53,10 @@ pub fn generate(
         scripts(project),
 
         html.script(
-          [attribute.type_("module"), attribute.src("/" <> name <> ".js")],
+          [
+            attribute.type_("module"),
+            attribute.src(src_path),
+          ],
           "",
         ),
       ]),
@@ -77,6 +82,7 @@ pub fn dev(
   project: Project,
   entry: String,
   tailwind_entry: Option(String),
+  path_base: String,
 ) -> String {
   let html =
     html.html([lang(project)], [
@@ -99,7 +105,7 @@ pub fn dev(
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href("/" <> filepath.base_name(entry)),
+              attribute.href(prefixed_path(path_base, filepath.base_name(entry))),
             ])
 
           None -> element.none()
@@ -114,21 +120,26 @@ pub fn dev(
             html.script(
               [
                 attribute.type_("module"),
-                attribute.src("/" <> entry <> ".dev.js"),
+                attribute.src(prefixed_path(path_base, entry <> ".dev.js")),
               ],
               "",
             )
 
-          False ->
+          False -> {
+            let module_path = case path_base {
+              "" -> prefixed_path(project.name, entry <> ".mjs")
+              _ ->
+                prefixed_path(path_base, project.name <> "/" <> entry <> ".mjs")
+            }
             html.script([attribute.type_("module")], {
               "
-              import { main } from '/${name}/${entry}.mjs';
+              import { main } from '${module_path}';
 
               main();
               "
-              |> string.replace("${name}", project.name)
-              |> string.replace("${entry}", entry)
+              |> string.replace("${module_path}", module_path)
             })
+          }
         },
       ]),
 
@@ -275,4 +286,11 @@ fn body(project: Project) -> Element(msg) {
     tom.get_string(project.options, ["html", "body"])
     |> result.unwrap("<div id=\"app\"></div>")
   })
+}
+
+fn prefixed_path(path_base: String, path: String) -> String {
+  case path_base {
+    "" -> "/" <> path
+    _ -> "/" <> path_base <> "/" <> path
+  }
 }
