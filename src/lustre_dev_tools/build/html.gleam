@@ -85,6 +85,7 @@ pub fn dev(
   project: Project,
   entry: String,
   tailwind_entry: Option(String),
+  path_base: String,
 ) -> String {
   let html =
     html.html([lang(project)], [
@@ -107,7 +108,9 @@ pub fn dev(
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href("/" <> filepath.base_name(entry)),
+              attribute.href(
+                "/" <> path_base <> "/" <> filepath.base_name(entry),
+              ),
             ])
 
           None -> element.none()
@@ -118,23 +121,28 @@ pub fn dev(
         html.script([attribute.src("/.lustre/server-hot-reload.js")], ""),
 
         case project.has_node_modules {
-          True ->
+          True -> {
+            let src = case path_base {
+              "" -> "/" <> entry <> ".dev.js"
+              _ -> "/" <> path_base <> "/" <> entry <> ".dev.js"
+            }
             html.script(
               [
                 attribute.type_("module"),
-                attribute.src("/" <> entry <> ".dev.js"),
+                attribute.src(src),
               ],
               "",
             )
-
+          }
           False ->
             html.script([attribute.type_("module")], {
               "
-              import { main } from '/${name}/${entry}.mjs';
+              import { main } from '/${path_base}/${name}/${entry}.mjs';
 
               main();
               "
               |> string.replace("${name}", project.name)
+              |> string.replace("${path_base}", path_base)
               |> string.replace("${entry}", entry)
             })
         },

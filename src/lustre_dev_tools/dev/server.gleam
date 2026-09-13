@@ -33,6 +33,7 @@ type Context {
     tailwind_entry: Option(String),
     priv: String,
     proxies: List(Proxy),
+    path_base: String,
   )
 }
 
@@ -49,9 +50,11 @@ pub fn start(
   tailwind_entry: Option(String),
   host: String,
   port: Int,
+  path_base: String,
 ) -> Result(Started(Supervisor), Error) {
   let assert Ok(priv) = application.priv_directory("lustre_dev_tools")
-  let context = Context(project:, entry:, tailwind_entry:, priv:, proxies:)
+  let context =
+    Context(project:, entry:, tailwind_entry:, priv:, proxies:, path_base:)
   let handler = fn(request) {
     case request.path_segments(request) {
       [".lustre", "ws"] -> live_reload.start(request, project, error, watcher)
@@ -63,8 +66,16 @@ pub fn start(
   |> mist.port(port)
   |> mist.bind(host)
   |> mist.after_start(fn(_, _, _) {
+    let url_path = case path_base {
+      "" -> ""
+      _ -> "/" <> path_base
+    }
     cli.success(
-      "Server started on http://" <> host <> ":" <> int.to_string(port),
+      "Server started on http://"
+        <> host
+        <> ":"
+        <> int.to_string(port)
+        <> url_path,
       False,
     )
   })
@@ -75,6 +86,7 @@ pub fn start(
 ///
 ///
 fn handle_wisp_request(request: Request, context: Context) -> Response {
+  let serve_from = "/" <> context.path_base
   use <- wisp.rescue_crashes
   use request <- wisp.handle_head(request)
   use request <- wisp.csrf_known_header_protection(request)
@@ -83,11 +95,15 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
 
   use <- wisp.serve_static(
     request,
-    under: "/",
+    under: serve_from,
     from: filepath.join(context.project.root, "build/dev/javascript"),
   )
 
-  use <- wisp.serve_static(request, under: "/", from: context.project.assets)
+  use <- wisp.serve_static(
+    request,
+    under: serve_from,
+    from: context.project.assets,
+  )
 
   use <- proxy.handle(request, context.proxies)
 
@@ -97,7 +113,12 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
     // don't do this for unknown _assets_ though so we'll only do this for paths
     // that don't have a file extension.
     http.Get, Error(_) ->
-      html.dev(context.project, context.entry, context.tailwind_entry)
+      html.dev(
+        context.project,
+        context.entry,
+        context.tailwind_entry,
+        context.path_base,
+      )
       |> wisp.html_body(wisp.ok(), _)
 
     _, _ -> wisp.not_found()

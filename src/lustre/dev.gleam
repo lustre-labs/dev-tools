@@ -492,6 +492,7 @@ type StartOptions {
     tailwind_entry: Option(String),
     host: String,
     port: Int,
+    path_base: String,
   )
 }
 
@@ -524,6 +525,15 @@ Configure the port the development server will listen on: by default this is
 Configure additional directories to watch for changes. The `src/` and `assets/`
 directories are always watched and do not need to be specified here.
     "
+  })
+
+  use path_base <- cli.string("path-base", ["build", "path_base"], project, {
+    "
+Set a base path where the compiled Javascript should be saved. Useful for SPAs when deployed to anywhere but the root of the domain.
+
+This option can also be provided in your `gleam.toml` configuration under the
+key `tools.lustre.build.path_base`.
+  "
   })
 
   use watch_mode <- cli.string("", ["dev", "watch_mode"], project, "")
@@ -576,6 +586,7 @@ directories are always watched and do not need to be specified here.
       tailwind_entry:,
       host: host(flags) |> result.unwrap("localhost"),
       port: port(flags) |> result.unwrap(1234),
+      path_base: path_base(flags) |> result.unwrap(""),
     )
 
   use _ <- result.try(gleam.build(project))
@@ -640,6 +651,7 @@ directories are always watched and do not need to be specified here.
     options.tailwind_entry,
     options.host,
     options.port,
+    options.path_base,
   ))
 
   Ok(process.sleep_forever())
