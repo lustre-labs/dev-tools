@@ -257,6 +257,8 @@ key `tools.lustre.build.outdir`.
     "
 Set a base path where the compiled Javascript should be saved. Useful for SPAs when deployed to anywhere but the root of the domain.
 
+When using a base path, make sure to reference any assets with the base. So, if base_path is 'abc', any image under 'assets/img.png' should have 'abc/img.png' as its source in the app.
+
 This option can also be provided in your `gleam.toml` configuration under the
 key `tools.lustre.build.path_base`.
   "
@@ -530,6 +532,8 @@ directories are always watched and do not need to be specified here.
   use path_base <- cli.string("path-base", ["build", "path_base"], project, {
     "
 Set a base path where the compiled Javascript should be saved. Useful for SPAs when deployed to anywhere but the root of the domain.
+
+When using a base path, make sure to reference any assets with the base. So, if base_path is 'abc', any image under 'assets/img.png' should have 'abc/img.png' as its source in the app.
 
 This option can also be provided in your `gleam.toml` configuration under the
 key `tools.lustre.build.path_base`.
