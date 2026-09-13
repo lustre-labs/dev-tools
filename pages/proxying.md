@@ -35,4 +35,4 @@ proxy = [{ from = "/api", to = "http://localhost:3000/api" }, { from = "/auth", 
 ```
 
 In this example, requests will be forwarded to the `auth` or `api` endpoints depending 
-on the request's path. :wa
+on the request's path.
