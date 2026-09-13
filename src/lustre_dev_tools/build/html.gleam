@@ -125,17 +125,21 @@ pub fn dev(
               "",
             )
 
-          False ->
+          False -> {
+            let module_path = case path_base {
+              "" -> prefixed_path(project.name, entry <> ".mjs")
+              _ ->
+                prefixed_path(path_base, project.name <> "/" <> entry <> ".mjs")
+            }
             html.script([attribute.type_("module")], {
               "
-              import { main } from '/${path_base}/${name}/${entry}.mjs';
+              import { main } from '${module_path}';
 
               main();
               "
-              |> string.replace("${name}", project.name)
-              |> string.replace("${path_base}", path_base)
-              |> string.replace("${entry}", entry)
+              |> string.replace("${module_path}", module_path)
             })
+          }
         },
       ]),
 
