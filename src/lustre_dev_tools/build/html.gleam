@@ -22,10 +22,7 @@ pub fn generate(
   path_base: String,
 ) -> String {
   let name = filepath.base_name(entry)
-  let src_path = case path_base {
-    "" -> "/" <> name <> ".js"
-    _ -> "/" <> path_base <> "/" <> name <> ".js"
-  }
+  let src_path = prefixed_path(path_base, name)
   let html =
     html.html([lang(project)], [
       html.head([], [
@@ -47,7 +44,7 @@ pub fn generate(
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href("/" <> filepath.base_name(entry)),
+              attribute.href(prefixed_path(path_base, filepath.base_name(entry))),
             ])
 
           None -> element.none()
@@ -108,9 +105,7 @@ pub fn dev(
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href(
-                "/" <> path_base <> "/" <> filepath.base_name(entry),
-              ),
+              attribute.href(prefixed_path(path_base, filepath.base_name(entry))),
             ])
 
           None -> element.none()
@@ -121,19 +116,15 @@ pub fn dev(
         html.script([attribute.src("/.lustre/server-hot-reload.js")], ""),
 
         case project.has_node_modules {
-          True -> {
-            let src = case path_base {
-              "" -> "/" <> entry <> ".dev.js"
-              _ -> "/" <> path_base <> "/" <> entry <> ".dev.js"
-            }
+          True ->
             html.script(
               [
                 attribute.type_("module"),
-                attribute.src(src),
+                attribute.src(prefixed_path(path_base, entry <> ".dev.js")),
               ],
               "",
             )
-          }
+
           False ->
             html.script([attribute.type_("module")], {
               "
@@ -291,4 +282,11 @@ fn body(project: Project) -> Element(msg) {
     tom.get_string(project.options, ["html", "body"])
     |> result.unwrap("<div id=\"app\"></div>")
   })
+}
+
+fn prefixed_path(path_base: String, path: String) -> String {
+  case path_base {
+    "" -> "/" <> path
+    _ -> "/" <> path_base <> "/" <> path
+  }
 }
