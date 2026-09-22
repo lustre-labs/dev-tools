@@ -5,8 +5,9 @@
 
 import booklet.{type Booklet}
 import filepath
+import gleam/bool
 import gleam/erlang/application
-import gleam/erlang/charlist
+import gleam/erlang/charlist.{type Charlist}
 import gleam/function
 import gleam/http
 import gleam/http/request
@@ -16,7 +17,6 @@ import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
 import gleam/otp/static_supervisor.{type Supervisor}
 import gleam/result
-import gleam/string
 import lustre_dev_tools/build/html
 import lustre_dev_tools/cli
 import lustre_dev_tools/dev/live_reload
@@ -66,50 +66,6 @@ pub fn start(
         })
     }
   }
-  let assert Ok(interfaces) = network_interfaces()
-  let print_message = fn(port, scheme, _) {
-    let port = int.to_string(port)
-    let scheme = http.scheme_to_string(scheme)
-    
-    case host {
-      "0.0.0.0" -> {
-        let message =
-          "Server started on loopback interface "
-          <> scheme
-          <> "://127.0.0.1:"
-          <> port
-        message |> cli.success(False)
-
-        let message =
-          "Server also started on all interfaces\n"
-          <> list.map(interfaces, fn(interface) {
-            let #(name, address) = interface
-            let host =
-              [address.0, address.1, address.2, address.3]
-              |> list.map(int.to_string)
-              |> string.join(".")
-
-            "   "
-            <> scheme
-            <> "://"
-            <> host
-            <> ":"
-            <> port
-            <> "\t"
-            <> charlist.to_string(name)
-          })
-          |> string.join("\n")
-
-        message |> cli.info(False)
-      }
-      
-      _ -> {
-        let message =
-          "Server started on " <> scheme <> "://" <> host <> ":" <> port
-        message |> cli.success(False)
-      }
-    }
-  }
 
   mist.new(handler)
   |> mist.port(port)
@@ -118,9 +74,47 @@ pub fn start(
     Some(#(certfile, keyfile)) -> mist.with_tls(_, certfile:, keyfile:)
     None -> function.identity
   }
-  |> mist.after_start(print_message)
+  |> mist.after_start(fn(port, scheme, _) {
+    print_start_message(host, port, scheme)
+  })
   |> mist.start
   |> result.map_error(error.CouldNotStartDevServer)
+}
+
+fn print_start_message(host, port, scheme) {
+  let port = int.to_string(port)
+  let scheme = http.scheme_to_string(scheme)
+
+  use <- bool.lazy_guard(host != "0.0.0.0", fn() {
+    cli.success(
+      "Server started on " <> scheme <> "://" <> host <> ":" <> port,
+      False,
+    )
+  })
+
+  let interfaces = network_interfaces()
+  use <- bool.guard(list.is_empty(interfaces), Nil)
+
+  cli.success("Server started on " <> scheme <> "://127.0.0.1:" <> port, False)
+
+  let message = "Server also accessible on:"
+  let message = {
+    use message, #(name, ip) <- list.fold(interfaces, message)
+    let ip = mist.IpV4(ip.0, ip.1, ip.2, ip.3)
+    let host = mist.ip_address_to_string(ip)
+
+    message
+    <> "\n     "
+    <> scheme
+    <> "://"
+    <> host
+    <> ":"
+    <> port
+    <> "\t"
+    <> charlist.to_string(name)
+  }
+
+  cli.info(message, False)
 }
 
 ///
@@ -131,7 +125,6 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
   use request <- wisp.csrf_known_header_protection(request)
 
   use <- wisp.serve_static(request, under: "/.lustre", from: context.priv)
-
   use <- wisp.serve_static(
     request,
     under: "/",
@@ -139,7 +132,6 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
   )
 
   use <- wisp.serve_static(request, under: "/", from: context.project.assets)
-
   use <- proxy.handle(request, context.proxies)
 
   case request.method, filepath.extension(request.path) {
@@ -155,11 +147,5 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
   }
 }
 
-pub type InterfaceName =
-  charlist.Charlist
-
-pub type InterfaceAddress =
-  #(Int, Int, Int, Int)
-
 @external(erlang, "server_ffi", "network_interfaces")
-fn network_interfaces() -> Result(List(#(InterfaceName, InterfaceAddress)), Nil)
+fn network_interfaces() -> List(#(Charlist, #(Int, Int, Int, Int)))

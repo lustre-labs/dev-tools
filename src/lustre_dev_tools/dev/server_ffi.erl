@@ -5,23 +5,22 @@
 network_interfaces() ->
     try inet:getifaddrs() of
         {ok, Interfaces} ->
-            Output =
-                lists:filtermap(fun({Name, Opts}) ->
-                                   Addrs = [Addr || {addr, Addr} <- Opts],
-                                   Flags = proplists:get_value(flags, Opts, []),
-                                   IPv4 = [A || A <- Addrs, tuple_size(A) =:= 4],
-                                   IsUp = lists:member(up, Flags),
-                                   IsLoopback = lists:member(loopback, Flags),
+            lists:filtermap(
+                fun({Name, Opts}) ->
+                    Addrs = [Addr || {addr, Addr} <- Opts],
+                    Flags = proplists:get_value(flags, Opts, []),
+                    IPv4 = [A || A <- Addrs, tuple_size(A) =:= 4],
+                    IsUp = lists:member(up, Flags),
+                    IsLoopback = lists:member(loopback, Flags),
 
-                                   case {IsUp, IsLoopback, IPv4} of
-                                       {true, false, [IPv4Addr | _]} -> {true, {Name, IPv4Addr}};
-                                       _ -> false
-                                   end
-                                end,
-                                Interfaces),
-            {ok, Output}
+                    case {IsUp, IsLoopback, IPv4} of
+                        {true, false, [IpV4Addr | _]} -> {true, {Name, IpV4Addr}};
+                        _ -> false
+                    end
+                end,
+                Interfaces
+            )
     catch
-        error:Reason ->
-            logger:error("Failed getting network interfaces: ~p", [Reason]),
-            {error, nil}
+        error:_ ->
+            []
     end.
