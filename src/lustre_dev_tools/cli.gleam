@@ -27,6 +27,13 @@ pub fn success(message: String, quiet: Bool) -> Nil {
   }
 }
 
+pub fn info(message, quiet: Bool) {
+  case quiet {
+    True -> Nil
+    False -> io.println(ansi.bright_blue("ℹ️  " <> message))
+  }
+}
+
 ///
 ///
 pub fn bool(
