@@ -108,6 +108,15 @@ These options affect the development server that runs when you run
 
   Default: `1234`.
 
+- **`https = { cert: string, key: string }`**: configure the development server
+  to run over HTTPS instead of HTTP, on the same port.
+
+  The `cert` field is the path to a TLS certificate file, and the `key` field
+  is the path to the private key file matching that certificate. Both fields
+  must be provided together to enable HTTPS.
+
+  Default: `undefined`.
+
 - **`proxy = { from: string, to: string }`**: configure an API proxy to forward
   requests from the app to a different server. This lets you avoid CORS issues
   while the frontend and backend are running on different ports during development.

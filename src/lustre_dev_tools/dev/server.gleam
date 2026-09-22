@@ -7,11 +7,12 @@ import booklet.{type Booklet}
 import filepath
 import gleam/erlang/application
 import gleam/erlang/charlist
+import gleam/function
 import gleam/http
 import gleam/http/request
 import gleam/int
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
 import gleam/otp/static_supervisor.{type Supervisor}
 import gleam/result
@@ -52,57 +53,72 @@ pub fn start(
   tailwind_entry: Option(String),
   host: String,
   port: Int,
+  tls: Option(#(String, String)),
 ) -> Result(Started(Supervisor), Error) {
   let assert Ok(priv) = application.priv_directory("lustre_dev_tools")
   let context = Context(project:, entry:, tailwind_entry:, priv:, proxies:)
   let handler = fn(request) {
     case request.path_segments(request) {
       [".lustre", "ws"] -> live_reload.start(request, project, error, watcher)
-      _ -> wisp_mist.handler(handle_wisp_request(_, context), "")(request)
+      _ ->
+        proxy.handle_websocket(request, context.proxies, fn() {
+          wisp_mist.handler(handle_wisp_request(_, context), "")(request)
+        })
     }
   }
   let assert Ok(interfaces) = network_interfaces()
-  let print_message = case host {
-    "0.0.0.0" -> {
-      let message =
-        "Server started on local loopback interface\n"
-        <> "   http://"
-        <> "127.0.0.1"
-        <> ":"
-        <> int.to_string(port)
-      message |> cli.success(False)
+  let print_message = fn(port, scheme, _) {
+    let port = int.to_string(port)
+    let scheme = http.scheme_to_string(scheme)
+    
+    case host {
+      "0.0.0.0" -> {
+        let message =
+          "Server started on loopback interface "
+          <> scheme
+          <> "://127.0.0.1:"
+          <> port
+        message |> cli.success(False)
 
-      let message =
-        "Server also started on all interfaces\n"
-        <> list.map(interfaces, fn(interface) {
-          let #(name, address) = interface
-          let host =
-            [address.0, address.1, address.2, address.3]
-            |> list.map(int.to_string)
-            |> string.join(".")
+        let message =
+          "Server also started on all interfaces\n"
+          <> list.map(interfaces, fn(interface) {
+            let #(name, address) = interface
+            let host =
+              [address.0, address.1, address.2, address.3]
+              |> list.map(int.to_string)
+              |> string.join(".")
 
-          "   http://"
-          <> host
-          <> ":"
-          <> int.to_string(port)
-          <> "\t"
-          <> charlist.to_string(name)
-        })
-        |> string.join("\n")
+            "   "
+            <> scheme
+            <> "://"
+            <> host
+            <> ":"
+            <> port
+            <> "\t"
+            <> charlist.to_string(name)
+          })
+          |> string.join("\n")
 
-      message |> cli.info(False)
-    }
-    _ -> {
-      let message =
-        "Server started on http://" <> host <> ":" <> int.to_string(port)
-      message |> cli.success(False)
+        message |> cli.info(False)
+      }
+      
+      _ -> {
+        let message =
+          "Server started on " <> scheme <> "://" <> host <> ":" <> port
+        message |> cli.success(False)
+      }
     }
   }
 
   mist.new(handler)
   |> mist.port(port)
   |> mist.bind(host)
-  |> mist.after_start(fn(_, _, _) { print_message })
+  |> case tls {
+    Some(#(certfile, keyfile)) -> mist.with_tls(_, certfile:, keyfile:)
+    None -> function.identity
+  }
+  |> mist.after_start(print_message)
   |> mist.start
   |> result.map_error(error.CouldNotStartDevServer)
 }
