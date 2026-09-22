@@ -9,7 +9,7 @@ import gleam/erlang/application
 import gleam/http
 import gleam/http/request
 import gleam/int
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
 import gleam/otp/static_supervisor.{type Supervisor}
 import gleam/result
@@ -49,6 +49,7 @@ pub fn start(
   tailwind_entry: Option(String),
   host: String,
   port: Int,
+  tls: Option(#(String, String)),
 ) -> Result(Started(Supervisor), Error) {
   let assert Ok(priv) = application.priv_directory("lustre_dev_tools")
   let context = Context(project:, entry:, tailwind_entry:, priv:, proxies:)
@@ -62,15 +63,30 @@ pub fn start(
     }
   }
 
-  mist.new(handler)
-  |> mist.port(port)
-  |> mist.bind(host)
-  |> mist.after_start(fn(_, _, _) {
-    cli.success(
-      "Server started on http://" <> host <> ":" <> int.to_string(port),
-      False,
-    )
-  })
+  case tls {
+    None ->
+      mist.new(handler)
+      |> mist.port(port)
+      |> mist.bind(host)
+      |> mist.after_start(fn(_, _, _) {
+        cli.success(
+          "Server started on http://" <> host <> ":" <> int.to_string(port),
+          False,
+        )
+      })
+    Some(#(cert, key)) -> {
+      mist.new(handler)
+      |> mist.port(port)
+      |> mist.bind(host)
+      |> mist.with_tls(certfile: cert, keyfile: key)
+      |> mist.after_start(fn(_, _, _) {
+        cli.success(
+          "Server started on https://" <> host <> ":" <> int.to_string(port),
+          False,
+        )
+      })
+    }
+  }
   |> mist.start
   |> result.map_error(error.CouldNotStartDevServer)
 }

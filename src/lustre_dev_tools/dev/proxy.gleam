@@ -130,7 +130,17 @@ pub fn handle(
         let assert Some(host) = to.host
         let assert Ok(body) = wisp.read_body_bits(request)
 
-        Request(..request, host:, port: to.port, path:, body:)
+        Request(
+          ..request,
+          scheme: case option.map(to.scheme, string.lowercase) {
+            Some("https") -> http.Https
+            _ -> http.Http
+          },
+          host:,
+          port: to.port,
+          path:,
+          body:,
+        )
         |> httpc.send_bits
         |> result.map(response.map(_, bytes_tree.from_bit_array))
         |> result.map(response.map(_, wisp.Bytes))
