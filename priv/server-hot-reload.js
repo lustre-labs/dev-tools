@@ -6,7 +6,9 @@ const reconnectInterval = 1000;
 
 document.addEventListener("DOMContentLoaded", () => {
   if (window.sessionStorage.getItem("hotreload")) {
-    const scrollPosition = JSON.parse(window.sessionStorage.getItem("hotreload"));
+    const scrollPosition = JSON.parse(
+      window.sessionStorage.getItem("hotreload"),
+    );
 
     console.log("[lustre] Page reloaded by hot reload");
     window.sessionStorage.removeItem("hotreload");
@@ -15,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
       window.scrollTo(scrollPosition.x, scrollPosition.y);
     });
   }
-})
+});
 
 window.addEventListener("error", (event) => {
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -33,8 +35,13 @@ window.addEventListener("error", (event) => {
 });
 
 function connect() {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const url = `${protocol}//${window.location.host}/.lustre/ws`;
+  const location =
+    window.location.href === "about:blank"
+      ? window.parent.location
+      : window.location;
+
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  const url = `${protocol}//${location.host}/.lustre/ws`;
 
   ws = new WebSocket(url);
 
@@ -51,7 +58,7 @@ function connect() {
         const scrollPosition = JSON.stringify({
           x: window.scrollX,
           y: window.scrollY,
-        })
+        });
 
         window.sessionStorage.setItem("hotreload", scrollPosition);
         window.location.reload();
