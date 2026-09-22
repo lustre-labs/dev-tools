@@ -56,7 +56,10 @@ pub fn start(
   let handler = fn(request) {
     case request.path_segments(request) {
       [".lustre", "ws"] -> live_reload.start(request, project, error, watcher)
-      _ -> wisp_mist.handler(handle_wisp_request(_, context), "")(request)
+      _ ->
+        proxy.handle_websocket(request, context.proxies, fn() {
+          wisp_mist.handler(handle_wisp_request(_, context), "")(request)
+        })
     }
   }
 
