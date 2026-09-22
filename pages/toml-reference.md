@@ -131,6 +131,19 @@ These options affect the development server that runs when you run
 
   Default: `undefined`.
 
+- **`timeout = number`**: configure the timeout, in seconds, of requests sent to
+  the development server. Proxied requests that take longer than this timeout will
+  be aborted.
+
+  Default: `30`.
+
+- **`max_body_size = number`**: configure the maximum allowed size for request
+  bodies, in megabytes. For proxied requests, the request body is first read into
+  memory before being sent to the proxied server. If the request body exceeds the
+  maximum allowed size, the request will be aborted. 
+
+  Default: `8`.
+
 - **`watch = string[]`**: an array of directories relative to the project root to watch
   for changes. When a change is detected in one of these directories, the
   development server will automatically reload the page in the browser.

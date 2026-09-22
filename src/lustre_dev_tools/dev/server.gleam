@@ -37,6 +37,8 @@ type Context {
     tailwind_entry: Option(String),
     priv: String,
     proxies: List(Proxy),
+    timeout: Int,
+    max_body_size: Int,
   )
 }
 
@@ -54,9 +56,21 @@ pub fn start(
   host: String,
   port: Int,
   tls: Option(#(String, String)),
+  timeout: Int,
+  max_body_size: Int,
 ) -> Result(Started(Supervisor), Error) {
   let assert Ok(priv) = application.priv_directory("lustre_dev_tools")
-  let context = Context(project:, entry:, tailwind_entry:, priv:, proxies:)
+  let context =
+    Context(
+      project:,
+      entry:,
+      tailwind_entry:,
+      priv:,
+      proxies:,
+      timeout:,
+      max_body_size:,
+    )
+
   let handler = fn(request) {
     case request.path_segments(request) {
       [".lustre", "ws"] -> live_reload.start(request, project, error, watcher)
@@ -120,6 +134,9 @@ fn print_start_message(host, port, scheme) {
 ///
 ///
 fn handle_wisp_request(request: Request, context: Context) -> Response {
+  let request =
+    wisp.set_max_body_size(request, context.max_body_size * 1024 * 1024)
+
   use <- wisp.rescue_crashes
   use request <- wisp.handle_head(request)
   use request <- wisp.csrf_known_header_protection(request)
@@ -132,7 +149,7 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
   )
 
   use <- wisp.serve_static(request, under: "/", from: context.project.assets)
-  use <- proxy.handle(request, context.proxies)
+  use <- proxy.handle(request, context.proxies, context.timeout)
 
   case request.method, filepath.extension(request.path) {
     // If we get this far then we want to operate in a type of "SPA mode" that

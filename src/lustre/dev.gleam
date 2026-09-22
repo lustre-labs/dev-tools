@@ -470,6 +470,8 @@ type StartOptions {
     host: String,
     port: Int,
     tls: Option(#(String, String)),
+    timeout: Int,
+    max_body_size: Int,
   )
 }
 
@@ -479,6 +481,9 @@ fn start(project: Project) -> Command(Result(Nil, Error)) {
 Start a development server to run your Lustre app locally. This will watch your
 source files for changes and automatically rebuild and reload the app in your
 browser.
+
+The default entry point is the application's main module, but an alternative can
+be specified as an argument to this command.
     "
   })
 
@@ -521,6 +526,27 @@ directories are always watched and do not need to be specified here.
 
   use watch_mode <- cli.string("", ["dev", "watch_mode"], project, "")
 
+  use timeout <- cli.int("timeout", ["dev", "timeout"], project, {
+    "
+Configure the request timeout, in seconds, for the development server. Proxied
+requests that take longer than this timeout will be aborted. If not provided, the
+default timeout is 30s.
+    "
+  })
+
+  use max_body_size <- cli.int(
+    "max-body-size",
+    ["dev", "max_body_size"],
+    project,
+    "
+Configure the maximum allowed size for request bodies, in megabytes, for the
+development server. For proxied requests, the request body is first read into
+memory before being sent to the proxied server. If the request body exceeds the
+maximum allowed size, the request will be aborted. The default maximum body size
+is 8mb.
+    ",
+  )
+
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
 
@@ -559,6 +585,9 @@ directories are always watched and do not need to be specified here.
     Error(_), Ok(_) -> Error(error.HttpsMissingCert)
   })
 
+  let timeout = timeout(flags) |> result.unwrap(30)
+  let max_body_size = max_body_size(flags) |> result.unwrap(8)
+
   let options =
     StartOptions(
       watch: watch(flags)
@@ -577,6 +606,8 @@ directories are always watched and do not need to be specified here.
       host: host(flags) |> result.unwrap("localhost"),
       port: port(flags) |> result.unwrap(1234),
       tls:,
+      timeout:,
+      max_body_size:,
     )
 
   use _ <- result.try(gleam.build(project))
@@ -606,6 +637,7 @@ directories are always watched and do not need to be specified here.
 
     False -> Ok(Nil)
   })
+
   use _ <- result.try(case options.tailwind_entry {
     Some(tailwind_entry) ->
       tailwind.build(
@@ -642,6 +674,8 @@ directories are always watched and do not need to be specified here.
     options.host,
     options.port,
     options.tls,
+    options.timeout,
+    options.max_body_size,
   ))
 
   Ok(process.sleep_forever())

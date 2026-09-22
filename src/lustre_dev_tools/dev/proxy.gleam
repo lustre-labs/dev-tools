@@ -127,12 +127,16 @@ fn match_proxy(
 pub fn handle(
   request: Request(WispConnection),
   proxies: List(Proxy),
+  timeout: Int,
   next: fn() -> Response(WispBody),
 ) -> Response(WispBody) {
   case match_proxy(request, proxies) {
     Ok(to) -> {
       let assert Some(host) = to.host
       let assert Ok(body) = wisp.read_body_bits(request)
+      let config =
+        httpc.configure()
+        |> httpc.timeout(timeout * 1000)
 
       Request(
         ..request,
@@ -145,7 +149,7 @@ pub fn handle(
         path: to.path,
         body:,
       )
-      |> httpc.send_bits
+      |> httpc.dispatch_bits(config, _)
       |> result.map(response.map(_, bytes_tree.from_bit_array))
       |> result.map(response.map(_, wisp.Bytes))
       |> result.lazy_unwrap(fn() {
