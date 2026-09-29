@@ -21,6 +21,7 @@ pub type Project {
     root: String,
     src: String,
     dev: String,
+    tests: String,
     assets: String,
     bin: String,
     build: String,
@@ -78,6 +79,7 @@ pub fn config() -> Project {
   let bin = filepath.join(root, ".lustre/bin")
   let src = filepath.join(root, "src")
   let dev = filepath.join(root, "dev")
+  let tests = filepath.join(root, "test")
   let assets = filepath.join(root, "assets")
   let build = filepath.join(root, ".lustre/build")
 
@@ -103,6 +105,7 @@ pub fn config() -> Project {
     root:,
     src:,
     dev:,
+    tests:,
     assets:,
     bin:,
     build:,
@@ -123,7 +126,11 @@ pub fn exists(project: Project, module: String) -> Bool {
   case simplifile.is_file(filepath.join(project.src, module <> ".gleam")) {
     Ok(True) -> True
     Ok(False) | Error(_) ->
-      simplifile.is_file(filepath.join(project.dev, module <> ".gleam"))
-      |> result.unwrap(False)
+      case simplifile.is_file(filepath.join(project.dev, module <> ".gleam")) {
+        Ok(True) -> True
+        Ok(False) | Error(_) ->
+          simplifile.is_file(filepath.join(project.tests, module <> ".gleam"))
+          |> result.unwrap(False)
+      }
   }
 }

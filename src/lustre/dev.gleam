@@ -635,7 +635,8 @@ is 8mb.
             Ok(False) | Error(_) -> False
           }
         })
-        |> list.append([project.src, project.assets]),
+        |> list.append([project.src, project.assets, project.dev, project.tests])
+        |> list.unique,
       watch_mode:,
       proxies:,
       entry:,
