@@ -253,7 +253,7 @@ fn detect_platform() -> Result(String, Error) {
 /// Verifies the integrity of the downloaded archive by comparing its SHA-256
 /// hash against the hashes provided by Bun:
 ///
-///   https://github.com/oven-sh/bun/releases/download/bun-v1.2.17/SHASUMS256.txt
+///   https://github.com/oven-sh/bun/releases/download/bun-v1.3.13/SHASUMS256.txt
 ///
 fn verify_integrity(archive: BitArray, name: String) -> Result(Nil, Error) {
   let assert Ok(expected) = list.key_find(hashes, name)
@@ -287,19 +287,36 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
         False, True -> Ok("bun-linux-x64-musl")
         False, False -> Ok("bun-linux-x64")
       }
-    "win32", "x64" | "windows", "x64" | "win32", "x86_64" | "windows", "x86_64"
+    "win32", "x64"
+    | "windows", "x64"
+    | "win32", "x86_64"
+    | "windows", "x86_64"
       if baseline
     -> Ok("bun-windows-x64-baseline")
-    "win32", "x64" | "windows", "x64" | "win32", "x86_64" | "windows", "x86_64" ->
-      Ok("bun-windows-x64")
+    "win32", "x64"
+    | "windows", "x64"
+    | "win32", "x86_64"
+    | "windows", "x86_64"
+    -> Ok("bun-windows-x64")
     _, _ -> Error(Nil)
   }
 }
 
 fn requires_baseline(os: String) -> Bool {
   case os {
+    "darwin" -> {
+      let sh = system.find("sh") |> result.unwrap("/bin/sh")
+      let args = ["-c", "sysctl -a | grep -i machdep.cpu.leaf7_features"]
+
+      case system.run(sh, args, []) {
+        Ok(output) -> !string.contains(output, "AVX2")
+        Error(_) -> False
+      }
+    }
+
     "linux" -> {
       let sh = system.find("sh") |> result.unwrap("/bin/sh")
+
       case system.run(sh, ["-c", "cat /proc/cpuinfo | grep avx2"], []) {
         Ok(output) -> output == ""
         Error(_) -> True
@@ -361,47 +378,51 @@ fn maybe(when condition: Bool, then true: a, otherwise false: a) {
 
 // CONSTANTS -------------------------------------------------------------------
 
-const version = "1.2.22"
+const version = "1.3.13"
 
 const hashes = [
   #(
     "bun-darwin-aarch64",
-    "eb8c7e09cbea572414a0a367848e1acbf05294a946a594405a014b1fb3b3fc76",
+    "5467e3f65dba526b9fea98f0cce04efafc0c63e169733ec27b876a3ad32da190",
   ),
   #(
     "bun-darwin-x64",
-    "a7484721a7ead45887c812e760b124047e663173cf2a3ba7c5aa1992cb22cd3e",
+    "e5a6c8b64f419925232d111ecb13e25f0abf55e54f792341f987623fd0778009",
+  ),
+  #(
+    "bun-darwin-x64-baseline",
+    "a98ba6a480f22fda9b343626b906a4e26aa53618bf85d2bc5928ecf2ba45f0ed",
   ),
   #(
     "bun-linux-aarch64-musl",
-    "88c54cd66169aeb5ff31bc0c9d74a8017c7e6965597472ff49ecc355acb3a884",
+    "5385e978107ce4934298d8d6afe9bfbb898683f6cc23e6753a0da60bc60c5b81",
   ),
   #(
     "bun-linux-aarch64",
-    "a97c687fb5e54de4e2fb0869a7ac9a2d9c3af75ac182e2b68138c1dd8f98131b",
+    "70bae41b3908b0a120e1e58c5c8af30e74afae3b8d11b0d3fdd8e787ddfb4b22",
   ),
   #(
     "bun-linux-x64-baseline",
-    "f753e8d9668078ab0f598ee26a9ac5acbbb822e057459dd50c191b86524d98e8",
+    "9d8a24292a7068090205daac0a5a223f5f69736f5287e37bf88d3b4031edc750",
   ),
   #(
     "bun-linux-x64-musl-baseline",
-    "4048e872b16fb3a296e89268769d3e41152f477b6f203eff58c672f69ed9f570",
+    "88ca7c7ad235b498f549eea2f770f434e9f0f5e9ba95168a2d3a1f235184c394",
   ),
   #(
     "bun-linux-x64-musl",
-    "dde5bd79f0e130cb9bf17f55ba1825e98a77f71ef78c575d8ca2ccae5431f47e",
+    "5b91a48f0b00df9fd2da8bff1a795d2659d842da966432969203f25da19d1c74",
   ),
   #(
     "bun-linux-x64",
-    "4c446af1a01d7b40e1e11baebc352f9b2bfd12887e51b97dd3b59879cee2743a",
+    "79c0771fa8b92c33aae41e15a0e0d307ea99d0e2f00317c71c6c53237a78e25a",
   ),
   #(
     "bun-windows-x64-baseline",
-    "c44de73dc21c7140a8e15883c28abed60612196faaec9a60c275534280a49f59",
+    "c68c7903c1190101590cc1b2129835f47211b3b37ae87759f2b97d6534aa3ad1",
   ),
   #(
     "bun-windows-x64",
-    "3a28c685b47a159c5707d150accb5b4903c30f1e7b4dd01bb311d4112bdeb452",
+    "85b14f3e0584218e9b63407b3aa6b90c4835ec5c32435c1f12cb6fc13667c7c9",
   ),
 ]
