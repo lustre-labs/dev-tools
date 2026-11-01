@@ -148,8 +148,8 @@ These options affect the development server that runs when you run
   for changes. When a change is detected in one of these directories, the
   development server will automatically reload the page in the browser.
 
-  The `./src` and `./assets` directories are always watched and do not need to
-  be specified here.
+  The `./src`, `./dev`, `./test`, and `./assets` directories are always watched
+  and do not need to be specified here.
 
   Default: `[]`.
 

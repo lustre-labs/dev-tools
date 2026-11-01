@@ -545,8 +545,9 @@ with `--https-cert`. Both flags must be provided together to enable HTTPS.
 
   use watch <- cli.string_list("watch", ["dev", "watch"], project, {
     "
-Configure additional directories to watch for changes. The `src/` and `assets/`
-directories are always watched and do not need to be specified here.
+Configure additional directories to watch for changes. The `src/`, `dev/`,
+`test/`, and `assets/` directories are always watched and do not need to be
+specified here.
     "
   })
 
