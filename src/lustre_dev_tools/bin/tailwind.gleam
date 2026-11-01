@@ -306,7 +306,10 @@ pub fn watch(
 
 ///
 ///
-fn locate_tailwind(project: Project, quiet quiet: Bool) -> Result(String, Error) {
+fn locate_tailwind(
+  project: Project,
+  quiet quiet: Bool,
+) -> Result(String, Error) {
   case tom.get_string(project.options, ["bin", "tailwindcss"]) {
     Ok("system") ->
       system.find("tailwindcss")
@@ -371,7 +374,7 @@ fn detect_platform() -> Result(String, Error) {
 /// Verifies the integrity of the downloaded archive by comparing its SHA-256
 /// hash against the hashes provided by Tailwind:
 ///
-///   https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.13/sha256sums.txt
+///   https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.3/sha256sums.txt
 ///
 fn verify_integrity(archive: BitArray, name: String) -> Result(Nil, Error) {
   let assert Ok(expected) = list.key_find(hashes, name)
@@ -400,8 +403,11 @@ fn resolve(os: String, arch: String) -> Result(String, Nil) {
     "linux", "x64" | "linux", "x86_64" if is_alpine ->
       Ok("tailwindcss-linux-x64-musl")
     "linux", "x64" | "linux", "x86_64" -> Ok("tailwindcss-linux-x64")
-    "win32", "x64" | "windows", "x64" | "win32", "x86_64" | "windows", "x86_64" ->
-      Ok("tailwindcss-windows-x64")
+    "win32", "x64"
+    | "windows", "x64"
+    | "win32", "x86_64"
+    | "windows", "x86_64"
+    -> Ok("tailwindcss-windows-x64")
     _, _ -> Error(Nil)
   }
 }
@@ -449,35 +455,35 @@ fn verify_version(path: String) -> Result(Nil, Error) {
 
 // CONSTANTS -------------------------------------------------------------------
 
-const version = "4.1.13"
+const version = "4.3.3"
 
 const hashes = [
   #(
     "tailwindcss-linux-arm64",
-    "c90529475a398adbf3315898721c0f9fe85f434a2b3ea3eafada68867641819a",
+    "55fd0b241214eff3de1e8ee4f22796662f2d2e7a49bcfca7477cfd0bac398195",
   ),
   #(
     "tailwindcss-linux-arm64-musl",
-    "09624e1cb6295849020fb78344eb5dfa8196f57dfa6f81a0cb8442151d2f860d",
+    "71ea4be79c9de9827545682df3e040053fb535d37c71ed2cfdedf9385a0868e0",
   ),
   #(
     "tailwindcss-linux-x64",
-    "b9ed9f8f640d3323711f9f68608aa266dff3adbc42e867c38ea2d009b973be11",
+    "dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a",
   ),
   #(
     "tailwindcss-linux-x64-musl",
-    "5785fbf6bc1e489e0d3c9743aa6cf0fe20b4633c1de6e8a4d6cdc0bf86716d71",
+    "a04d34ceacc8f52cbe8920ad846cdeb61d3d0021dba32db0d1f77c9d9fad7a6c",
   ),
   #(
     "tailwindcss-macos-arm64",
-    "c47681e9948db20026a913a4aca4ee0269b4c0d4ef3f71343cb891dfdc1e97c9",
+    "cdf646702987a743464dff4d9c60fd4480d1c1e73dd819a9a67f1078815dce9d",
   ),
   #(
     "tailwindcss-macos-x64",
-    "c3b230bdbfaa46c94cad8db44da1f82773f10bac54f56fa196c8977d819c09e4",
+    "7922e0953f2110c05976e3bf58f14e643d90427575e766b7d433f5f80cbee7e1",
   ),
   #(
     "tailwindcss-windows-x64",
-    "ad16a528e13111e5df4e771b4b4981bd4b73e69140fa021f4102f46f02eeb86d",
+    "e0e260ce048014e9268f6237ff18f8ccf02cef521cbd0ae04e82c2cdf7aa3955",
   ),
 ]
