@@ -10,8 +10,8 @@ pub type Error {
   CouldNotExtractBunArchive(os: String, arch: String, version: String)
   CouldNotInitialiseDevTools(reason: simplifile.FileError)
   CouldNotLocateBunBinary(path: String)
-  CouldNotLocateTailwindBinary(path: String)
   CouldNotLocateGleamBinary
+  CouldNotLocateTailwindBinary(path: String)
   CouldNotReadFile(path: String, reason: simplifile.FileError)
   CouldNotSetFilePermissions(path: String, reason: simplifile.FileError)
   CouldNotStartDevServer(reason: actor.StartError)
@@ -23,13 +23,14 @@ pub type Error {
   FailedToBuildProject(reason: String)
   HttpsMissingCert
   HttpsMissingKey
+  JavaScriptDependenciesNotInstalled
   MissingRequiredFlag(name: List(String))
   MustBeProjectRoot(path: String)
   ProxyInvalidConfig
   ProxyInvalidTo
   ProxyMissingFrom
-  ProxyMissingTo
   ProxyMissingFromTo
+  ProxyMissingTo
   UnknownBuildTool(name: String)
   UnknownGleamModule(name: String)
   UnknownIntegration(name: String)
@@ -306,6 +307,14 @@ I ran into a problem trying to start the development server over HTTPS. The
 I ran into a problem trying to start the development server over HTTPS. The
 `key` option is missing. Please make sure you provide a value for the
 `--https-key` flag or the `tools.lustre.dev.https.key` field.
+      "
+
+    // -------------------------------------------------------------------------
+    JavaScriptDependenciesNotInstalled ->
+      "
+This project has a JavaScript `package.json` config but I couldn't find a
+`node_modules` directory. Make sure to install to install your JavaScript
+dependencies and then try again.
       "
 
     // -------------------------------------------------------------------------

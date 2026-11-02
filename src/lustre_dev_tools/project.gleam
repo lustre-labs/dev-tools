@@ -27,6 +27,7 @@ pub type Project {
     bin: String,
     build: String,
     // Facts
+    has_package_json: Bool,
     has_node_modules: Bool,
     has_typescript: Bool,
   )
@@ -92,6 +93,10 @@ pub fn config() -> Project {
     simplifile.is_directory(filepath.join(root, "node_modules"))
     |> result.unwrap(False)
 
+  let has_package_json =
+    simplifile.is_file(filepath.join(root, "package.json"))
+    |> result.unwrap(False)
+
   let has_tsconfig =
     simplifile.is_file(filepath.join(root, "tsconfig.json"))
     |> result.unwrap(False)
@@ -133,11 +138,13 @@ pub fn config() -> Project {
     build:,
     options:,
     has_node_modules:,
+    has_package_json:,
     has_typescript:,
   )
 }
 
 // QUERIES ---------------------------------------------------------------------
+
 fn find_root(path: String) -> String {
   case simplifile.is_file(filepath.join(path, "gleam.toml")) {
     Ok(True) -> path

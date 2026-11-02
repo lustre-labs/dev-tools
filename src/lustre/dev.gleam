@@ -308,6 +308,10 @@ key `tools.lustre.html.base`.
 
   // 2.
   use _ <- result.try(gleam.build(project))
+  use _ <- result.try(case project.has_package_json, project.has_node_modules {
+    True, True | False, False | False, True -> Ok(Nil)
+    True, False -> Error(error.JavaScriptDependenciesNotInstalled)
+  })
 
   use bun_entries <- result.try({
     use entry <- list.try_map(options.entries)
@@ -643,6 +647,11 @@ key `tools.lustre.html.base`.
     )
 
   use _ <- result.try(gleam.build(project))
+  use _ <- result.try(case project.has_package_json, project.has_node_modules {
+    True, True | False, False | False, True -> Ok(Nil)
+    True, False -> Error(error.JavaScriptDependenciesNotInstalled)
+  })
+
   use _ <- result.try(case project.has_node_modules || project.has_typescript {
     True -> {
       let module =
