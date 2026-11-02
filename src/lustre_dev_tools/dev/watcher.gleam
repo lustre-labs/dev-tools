@@ -42,6 +42,7 @@ pub type Event {
 
 pub fn start(
   project: Project,
+  entry: String,
   mode: Option(Mode),
   error: Booklet(Option(Error)),
   watch: List(String),
@@ -50,7 +51,7 @@ pub fn start(
   let name = process.new_name("registry")
   let assert Ok(Started(data: registry, ..)) = group_registry.start(name)
   let assert Ok(Started(data: builder, ..)) =
-    start_build_actor(project, error, registry)
+    start_build_actor(project, entry, error, registry)
 
   case mode {
     None -> Ok(registry)
@@ -185,6 +186,7 @@ const build_debounce_ms = 50
 
 fn start_build_actor(
   project: Project,
+  entry: String,
   error: Booklet(Option(Error)),
   watcher: Watcher,
 ) -> Result(actor.Started(Builder), actor.StartError) {
@@ -210,7 +212,7 @@ fn start_build_actor(
       }
 
       Waiting(self:), TimerCompleted(in:, path:) -> {
-        let _ = build_project(project, self)
+        let _ = build_project(project, entry, self)
 
         actor.continue(Building(self:, in:, path:, queued: None))
       }
@@ -230,7 +232,7 @@ fn start_build_actor(
       }
 
       Buffering(self:, ..), TimerCompleted(in:, path:) -> {
-        let _ = build_project(project, self)
+        let _ = build_project(project, entry, self)
 
         actor.continue(Building(self:, in:, path:, queued: None))
       }
@@ -244,7 +246,7 @@ fn start_build_actor(
         case queued {
           None -> actor.continue(Waiting(self:))
           Some(queued) -> {
-            let _ = build_project(project, self)
+            let _ = build_project(project, entry, self)
 
             actor.continue(Building(
               self:,
@@ -280,7 +282,7 @@ fn start_build_actor(
       // errors we're going to drop them and run the next build: if the error is
       // still there it will be reported then.
       Building(self:, queued: Some(queued), ..), BuildFinished(Error(_)) -> {
-        let _ = build_project(project, self)
+        let _ = build_project(project, entry, self)
 
         actor.continue(Building(
           self:,
@@ -300,20 +302,36 @@ fn start_build_actor(
   |> actor.start
 }
 
-fn build_project(project: Project, actor: Subject(BuildMessage)) -> Pid {
+fn build_project(
+  project: Project,
+  entry: String,
+  actor: Subject(BuildMessage),
+) -> Pid {
   use <- process.spawn
   let result = {
     use _ <- result.try(gleam.build(project))
     use _ <- result.try(
       case project.has_node_modules || project.has_typescript {
         True -> {
+          let segments = string.split(entry, "/")
+          let relative = string.repeat("../", list.length(segments) + 1)
           let module =
-            "import { main } from '../../build/dev/javascript/${name}/${entry}.mjs'; main();"
+            "import { main } from '"
+            <> relative
+            <> "build/dev/javascript/${name}/${entry}.mjs'; main();"
             |> string.replace("${name}", project.name)
-            |> string.replace("${entry}", project.name)
+            |> string.replace("${entry}", entry)
 
-          let name = justin.snake_case(project.name) <> ".dev.mjs"
+          let name = justin.snake_case(entry) <> ".mjs"
           let path = filepath.join(project.build, name)
+
+          use _ <- result.try(
+            simplifile.create_directory_all(filepath.directory_name(path))
+            |> result.map_error(error.CouldNotWriteFile(
+              filepath.directory_name(path),
+              _,
+            )),
+          )
 
           use _ <- result.try(
             simplifile.write(path, module)

@@ -654,13 +654,25 @@ key `tools.lustre.html.base`.
 
   use _ <- result.try(case project.has_node_modules || project.has_typescript {
     True -> {
+      let segments = string.split(entry, "/")
+      let relative = string.repeat("../", list.length(segments) + 1)
       let module =
-        "import { main } from '../../build/dev/javascript/${name}/${entry}.mjs'; main();"
+        "import { main } from '"
+        <> relative
+        <> "build/dev/javascript/${name}/${entry}.mjs'; main();"
         |> string.replace("${name}", project.name)
-        |> string.replace("${entry}", project.name)
+        |> string.replace("${entry}", entry)
 
-      let name = justin.snake_case(project.name) <> ".dev.mjs"
+      let name = justin.snake_case(entry) <> ".mjs"
       let path = filepath.join(project.build, name)
+
+      use _ <- result.try(
+        simplifile.create_directory_all(filepath.directory_name(path))
+        |> result.map_error(error.CouldNotWriteFile(
+          filepath.directory_name(path),
+          _,
+        )),
+      )
 
       use _ <- result.try(
         simplifile.write(path, module)
@@ -699,6 +711,7 @@ key `tools.lustre.html.base`.
   // fall back to file system polling.
   use watcher <- result.try(watcher.start(
     project,
+    entry,
     options.watch_mode,
     error,
     options.watch,
