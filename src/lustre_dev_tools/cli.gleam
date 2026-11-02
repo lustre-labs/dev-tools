@@ -83,8 +83,12 @@ pub fn string_list(
     glint.Command(b),
 ) -> glint.Command(b) {
   let get_strings = fn(toml, path) {
-    tom.get_array(toml, path)
-    |> result.try(list.try_map(_, tom.as_string))
+    case tom.get_string(toml, path) {
+      Ok(value) -> Ok([value])
+      Error(_) ->
+        tom.get_array(toml, path)
+        |> result.try(list.try_map(_, tom.as_string))
+    }
   }
 
   flag(

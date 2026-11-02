@@ -3,6 +3,7 @@ import gleam/dict
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import lustre/attribute.{type Attribute, attribute}
 import lustre/element.{type Element}
 import lustre/element/html
@@ -121,13 +122,29 @@ pub fn dev(
           "",
         ),
 
-        html.script(
-          [
-            attribute.type_("module"),
-            attribute.src(under(base, filepath.base_name(entry) <> ".js")),
-          ],
-          "",
-        ),
+        case project.has_node_modules {
+          True ->
+            html.script(
+              [
+                attribute.type_("module"),
+                attribute.src(under(base, filepath.base_name(entry) <> ".js")),
+              ],
+              "",
+            )
+
+          False -> {
+            let path = under(base, filepath.join(project.name, entry <> ".mjs"))
+
+            html.script([attribute.type_("module")], {
+              "
+              import { main } from '${path}';
+
+              main();
+              "
+              |> string.replace("${path}", path)
+            })
+          }
+        },
       ]),
 
       body(project),

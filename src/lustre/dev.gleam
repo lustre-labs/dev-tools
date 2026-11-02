@@ -264,13 +264,15 @@ key `tools.lustre.html.base`.
     "
   })
 
+  use default_entries <- cli.string_list("", ["build", "entry"], project, "")
+
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
-  // If the user did not provide any explicit entry modules, we'll take the
-  // app's main module as the entry.
-  use entries <- result.try(case entries {
-    [] -> Ok([project.name])
-    _ ->
+  use entries <- result.try(case entries, default_entries(flags) {
+    // If the user did not provide any explicit entry modules, we'll take the
+    // app's main module as the entry.
+    [], Ok([]) | [], Error(_) -> Ok([project.name])
+    [], Ok(entries) | entries, _ ->
       list.try_map(entries, fn(entry) {
         case project.exists(project, entry) {
           True -> Ok(entry)
@@ -577,6 +579,9 @@ key `tools.lustre.html.base`.
     "
   })
 
+  use default_entry <- cli.string("", ["dev", "entry"], project, "")
+  use build_entries <- cli.string_list("", ["build", "entry"], project, "")
+
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
 
@@ -584,14 +589,16 @@ key `tools.lustre.html.base`.
     proxy.get_proxies_from_config(project.options, ["dev", "proxy"]),
   )
 
-  use entry <- result.try(case entries {
-    [] -> Ok(project.name)
-    [entry, ..] ->
-      case project.exists(project, entry) {
-        True -> Ok(entry)
-        False -> Error(error.UnknownGleamModule(name: entry))
-      }
-  })
+  use entry <- result.try(
+    case entries, default_entry(flags), build_entries(flags) {
+      [entry, ..], _, _ | _, Ok(entry), _ | _, _, Ok([entry]) ->
+        case project.exists(project, entry) {
+          True -> Ok(entry)
+          False -> Error(error.UnknownGleamModule(name: entry))
+        }
+      _, _, _ -> Ok(project.name)
+    },
+  )
 
   use tailwind_entry <- result.try(case tailwind.detect(project, entry) {
     Ok(tailwind.HasTailwindEntry(path:)) -> Ok(Some(path))

@@ -57,6 +57,16 @@ build and development process.
 These options affect how Lustre builds your project when you run
 `gleam run -m lustre/dev build`.
 
+- **`entry = string | string[]`**: configure one or more entry points for the
+  bundle. Each string should be written as the name of a Gleam module, _not_ a
+  path to a file. For example use the module at `src/app/wibble.gleam` as an
+  entry, you would write `"app/wibble"`.
+
+  Each module listed should export a `main` function that will be called with no
+  arguments.
+
+  Default: `<project_name>`
+
 - **`minify = true | false`**: whether or not to minify the output JavaScript and
   CSS bundles. A minified bundle renames variables, removes whitespace, and can
   perform other optimisations to reduce the size of the output files.
@@ -94,6 +104,17 @@ These options affect how Lustre builds your project when you run
 
 These options affect the development server that runs when you run
 `gleam run -m lustre/dev start`.
+
+- **`entry = string`**: configure the entry module for the application. This
+  should be written as the name of a Gleam module, _not_ a path to a file. For
+  example use the module at `src/app/wibble.gleam` as an entry, you would write
+  `"app/wibble"`.
+
+  If not configured, dev tools will first check for a valid configuration under
+  `tools.lustre.build.entry`. If a single entry point is configured there, it
+  will be used.
+
+  Default: `<project_name>`
 
 - **`host = "localhost" | "0.0.0.0"`**: choose which network interface the development
   server should bind to. Use `"localhost"` to only allow connections from the
