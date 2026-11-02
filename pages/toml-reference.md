@@ -140,7 +140,7 @@ These options affect the development server that runs when you run
 - **`max_body_size = number`**: configure the maximum allowed size for request
   bodies, in megabytes. For proxied requests, the request body is first read into
   memory before being sent to the proxied server. If the request body exceeds the
-  maximum allowed size, the request will be aborted. 
+  maximum allowed size, the request will be aborted.
 
   Default: `8`.
 
@@ -169,6 +169,16 @@ These options affect the development server that runs when you run
 
 These options control the HTML document that Lustre generates when building your
 application or serves during development.
+
+- **`base = string`**: the base path used to import the built JavaScript and/or
+  Tailwind styles. You should use this option if your application is going to be
+  served under a path other than `/`, for example when deploying to GitHub pages.
+
+  Any [static assets](/assets.html) referenced in the `links`, `scripts`, or
+  `stylesheets` config, or any asset paths referenced in your application should
+  also include this base path.
+
+  Default: `/`
 
 - **`body = string`**: any custom HTML content to include inside the `<body>` tag
   of the generated HTML document. This can be used to add static content to the

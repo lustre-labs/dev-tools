@@ -4,6 +4,9 @@ let reconnectAttempts = 0;
 const maxReconnectAttempts = 10;
 const reconnectInterval = 1000;
 
+const base =
+  new URL(document.currentScript.src).searchParams.get("base") ?? "/";
+
 document.addEventListener("DOMContentLoaded", () => {
   if (window.sessionStorage.getItem("hotreload")) {
     const scrollPosition = JSON.parse(
@@ -41,7 +44,7 @@ function connect() {
       : window.location;
 
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  const url = `${protocol}//${location.host}/.lustre/ws`;
+  const url = `${protocol}//${location.host}${base}/.lustre/ws`;
 
   ws = new WebSocket(url);
 

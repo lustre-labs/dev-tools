@@ -22,15 +22,12 @@ pub fn wibble() -> Element(msg) {
 }
 ```
 
-
 > **Note**: note how the image's path is `/image/wibble.png` and not
 > `/assets/image/wibble.png`!
 >
-> Similarly, if you specify a `base_path`, you need to
-> manually include your `base_path` in the `src` of any assets you reverence. 
-> For example, if your base is `wibble`, you would provide
-> `html.img([attribute.src("/wibble/img.png")])` for an image provided at
-> `assets/img.png`.
+> If you have configured a different `base` path, you must include that when
+> referencing static assets. See the docs on [setting a base path](./base-paths.html)
+> for more information.
 
 When you build your application, the contents of the `assets` directory will be
 copied to the output directory specified in your `gleam.toml` file. So if we build
@@ -55,12 +52,16 @@ For example, let's say you've written some CSS and saved it to `assets/style.css
 To make sure the stylesheet is properly loaded both during development and in the
 built output, you would add the following to your `gleam.toml` file:
 
-```
+```toml
 [tools.lustre.html]
 stylesheets = [
   { href = "/style.css" }
 ]
 ```
+
+> If you have configured a different `base` path, you must include that when
+> referencing static assets. See the docs on [setting a base path](./base-paths.html)
+> for more information.
 
 Lustre has special hot-reloading support for CSS files included this way, so any
 changes you make will be reflected in the browser without needing to refresh the

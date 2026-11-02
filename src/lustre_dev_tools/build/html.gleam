@@ -18,11 +18,9 @@ pub fn generate(
   project: Project,
   entry: String,
   tailwind_entry: Option(String),
+  base: String,
   minify: Bool,
-  path_base: String,
 ) -> String {
-  let name = filepath.base_name(entry)
-  let src_path = prefixed_path(path_base, name)
   let html =
     html.html([lang(project)], [
       html.head([], [
@@ -44,7 +42,7 @@ pub fn generate(
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href(prefixed_path(path_base, filepath.base_name(entry))),
+              attribute.href(under(base, filepath.base_name(entry))),
             ])
 
           None -> element.none()
@@ -55,7 +53,7 @@ pub fn generate(
         html.script(
           [
             attribute.type_("module"),
-            attribute.src(src_path),
+            attribute.src(under(base, filepath.base_name(entry) <> ".js")),
           ],
           "",
         ),
@@ -82,7 +80,7 @@ pub fn dev(
   project: Project,
   entry: String,
   tailwind_entry: Option(String),
-  path_base: String,
+  base: String,
 ) -> String {
   let html =
     html.html([lang(project)], [
@@ -105,7 +103,7 @@ pub fn dev(
           Some(entry) ->
             html.link([
               attribute.rel("stylesheet"),
-              attribute.href(prefixed_path(path_base, filepath.base_name(entry))),
+              attribute.href(under(base, filepath.base_name(entry))),
             ])
 
           None -> element.none()
@@ -113,31 +111,38 @@ pub fn dev(
 
         scripts(project),
 
-        html.script([attribute.src("/.lustre/server-hot-reload.js")], ""),
+        html.script(
+          [
+            attribute.src(
+              filepath.join(base, {
+                ".lustre/server-hot-reload.js?base=" <> base
+              }),
+            ),
+          ],
+          "",
+        ),
 
         case project.has_node_modules {
           True ->
             html.script(
               [
                 attribute.type_("module"),
-                attribute.src(prefixed_path(path_base, entry <> ".dev.js")),
+                attribute.src(under(base, entry <> ".dev.js")),
               ],
               "",
             )
 
           False -> {
-            let module_path = case path_base {
-              "" -> prefixed_path(project.name, entry <> ".mjs")
-              _ ->
-                prefixed_path(path_base, project.name <> "/" <> entry <> ".mjs")
-            }
+            let path =
+              under(base, { filepath.join(project.name, entry <> ".mjs") })
+
             html.script([attribute.type_("module")], {
               "
-              import { main } from '${module_path}';
+              import { main } from '${path}';
 
               main();
               "
-              |> string.replace("${module_path}", module_path)
+              |> string.replace("${path}", path)
             })
           }
         },
@@ -288,9 +293,8 @@ fn body(project: Project) -> Element(msg) {
   })
 }
 
-fn prefixed_path(path_base: String, path: String) -> String {
-  case path_base {
-    "" -> "/" <> path
-    _ -> "/" <> path_base <> "/" <> path
-  }
+// UTILS -----------------------------------------------------------------------
+
+fn under(path_base: String, path: String) -> String {
+  filepath.join(path_base, path)
 }

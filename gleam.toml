@@ -14,9 +14,10 @@ internal_modules = ["lustre_dev_tools/*"]
 
 [documentation]
 pages = [
+    { title = "TOML reference", path = "toml-reference.html", source = "./pages/toml-reference.md" },
     { title = "Static assets", path = "assets.html", source = "./pages/assets.md" },
     { title = "Proxying requests", path = "proxying.html", source = "./pages/proxying.md" },
-    { title = "TOML reference", path = "toml-reference.html", source = "./pages/toml-reference.md" },
+    { title = "Set a base path", path = "base-paths.html", source = "./pages/base.md" },
 ]
 
 

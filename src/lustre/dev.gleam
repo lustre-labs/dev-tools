@@ -187,7 +187,7 @@ type BuildOptions {
     entries: List(String),
     skip_html: Bool,
     skip_tailwind: Bool,
-    path_base: String,
+    base: String,
   )
 }
 
@@ -253,15 +253,15 @@ key `tools.lustre.build.outdir`.
     "
   })
 
-  use path_base <- cli.string("path-base", ["build", "path_base"], project, {
+  use base <- cli.string("base", ["html", "base"], project, {
     "
-Set a base path where the compiled Javascript should be saved. Useful for SPAs when deployed to anywhere but the root of the domain.
-
-When using a base path, make sure to reference any assets with the base. So, if base_path is 'abc', any image under 'assets/img.png' should have 'abc/img.png' as its source in the app.
+Configure the base path for the build output. This is useful if your project will
+be served from a subdirectory rather than the root of the domain. Any referenced
+static assets should include this base path.
 
 This option can also be provided in your `gleam.toml` configuration under the
-key `tools.lustre.build.path_base`.
-  "
+key `tools.lustre.html.base`.
+    "
   })
 
   use <- glint.unnamed_args(glint.MinArgs(0))
@@ -293,7 +293,11 @@ key `tools.lustre.build.path_base`.
         Ok(False), _ | Error(_), _ -> False
       },
       skip_tailwind: skip_tailwind(flags) |> result.unwrap(False),
-      path_base: path_base(flags) |> result.unwrap(""),
+      base: case base(flags) {
+        Ok("/" <> _ as base) -> base
+        Ok(base) -> "/" <> base
+        Error(_) -> "/"
+      },
     )
 
   // 1.
@@ -386,35 +390,19 @@ key `tools.lustre.build.path_base`.
       Ok(Nil)
     }
 
-    [], False -> {
-      use _ <- result.try(
-        html.generate(
-          project,
-          project.name,
-          tailwind_entry,
-          options.minify,
-          options.path_base,
-        )
-        |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
-        |> result.map_error(error.CouldNotWriteFile(
-          filepath.join(options.outdir, "index.html"),
-          _,
-        )),
-      )
+    _, False -> {
+      let entry =
+        options.entries
+        |> list.first
+        |> result.unwrap(project.name)
 
-      cli.success("HTML generated.", False)
-
-      Ok(Nil)
-    }
-
-    [entry], False -> {
       use _ <- result.try(
         html.generate(
           project,
           entry,
           tailwind_entry,
+          options.base,
           options.minify,
-          options.path_base,
         )
         |> simplifile.write(filepath.join(options.outdir, "index.html"), _)
         |> result.map_error(error.CouldNotWriteFile(
@@ -494,7 +482,7 @@ type StartOptions {
     tailwind_entry: Option(String),
     host: String,
     port: Int,
-    path_base: String,
+    base: String,
     tls: Option(#(String, String)),
     timeout: Int,
     max_body_size: Int,
@@ -551,17 +539,6 @@ specified here.
     "
   })
 
-  use path_base <- cli.string("path-base", ["build", "path_base"], project, {
-    "
-Set a base path where the compiled Javascript should be saved. Useful for SPAs when deployed to anywhere but the root of the domain.
-
-When using a base path, make sure to reference any assets with the base. So, if base_path is 'abc', any image under 'assets/img.png' should have 'abc/img.png' as its source in the app.
-
-This option can also be provided in your `gleam.toml` configuration under the
-key `tools.lustre.build.path_base`.
-  "
-  })
-
   use watch_mode <- cli.string("", ["dev", "watch_mode"], project, "")
 
   use timeout <- cli.int("timeout", ["dev", "timeout"], project, {
@@ -584,6 +561,17 @@ maximum allowed size, the request will be aborted. The default maximum body size
 is 8mb.
     ",
   )
+
+  use base <- cli.string("base", ["html", "base"], project, {
+    "
+Configure the base path for the development server. This is helpful if your project
+will be served from a subdirectory rather than the root of the domain. Any referenced
+static assets should include this base path.
+
+This option can also be provided in your `gleam.toml` configuration under the
+key `tools.lustre.html.base`.
+    "
+  })
 
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
@@ -644,7 +632,11 @@ is 8mb.
       tailwind_entry:,
       host: host(flags) |> result.unwrap("localhost"),
       port: port(flags) |> result.unwrap(1234),
-      path_base: path_base(flags) |> result.unwrap(""),
+      base: case base(flags) {
+        Ok("/" <> _ as base) -> base
+        Ok(base) -> "/" <> base
+        Error(_) -> "/"
+      },
       tls:,
       timeout:,
       max_body_size:,
@@ -713,7 +705,7 @@ is 8mb.
     options.tailwind_entry,
     options.host,
     options.port,
-    options.path_base,
+    options.base,
     options.tls,
     options.timeout,
     options.max_body_size,
