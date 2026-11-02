@@ -171,6 +171,7 @@ pub fn build(
       entries,
       maybe(minify, ["--minify"], []),
       maybe(list.length(entries) > 1, ["--splitting"], []),
+      maybe(project.sourcemaps_enabled, ["--sourcemap=linked"], []),
       ["--outdir", outdir],
     ])
 

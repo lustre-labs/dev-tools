@@ -30,6 +30,7 @@ pub type Project {
     has_package_json: Bool,
     has_node_modules: Bool,
     has_typescript: Bool,
+    sourcemaps_enabled: Bool,
   )
 }
 
@@ -127,6 +128,10 @@ pub fn config() -> Project {
     tom.get_table(config, ["tools", "lustre"])
     |> result.unwrap(dict.new())
 
+  let sourcemaps_enabled =
+    tom.get_bool(config, ["javascript", "source_maps"])
+    |> result.unwrap(False)
+
   Project(
     name:,
     root:,
@@ -140,6 +145,7 @@ pub fn config() -> Project {
     has_node_modules:,
     has_package_json:,
     has_typescript:,
+    sourcemaps_enabled:,
   )
 }
 
