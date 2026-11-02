@@ -643,7 +643,7 @@ key `tools.lustre.html.base`.
     )
 
   use _ <- result.try(gleam.build(project))
-  use _ <- result.try(case project.has_node_modules {
+  use _ <- result.try(case project.has_node_modules || project.has_typescript {
     True -> {
       let module =
         "import { main } from '../../build/dev/javascript/${name}/${entry}.mjs'; main();"

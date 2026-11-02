@@ -304,32 +304,34 @@ fn build_project(project: Project, actor: Subject(BuildMessage)) -> Pid {
   use <- process.spawn
   let result = {
     use _ <- result.try(gleam.build(project))
-    use _ <- result.try(case project.has_node_modules {
-      True -> {
-        let module =
-          "import { main } from '../../build/dev/javascript/${name}/${entry}.mjs'; main();"
-          |> string.replace("${name}", project.name)
-          |> string.replace("${entry}", project.name)
+    use _ <- result.try(
+      case project.has_node_modules || project.has_typescript {
+        True -> {
+          let module =
+            "import { main } from '../../build/dev/javascript/${name}/${entry}.mjs'; main();"
+            |> string.replace("${name}", project.name)
+            |> string.replace("${entry}", project.name)
 
-        let name = justin.snake_case(project.name) <> ".dev.mjs"
-        let path = filepath.join(project.build, name)
+          let name = justin.snake_case(project.name) <> ".dev.mjs"
+          let path = filepath.join(project.build, name)
 
-        use _ <- result.try(
-          simplifile.write(path, module)
-          |> result.map_error(error.CouldNotWriteFile(path, _)),
-        )
+          use _ <- result.try(
+            simplifile.write(path, module)
+            |> result.map_error(error.CouldNotWriteFile(path, _)),
+          )
 
-        bun.build(
-          project,
-          [path],
-          outdir: filepath.join(project.root, "build/dev/javascript"),
-          minify: False,
-          quiet: True,
-        )
-      }
+          bun.build(
+            project,
+            [path],
+            outdir: filepath.join(project.root, "build/dev/javascript"),
+            minify: False,
+            quiet: True,
+          )
+        }
 
-      False -> Ok(Nil)
-    })
+        False -> Ok(Nil)
+      },
+    )
 
     Ok(Nil)
   }

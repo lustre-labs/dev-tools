@@ -2,6 +2,7 @@
 
 import filepath
 import gleam/dict.{type Dict}
+import gleam/list
 import gleam/result
 import gleam/string
 import lustre_dev_tools/error.{type Error}
@@ -27,6 +28,7 @@ pub type Project {
     build: String,
     // Facts
     has_node_modules: Bool,
+    has_typescript: Bool,
   )
 }
 
@@ -78,14 +80,34 @@ pub fn config() -> Project {
   let root = find_root("./")
   let bin = filepath.join(root, ".lustre/bin")
   let src = filepath.join(root, "src")
+  let src_files = simplifile.get_files(src) |> result.unwrap([])
   let dev = filepath.join(root, "dev")
+  let dev_files = simplifile.get_files(dev) |> result.unwrap([])
   let tests = filepath.join(root, "test")
+  let test_files = simplifile.get_files(tests) |> result.unwrap([])
   let assets = filepath.join(root, "assets")
   let build = filepath.join(root, ".lustre/build")
 
   let has_node_modules =
     simplifile.is_directory(filepath.join(root, "node_modules"))
     |> result.unwrap(False)
+
+  let has_tsconfig =
+    simplifile.is_file(filepath.join(root, "tsconfig.json"))
+    |> result.unwrap(False)
+
+  let is_typescript_file = fn(path) {
+    case filepath.extension(path) {
+      Ok("ts") | Ok("cts") | Ok("mts") -> True
+      _ -> False
+    }
+  }
+
+  let has_typescript =
+    has_tsconfig
+    || list.any(src_files, is_typescript_file)
+    || list.any(dev_files, is_typescript_file)
+    || list.any(test_files, is_typescript_file)
 
   // These are safe to assert because we are guaranteed to be inside a Gleam
   // project if we're running this program! All Gleam projects must have a
@@ -111,6 +133,7 @@ pub fn config() -> Project {
     build:,
     options:,
     has_node_modules:,
+    has_typescript:,
   )
 }
 

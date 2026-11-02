@@ -122,7 +122,7 @@ pub fn dev(
           "",
         ),
 
-        case project.has_node_modules {
+        case project.has_node_modules || project.has_typescript {
           True ->
             html.script(
               [
