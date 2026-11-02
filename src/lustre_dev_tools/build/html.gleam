@@ -256,18 +256,40 @@ fn scripts(project: Project) -> Element(msg) {
         let src = tom.get_string(toml, ["src"])
         let content = tom.get_string(toml, ["content"])
         let type_ = tom.get_string(toml, ["type"])
+        let defer = case tom.get_bool(toml, ["defer"]) {
+          Ok(True) -> attribute("defer", "")
+          Ok(_) | Error(_) -> attribute.none()
+        }
+
+        let base_attributes =
+          dict.fold(toml, [defer], fn(acc, key, toml) {
+            case key, tom.as_string(toml) {
+              "data-" <> name, Ok(value) -> [attribute.data(name, value), ..acc]
+              _, _ -> acc
+            }
+          })
 
         case src, content, type_ {
           Ok(src), _, Ok(type_value) ->
             Ok(html.script(
-              [attribute.src(src), attribute.type_(type_value)],
+              [
+                attribute.src(src),
+                attribute.type_(type_value),
+                ..base_attributes
+              ],
               "",
             ))
-          Ok(src), _, _ -> Ok(html.script([attribute.src(src)], ""))
+
+          Ok(src), _, _ ->
+            Ok(html.script([attribute.src(src), ..base_attributes], ""))
 
           _, Ok(content), Ok(type_value) ->
-            Ok(html.script([attribute.type_(type_value)], content))
-          _, Ok(content), _ -> Ok(html.script([], content))
+            Ok(html.script(
+              [attribute.type_(type_value), ..base_attributes],
+              content,
+            ))
+
+          _, Ok(content), _ -> Ok(html.script(base_attributes, content))
 
           _, _, _ -> Error(Nil)
         }

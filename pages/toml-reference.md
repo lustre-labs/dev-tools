@@ -214,12 +214,15 @@ application or serves during development.
 
   Default: `[]`.
 
-- **`scripts = ({ src: string, type?: string } | { content: string, type?: string })[]`**:
+- **`scripts = (({ src: string } | { content: string }) & { type?: string, defer?: boolean, data-*?: string })[]`**:
   an array of `<script>` tags to include at the end of the `<head>` in the
   generated HTML document. Each object in the array can either represent an
   external script with a `src` attribute or an inline script with a `content`
   attribute. The optional `type` attribute can be used to specify the script
   type, such as `module` for ES modules.
+
+  Data attributes may also be included such as `data-project-id` for integrating
+  with external scripts.
 
   Lustre will always generate the script tag for the main JavaScript bundle after
   any scripts specified here.
