@@ -25,6 +25,12 @@ pub fn wibble() -> Element(msg) {
 
 > **Note**: note how the image's path is `/image/wibble.png` and not
 > `/assets/image/wibble.png`!
+>
+> Similarly, if you specify a `base_path`, you need to
+> manually include your `base_path` in the `src` of any assets you reverence. 
+> For example, if your base is `wibble`, you would provide
+> `html.img([attribute.src("/wibble/img.png")])` for an image provided at
+> `assets/img.png`.
 
 When you build your application, the contents of the `assets` directory will be
 copied to the output directory specified in your `gleam.toml` file. So if we build

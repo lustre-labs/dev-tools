@@ -37,6 +37,7 @@ type Context {
     tailwind_entry: Option(String),
     priv: String,
     proxies: List(Proxy),
+    path_base: String,
     timeout: Int,
     max_body_size: Int,
   )
@@ -55,6 +56,7 @@ pub fn start(
   tailwind_entry: Option(String),
   host: String,
   port: Int,
+  path_base: String,
   tls: Option(#(String, String)),
   timeout: Int,
   max_body_size: Int,
@@ -69,8 +71,8 @@ pub fn start(
       proxies:,
       timeout:,
       max_body_size:,
+      path_base:,
     )
-
   let handler = fn(request) {
     case request.path_segments(request) {
       [".lustre", "ws"] -> live_reload.start(request, project, error, watcher)
@@ -134,22 +136,27 @@ fn print_start_message(host, port, scheme) {
 ///
 ///
 fn handle_wisp_request(request: Request, context: Context) -> Response {
+  let serve_from = "/" <> context.path_base
   let request =
     wisp.set_max_body_size(request, context.max_body_size * 1024 * 1024)
 
   use <- wisp.rescue_crashes
+  use <- proxy.handle(request, context.proxies)
   use request <- wisp.handle_head(request)
   use request <- wisp.csrf_known_header_protection(request)
 
   use <- wisp.serve_static(request, under: "/.lustre", from: context.priv)
   use <- wisp.serve_static(
     request,
-    under: "/",
+    under: serve_from,
     from: filepath.join(context.project.root, "build/dev/javascript"),
   )
 
-  use <- wisp.serve_static(request, under: "/", from: context.project.assets)
-  use <- proxy.handle(request, context.proxies, context.timeout)
+  use <- wisp.serve_static(
+    request,
+    under: serve_from,
+    from: context.project.assets,
+  )
 
   case request.method, filepath.extension(request.path) {
     // If we get this far then we want to operate in a type of "SPA mode" that
@@ -157,7 +164,12 @@ fn handle_wisp_request(request: Request, context: Context) -> Response {
     // don't do this for unknown _assets_ though so we'll only do this for paths
     // that don't have a file extension.
     http.Get, Error(_) ->
-      html.dev(context.project, context.entry, context.tailwind_entry)
+      html.dev(
+        context.project,
+        context.entry,
+        context.tailwind_entry,
+        context.path_base,
+      )
       |> wisp.html_body(wisp.ok(), _)
 
     _, _ -> wisp.not_found()
