@@ -495,6 +495,9 @@ type StartOptions {
     host: String,
     port: Int,
     path_base: String,
+    tls: Option(#(String, String)),
+    timeout: Int,
+    max_body_size: Int,
   )
 }
 
@@ -504,6 +507,9 @@ fn start(project: Project) -> Command(Result(Nil, Error)) {
 Start a development server to run your Lustre app locally. This will watch your
 source files for changes and automatically rebuild and reload the app in your
 browser.
+
+The default entry point is the application's main module, but an alternative can
+be specified as an argument to this command.
     "
   })
 
@@ -519,6 +525,21 @@ on yoru local network. This can be useful for testing with real mobile devices.
     "
 Configure the port the development server will listen on: by default this is
 `1234`. If this port is already in use the server will fail to start.
+    "
+  })
+
+  use cert <- cli.string("https-cert", ["dev", "https", "cert"], project, {
+    "
+Configure the path to a TLS certificate file. Providing both `--https-cert`
+and `--https-key` will start the development server with HTTPS instead of
+HTTP, on the same port.
+    "
+  })
+
+  use key <- cli.string("https-key", ["dev", "https", "key"], project, {
+    "
+Configure the path to the private key file matching the certificate provided
+with `--https-cert`. Both flags must be provided together to enable HTTPS.
     "
   })
 
@@ -541,6 +562,27 @@ key `tools.lustre.build.path_base`.
   })
 
   use watch_mode <- cli.string("", ["dev", "watch_mode"], project, "")
+
+  use timeout <- cli.int("timeout", ["dev", "timeout"], project, {
+    "
+Configure the request timeout, in seconds, for the development server. Proxied
+requests that take longer than this timeout will be aborted. If not provided, the
+default timeout is 30s.
+    "
+  })
+
+  use max_body_size <- cli.int(
+    "max-body-size",
+    ["dev", "max_body_size"],
+    project,
+    "
+Configure the maximum allowed size for request bodies, in megabytes, for the
+development server. For proxied requests, the request body is first read into
+memory before being sent to the proxied server. If the request body exceeds the
+maximum allowed size, the request will be aborted. The default maximum body size
+is 8mb.
+    ",
+  )
 
   use <- glint.unnamed_args(glint.MinArgs(0))
   use _, entries, flags <- glint.command
@@ -573,6 +615,16 @@ key `tools.lustre.build.path_base`.
     Ok(other) -> Error(error.UnknownWatchStrategy(name: other))
   })
 
+  use tls <- result.try(case cert(flags), key(flags) {
+    Ok(cert), Ok(key) -> Ok(Some(#(cert, key)))
+    Error(_), Error(_) -> Ok(None)
+    Ok(_), Error(_) -> Error(error.HttpsMissingKey)
+    Error(_), Ok(_) -> Error(error.HttpsMissingCert)
+  })
+
+  let timeout = timeout(flags) |> result.unwrap(30)
+  let max_body_size = max_body_size(flags) |> result.unwrap(8)
+
   let options =
     StartOptions(
       watch: watch(flags)
@@ -591,6 +643,9 @@ key `tools.lustre.build.path_base`.
       host: host(flags) |> result.unwrap("localhost"),
       port: port(flags) |> result.unwrap(1234),
       path_base: path_base(flags) |> result.unwrap(""),
+      tls:,
+      timeout:,
+      max_body_size:,
     )
 
   use _ <- result.try(gleam.build(project))
@@ -620,6 +675,7 @@ key `tools.lustre.build.path_base`.
 
     False -> Ok(Nil)
   })
+
   use _ <- result.try(case options.tailwind_entry {
     Some(tailwind_entry) ->
       tailwind.build(
@@ -656,6 +712,9 @@ key `tools.lustre.build.path_base`.
     options.host,
     options.port,
     options.path_base,
+    options.tls,
+    options.timeout,
+    options.max_body_size,
   ))
 
   Ok(process.sleep_forever())

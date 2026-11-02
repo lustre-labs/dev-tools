@@ -21,6 +21,8 @@ pub type Error {
   CouldNotWriteFile(path: String, reason: simplifile.FileError)
   ExternalCommandFailed(command: String, reason: String)
   FailedToBuildProject(reason: String)
+  HttpsMissingCert
+  HttpsMissingKey
   MissingRequiredFlag(name: List(String))
   MustBeProjectRoot(path: String)
   ProxyInvalidConfig
@@ -289,6 +291,22 @@ Make sure your Gleam code compiles without errors and any entry points point to
 Gleam modules.
       "
       |> string.replace("${reason}", reason)
+
+    // -------------------------------------------------------------------------
+    HttpsMissingCert ->
+      "
+I ran into a problem trying to start the development server over HTTPS. The
+`cert` option is missing. Please make sure you provide a value for the
+`--https-cert` flag or the `tools.lustre.dev.https.cert` field.
+      "
+
+    // -------------------------------------------------------------------------
+    HttpsMissingKey ->
+      "
+I ran into a problem trying to start the development server over HTTPS. The
+`key` option is missing. Please make sure you provide a value for the
+`--https-key` flag or the `tools.lustre.dev.https.key` field.
+      "
 
     // -------------------------------------------------------------------------
     MissingRequiredFlag(name:) ->

@@ -108,6 +108,15 @@ These options affect the development server that runs when you run
 
   Default: `1234`.
 
+- **`https = { cert: string, key: string }`**: configure the development server
+  to run over HTTPS instead of HTTP, on the same port.
+
+  The `cert` field is the path to a TLS certificate file, and the `key` field
+  is the path to the private key file matching that certificate. Both fields
+  must be provided together to enable HTTPS.
+
+  Default: `undefined`.
+
 - **`proxy = { from: string, to: string }`**: configure an API proxy to forward
   requests from the app to a different server. This lets you avoid CORS issues
   while the frontend and backend are running on different ports during development.
@@ -121,6 +130,19 @@ These options affect the development server that runs when you run
   forwarded to `http://localhost:3000/users`.
 
   Default: `undefined`.
+
+- **`timeout = number`**: configure the timeout, in seconds, of requests sent to
+  the development server. Proxied requests that take longer than this timeout will
+  be aborted.
+
+  Default: `30`.
+
+- **`max_body_size = number`**: configure the maximum allowed size for request
+  bodies, in megabytes. For proxied requests, the request body is first read into
+  memory before being sent to the proxied server. If the request body exceeds the
+  maximum allowed size, the request will be aborted. 
+
+  Default: `8`.
 
 - **`watch = string[]`**: an array of directories relative to the project root to watch
   for changes. When a change is detected in one of these directories, the
