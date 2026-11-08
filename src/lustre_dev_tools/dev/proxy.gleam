@@ -10,6 +10,7 @@ import gleam/http
 import gleam/http/request.{type Request, Request}
 import gleam/http/response.{type Response}
 import gleam/httpc
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/otp/actor.{type Started, Started}
@@ -138,20 +139,30 @@ pub fn handle(
         httpc.configure()
         |> httpc.timeout(timeout * 1000)
 
-      Request(
-        ..request,
-        scheme: case option.map(to.scheme, string.lowercase) {
-          Some("https") -> http.Https
-          _ -> http.Http
-        },
-        host:,
-        port: to.port,
-        path: to.path,
-        body:,
-      )
+      let req =
+        Request(
+          ..request,
+          scheme: case option.map(to.scheme, string.lowercase) {
+            Some("https") -> http.Https
+            _ -> http.Http
+          },
+          host:,
+          port: to.port,
+          path: to.path,
+          body:,
+        )
+      req
       |> httpc.dispatch_bits(config, _)
       |> result.map(response.map(_, bytes_tree.from_bit_array))
       |> result.map(response.map(_, wisp.Bytes))
+      |> result.map_error(fn(error: httpc.HttpError) {
+        io.println_error(
+          "Unable to reach backend "
+          <> req |> request.to_uri |> uri.to_string
+          <> ": "
+          <> string.inspect(error),
+        )
+      })
       |> result.lazy_unwrap(fn() {
         response.new(500)
         |> response.set_body(wisp.Bytes(bytes_tree.new()))
